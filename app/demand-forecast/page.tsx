@@ -31,7 +31,7 @@ const generateCalendarData = (date: Date) => {
     revenue: Math.floor(Math.random() * 500000) + 500000,
     customers: Math.floor(Math.random() * 100) + 100,
     flRatio: (Math.random() * 10 + 20).toFixed(1),
-    sales: `¥${(Math.floor(Math.random() * 500) + 500).toFixed(1)}万`,
+    sales: `${((Math.floor(Math.random() * 500) + 500) * 10000).toLocaleString()}円`,
   }))
 }
 

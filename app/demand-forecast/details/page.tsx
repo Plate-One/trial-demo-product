@@ -222,7 +222,7 @@ export default function DemandForecastPage() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           <div className="bg-gray-50 rounded-lg p-4">
             <p className="text-sm font-medium text-gray-600">月間予測売上</p>
-            <div className="text-2xl font-bold text-gray-900 mt-2">¥{((storeData.totals.predictedRevenue * 30) / 10000).toFixed(1)}万</div>
+            <div className="text-2xl font-bold text-gray-900 mt-2">{(storeData.totals.predictedRevenue * 30).toLocaleString()}円</div>
             <p className="text-xs text-gray-600 mt-1">
               前月比 +{((storeData.totals.predictedRevenue / storeData.totals.actualRevenue - 1) * 100).toFixed(1)}%
             </p>
@@ -348,7 +348,7 @@ export default function DemandForecastPage() {
                     <div className="md:col-span-1">
                       <div className="text-sm text-gray-600">予測売上</div>
                       <div className="font-bold text-lg">
-                        ¥{Math.round((baseSales * multiplier) / 10000).toFixed(1)}万
+                        {Math.round(baseSales * multiplier).toLocaleString()}円
                       </div>
                     </div>
 

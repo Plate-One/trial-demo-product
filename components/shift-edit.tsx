@@ -41,7 +41,8 @@ const ShiftBlock: React.FC<{
   moveShift: (dragIndex: number, hoverIndex: number) => void
   updateShift: (id: string, newShift: Partial<Shift>) => void
   deleteShift: (id: string) => void
-}> = ({ shift, index, moveShift, updateShift, deleteShift }) => {
+  shiftStatus?: "preferred" | "optimized" | "confirmed"
+}> = ({ shift, index, moveShift, updateShift, deleteShift, shiftStatus = "preferred" }) => {
   const [{ isDragging }, drag] = useDrag({
     type: "SHIFT",
     item: { index, shift },
@@ -92,12 +93,26 @@ const ShiftBlock: React.FC<{
   const startPosition = (startMinutes / 60 - START_HOUR) * HOUR_WIDTH
   const width = ((endMinutes - startMinutes) / 60) * HOUR_WIDTH
 
+  const getShiftColor = () => {
+    if (shiftStatus === "confirmed") {
+      return shift.role === "ホール"
+        ? "bg-blue-200 text-blue-800 border-2 border-blue-500"
+        : "bg-emerald-200 text-emerald-800 border-2 border-emerald-500"
+    } else if (shiftStatus === "optimized") {
+      return shift.role === "ホール"
+        ? "bg-blue-100 text-blue-800 border-2 border-blue-400"
+        : "bg-emerald-100 text-emerald-800 border-2 border-emerald-400"
+    } else {
+      return shift.role === "ホール"
+        ? "bg-blue-100 text-blue-700 border border-blue-300"
+        : "bg-emerald-100 text-emerald-700 border border-emerald-300"
+    }
+  }
+
   return (
     <div
       ref={(node) => drag(drop(node))}
-      className={`absolute rounded px-1 py-0.5 text-center cursor-move ${
-        shift.role === "ホール" ? "bg-blue-100 text-blue-700" : "bg-emerald-100 text-emerald-700"
-      } ${isDragging ? "opacity-50" : ""}`}
+      className={`absolute rounded px-1 py-0.5 text-center cursor-move ${getShiftColor()} ${isDragging ? "opacity-50" : ""}`}
       style={{
         left: `${startPosition}px`,
         width: `${width}px`,
@@ -173,7 +188,8 @@ const ShiftBlock: React.FC<{
 const StaffRow: React.FC<{
   staff: StaffMember
   updateStaff: (id: string, newStaff: Partial<StaffMember>) => void
-}> = ({ staff, updateStaff }) => {
+  shiftStatus?: "preferred" | "optimized" | "confirmed"
+}> = ({ staff, updateStaff, shiftStatus = "preferred" }) => {
   const moveShift = useCallback(
     (dragIndex: number, hoverIndex: number) => {
       if (!staff || !staff.shifts) return
@@ -231,6 +247,7 @@ const StaffRow: React.FC<{
                 moveShift={moveShift}
                 updateShift={updateShift}
                 deleteShift={deleteShift}
+                shiftStatus={shiftStatus}
               />
             ))}
           <Button variant="outline" size="sm" className="absolute right-2 top-1/2 -translate-y-1/2" onClick={addShift}>
@@ -242,7 +259,15 @@ const StaffRow: React.FC<{
   )
 }
 
-export function ShiftEdit({ viewMode, currentDate }: { viewMode: "daily" | "weekly" | "monthly"; currentDate: Date }) {
+export function ShiftEdit({
+  viewMode,
+  currentDate,
+  shiftStatus = "preferred",
+}: {
+  viewMode: "daily" | "weekly" | "monthly"
+  currentDate: Date
+  shiftStatus?: "preferred" | "optimized" | "confirmed"
+}) {
   const [staff, setStaff] = useState<StaffMember[]>([
     {
       id: "1",
@@ -367,7 +392,7 @@ export function ShiftEdit({ viewMode, currentDate }: { viewMode: "daily" | "week
                 </tr>
               </thead>
               <tbody>
-                {staff.map((member) => member && <StaffRow key={member.id} staff={member} updateStaff={updateStaff} />)}
+                {staff.map((member) => member && <StaffRow key={member.id} staff={member} updateStaff={updateStaff} shiftStatus={shiftStatus} />)}
               </tbody>
             </table>
           </div>

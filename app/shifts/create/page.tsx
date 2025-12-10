@@ -457,7 +457,7 @@ export default function ShiftCreation() {
                     return (
                     <td key={dayIndex} className="border-t border-r p-3 text-center">
                       <div className="font-bold">{total}h</div>
-                      <div className="text-xs text-gray-500">¥{(total * 1200).toLocaleString()}</div>
+                      <div className="text-xs text-gray-500">{(total * 1200).toLocaleString()}円</div>
                       </td>
                     )
                   })}
@@ -535,7 +535,7 @@ export default function ShiftCreation() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-gray-50 rounded-lg p-4">
             <p className="text-sm text-gray-600">週間予測売上</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">¥{(kpis.totalSales / 10000).toFixed(0)}万</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{kpis.totalSales.toLocaleString()}円</p>
                               </div>
           <div className="bg-gray-50 rounded-lg p-4">
             <p className="text-sm text-gray-600">総工数</p>
@@ -544,7 +544,7 @@ export default function ShiftCreation() {
                               </div>
           <div className="bg-gray-50 rounded-lg p-4">
             <p className="text-sm text-gray-600">人件費</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">¥{(kpis.laborCost / 10000).toFixed(1)}万</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{kpis.laborCost.toLocaleString()}円</p>
                             </div>
           <div className="bg-gray-50 rounded-lg p-4">
             <p className="text-sm text-gray-600">人件費率</p>

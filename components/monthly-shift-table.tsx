@@ -243,6 +243,30 @@ export function MonthlyShiftTable() {
     )
   }
 
+  // Calculate daily labor hours and costs
+  const HOURLY_WAGE = 1200
+  const calculateDayLaborMetrics = (dayIndex: number) => {
+    const dateKey = format(days[dayIndex].date, "yyyy-MM-dd")
+    let totalHours = 0
+
+    employeeShifts.forEach((employee) => {
+      const shifts = employee.shifts[dateKey] || []
+      shifts.forEach((shift) => {
+        const [startHour, startMinute] = shift.start.split(":").map(Number)
+        const [endHour, endMinute] = shift.end.split(":").map(Number)
+        const hours = endHour - startHour + (endMinute - startMinute) / 60
+        totalHours += hours
+      })
+    })
+
+    const laborCost = totalHours * HOURLY_WAGE
+    const dayMetrics = metricsData[dayIndex]
+    const sales = dayMetrics?.forecastSales || 0
+    const laborCostRatio = sales > 0 ? (laborCost / sales) * 100 : 0
+
+    return { totalHours, laborCost, laborCostRatio, sales }
+  }
+
   // Calculate monthly totals
   const monthlyTotals = {
     forecastSales: metricsData.reduce((sum, day) => sum + day.forecastSales, 0),
@@ -287,7 +311,7 @@ export function MonthlyShiftTable() {
         <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
           <div className="text-sm text-gray-600">月間売上予測/実績</div>
           <div className="mt-1 text-xl font-semibold text-gray-900 print:text-base">
-            ¥{(monthlyTotals.forecastSales / 10000).toFixed(1)}万 / ¥{(monthlyTotals.actualSales / 10000).toFixed(1)}万
+            {monthlyTotals.forecastSales.toLocaleString()}円 / {monthlyTotals.actualSales.toLocaleString()}円
           </div>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
@@ -299,9 +323,124 @@ export function MonthlyShiftTable() {
         <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
           <div className="text-sm text-gray-600">月間人件費/人件費率</div>
           <div className="mt-1 text-xl font-semibold text-gray-900 print:text-base">
-            ¥{(monthlyTotals.laborCost / 10000).toFixed(1)}万 /{avgLaborRatio}%
+            {monthlyTotals.laborCost.toLocaleString()}円 /{avgLaborRatio}%
           </div>
         </div>
+      </div>
+
+      {/* 日別指標テーブル */}
+      <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm overflow-x-auto">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">日別指標</h3>
+        <table className="w-full border-collapse min-w-[800px]">
+          <thead>
+            <tr>
+              <th className="border p-2 bg-gray-50 text-left text-xs font-medium text-gray-600 min-w-[100px] whitespace-nowrap">指標</th>
+              {days.map((day, index) => (
+                <th
+                  key={index}
+                  className={`border p-2 text-center text-xs font-medium min-w-[60px] ${
+                    day.isWeekend ? "bg-red-50 text-red-600" : "bg-gray-50 text-gray-600"
+                  }`}
+                >
+                  <div>{format(day.date, "d")}</div>
+                  <div className="text-[10px]">{day.dayOfWeek}</div>
+                </th>
+              ))}
+              <th className="border p-2 bg-gray-100 text-center text-xs font-medium text-gray-600 min-w-[100px]">月合計</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td className="border p-2 text-xs font-medium text-gray-700 whitespace-nowrap">売上予測</td>
+              {days.map((_, index) => {
+                const dayMetrics = metricsData[index]
+                return (
+                  <td
+                    key={index}
+                    className={`border p-2 text-center text-xs ${days[index].isWeekend ? "bg-red-50/30" : ""}`}
+                  >
+                    {dayMetrics?.forecastSales.toLocaleString()}円
+                  </td>
+                )
+              })}
+              <td className="border p-2 text-center text-xs font-bold bg-gray-50">
+                {metricsData.reduce((sum, day) => sum + day.forecastSales, 0).toLocaleString()}円
+              </td>
+            </tr>
+            <tr>
+              <td className="border p-2 text-xs font-medium text-gray-700 whitespace-nowrap">売上実績</td>
+              {days.map((_, index) => {
+                const dayMetrics = metricsData[index]
+                return (
+                  <td
+                    key={index}
+                    className={`border p-2 text-center text-xs ${days[index].isWeekend ? "bg-red-50/30" : ""}`}
+                  >
+                    {dayMetrics?.actualSales ? dayMetrics.actualSales.toLocaleString() + "円" : "-"}
+                  </td>
+                )
+              })}
+              <td className="border p-2 text-center text-xs font-bold bg-gray-50">
+                {metricsData.reduce((sum, day) => sum + (day.actualSales || 0), 0).toLocaleString()}円
+              </td>
+            </tr>
+            <tr>
+              <td className="border p-2 text-xs font-medium text-gray-700 whitespace-nowrap">投入労働時間</td>
+              {days.map((_, index) => {
+                const metrics = calculateDayLaborMetrics(index)
+                return (
+                  <td
+                    key={index}
+                    className={`border p-2 text-center text-xs ${days[index].isWeekend ? "bg-red-50/30" : ""}`}
+                  >
+                    {metrics.totalHours.toFixed(1)}h
+                  </td>
+                )
+              })}
+              <td className="border p-2 text-center text-xs font-bold bg-gray-50">
+                {days.reduce((sum, _, index) => sum + calculateDayLaborMetrics(index).totalHours, 0).toFixed(1)}h
+              </td>
+            </tr>
+            <tr>
+              <td className="border p-2 text-xs font-medium text-gray-700 whitespace-nowrap">人件費</td>
+              {days.map((_, index) => {
+                const metrics = calculateDayLaborMetrics(index)
+                return (
+                  <td
+                    key={index}
+                    className={`border p-2 text-center text-xs ${days[index].isWeekend ? "bg-red-50/30" : ""}`}
+                  >
+                    {metrics.laborCost.toLocaleString()}円
+                  </td>
+                )
+              })}
+              <td className="border p-2 text-center text-xs font-bold bg-gray-50">
+                {days.reduce((sum, _, index) => sum + calculateDayLaborMetrics(index).laborCost, 0).toLocaleString()}円
+              </td>
+            </tr>
+            <tr>
+              <td className="border p-2 text-xs font-medium text-gray-700 whitespace-nowrap">人件費率</td>
+              {days.map((_, index) => {
+                const metrics = calculateDayLaborMetrics(index)
+                return (
+                  <td
+                    key={index}
+                    className={`border p-2 text-center text-xs ${days[index].isWeekend ? "bg-red-50/30" : ""}`}
+                  >
+                    {metrics.laborCostRatio.toFixed(1)}%
+                  </td>
+                )
+              })}
+              <td className="border p-2 text-center text-xs font-bold bg-gray-50">
+                {(() => {
+                  const totalLaborCost = days.reduce((sum, _, index) => sum + calculateDayLaborMetrics(index).laborCost, 0)
+                  const totalSales = metricsData.reduce((sum, day) => sum + day.forecastSales, 0)
+                  return totalSales > 0 ? ((totalLaborCost / totalSales) * 100).toFixed(1) : "0.0"
+                })()}%
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       {/* ポジション別表示（ホール／キッチン） */}

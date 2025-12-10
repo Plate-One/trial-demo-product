@@ -1,14 +1,25 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { ChevronUpIcon, ChevronDownIcon, ChevronsUpDownIcon, Users } from "lucide-react"
+import { ChevronUpIcon, ChevronDownIcon, ChevronsUpDownIcon, Users, DollarSign, Clock, TrendingUp } from "lucide-react"
 import { format, addDays, startOfWeek } from "date-fns"
 import { ja } from "date-fns/locale"
 import { MonthlyShiftTable } from "@/components/monthly-shift-table"
 import { Badge } from "@/components/ui/badge"
+import { Card, CardContent } from "@/components/ui/card"
 
 type SortField = "start" | "end"
 type SortOrder = "asc" | "desc"
+
+const HOURLY_WAGE = 1200 // 時給
+
+// モック売上データを生成
+const generateMockSales = (date: Date): number => {
+  const dayOfWeek = date.getDay()
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+  const multiplier = isWeekend ? 1.3 : 1.0
+  return Math.floor((150000 + Math.random() * 100000) * multiplier)
+}
 
 // 時間帯別推奨人数
 const recommendedStaffing: Record<number, { hall: number; kitchen: number }> = {
@@ -33,7 +44,8 @@ const recommendedStaffing: Record<number, { hall: number; kitchen: number }> = {
 export function ShiftTimeline({
   viewMode,
   currentDate,
-}: { viewMode: "daily" | "weekly" | "monthly"; currentDate: Date }) {
+  shiftStatus = "preferred",
+}: { viewMode: "daily" | "weekly" | "monthly"; currentDate: Date; shiftStatus?: "preferred" | "optimized" | "confirmed" }) {
   const [sortField, setSortField] = useState<SortField>("start")
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc")
 
@@ -389,14 +401,26 @@ export function ShiftTimeline({
                               const startPercent = ((startHour - 8) / 16) * 100
                               const width = ((endHour - startHour) / 16) * 100
 
+                              const getShiftColor = () => {
+                                if (shiftStatus === "confirmed") {
+                                  return role === "ホール"
+                                    ? "bg-blue-200 text-blue-800 border-2 border-blue-500"
+                                    : "bg-emerald-200 text-emerald-800 border-2 border-emerald-500"
+                                } else if (shiftStatus === "optimized") {
+                                  return role === "ホール"
+                                    ? "bg-blue-100 text-blue-800 border-2 border-blue-400"
+                                    : "bg-emerald-100 text-emerald-800 border-2 border-emerald-400"
+                                } else {
+                                  return role === "ホール"
+                                    ? "bg-blue-100 text-blue-700 border border-blue-300"
+                                    : "bg-emerald-100 text-emerald-700 border border-emerald-300"
+                                }
+                              }
+
                               return (
                                 <div
                                   key={shiftIndex}
-                                  className={`absolute flex flex-col items-center justify-center rounded px-1 text-center ${
-                                    role === "ホール"
-                                      ? "bg-blue-100 text-blue-700 border border-blue-300"
-                                      : "bg-emerald-100 text-emerald-700 border border-emerald-300"
-                                  }`}
+                                  className={`absolute flex flex-col items-center justify-center rounded px-1 text-center ${getShiftColor()}`}
                                   style={{
                                     left: `${startPercent}%`,
                                     width: `${width}%`,
@@ -428,6 +452,33 @@ export function ShiftTimeline({
     // ホールスタッフとキッチンスタッフを分けて表示
     const hallMembers = staff.filter((s) => s.shifts.some((shift) => shift.role === "ホール"))
     const kitchenMembers = staff.filter((s) => s.shifts.some((shift) => shift.role === "キッチン"))
+
+    // 各日の指標を計算
+    const calculateDayMetrics = (dayIndex: number) => {
+      const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 })
+      const date = addDays(weekStart, dayIndex)
+      const allStaff = [...hallMembers, ...kitchenMembers]
+      let totalHours = 0
+
+      allStaff.forEach((member) => {
+        const memberDayData = weeklyData[dayIndex]?.shifts.find((s) => s.name === member.name)
+        if (memberDayData && !memberDayData.isOff) {
+          memberDayData.shifts.forEach((shift) => {
+            const [startHour, startMinute] = shift.start.split(":").map(Number)
+            const [endHour, endMinute] = shift.end.split(":").map(Number)
+            const hours = endHour - startHour + (endMinute - startMinute) / 60
+            totalHours += hours
+          })
+        }
+      })
+
+      const laborCost = totalHours * HOURLY_WAGE
+      const sales = generateMockSales(date)
+      const actualSales = Math.floor(sales * (0.85 + Math.random() * 0.15)) // 実績は予測の85-100%
+      const laborCostRatio = sales > 0 ? (laborCost / sales) * 100 : 0
+
+      return { totalHours, laborCost, laborCostRatio, sales, actualSales }
+    }
 
     const renderWeeklyTable = (members: typeof staff, role: "ホール" | "キッチン", bgColor: string, textColor: string) => (
       <div className="mb-6">
@@ -470,7 +521,17 @@ export function ShiftTimeline({
                               <div
                                 key={i}
                                 className={`mb-1 p-1 rounded text-xs ${
-                                  role === "ホール" ? "bg-blue-100 text-blue-800" : "bg-emerald-100 text-emerald-800"
+                                  shiftStatus === "confirmed"
+                                    ? role === "ホール"
+                                      ? "bg-blue-200 text-blue-800 border-2 border-blue-500"
+                                      : "bg-emerald-200 text-emerald-800 border-2 border-emerald-500"
+                                    : shiftStatus === "optimized"
+                                      ? role === "ホール"
+                                        ? "bg-blue-100 text-blue-800 border-2 border-blue-400"
+                                        : "bg-emerald-100 text-emerald-800 border-2 border-emerald-400"
+                                      : role === "ホール"
+                                        ? "bg-blue-100 text-blue-800"
+                                        : "bg-emerald-100 text-emerald-800"
                                 }`}
                               >
                                 <div className="font-medium">
@@ -492,20 +553,227 @@ export function ShiftTimeline({
     )
 
     return (
-      <div className="mt-6 rounded-lg bg-white p-4 shadow-sm">
-        {renderWeeklyTable(hallMembers, "ホール", "bg-blue-50", "text-blue-700")}
-        {renderWeeklyTable(kitchenMembers, "キッチン", "bg-emerald-50", "text-emerald-700")}
+      <div className="mt-6 space-y-6">
+        {/* 週間指標テーブル */}
+        <div className="rounded-lg bg-white p-4 shadow-sm">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">日別指標</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr>
+                  <th className="border p-3 bg-gray-50 text-left text-sm font-medium text-gray-600 min-w-[120px] whitespace-nowrap">日付</th>
+                  {weeklyData.map((day, index) => (
+                    <th key={index} className="border p-3 bg-gray-50 text-center text-sm font-medium text-gray-600 min-w-[100px]">
+                      {day.date}
+                    </th>
+                  ))}
+                  <th className="border p-3 bg-gray-50 text-center text-sm font-medium text-gray-600 min-w-[120px]">週合計</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="border p-3 text-sm font-medium text-gray-700 whitespace-nowrap">売上予測</td>
+                  {weeklyData.map((_, index) => {
+                    const metrics = calculateDayMetrics(index)
+                    return (
+                      <td key={index} className="border p-3 text-center text-sm text-gray-900">
+                        {metrics.sales.toLocaleString()}円
+                      </td>
+                    )
+                  })}
+                  <td className="border p-3 text-center text-sm font-bold text-gray-900 bg-gray-50">
+                    {weeklyData.reduce((sum, _, index) => sum + calculateDayMetrics(index).sales, 0).toLocaleString()}円
+                  </td>
+                </tr>
+                <tr>
+                  <td className="border p-3 text-sm font-medium text-gray-700 whitespace-nowrap">売上実績</td>
+                  {weeklyData.map((_, index) => {
+                    const metrics = calculateDayMetrics(index)
+                    return (
+                      <td key={index} className="border p-3 text-center text-sm text-gray-900">
+                        {metrics.actualSales.toLocaleString()}円
+                      </td>
+                    )
+                  })}
+                  <td className="border p-3 text-center text-sm font-bold text-gray-900 bg-gray-50">
+                    {weeklyData.reduce((sum, _, index) => sum + calculateDayMetrics(index).actualSales, 0).toLocaleString()}円
+                  </td>
+                </tr>
+                <tr>
+                  <td className="border p-3 text-sm font-medium text-gray-700 whitespace-nowrap">投入労働時間</td>
+                  {weeklyData.map((_, index) => {
+                    const metrics = calculateDayMetrics(index)
+                    return (
+                      <td key={index} className="border p-3 text-center text-sm text-gray-900">
+                        {metrics.totalHours.toFixed(1)}h
+                      </td>
+                    )
+                  })}
+                  <td className="border p-3 text-center text-sm font-bold text-gray-900 bg-gray-50">
+                    {weeklyData.reduce((sum, _, index) => sum + calculateDayMetrics(index).totalHours, 0).toFixed(1)}h
+                  </td>
+                </tr>
+                <tr>
+                  <td className="border p-3 text-sm font-medium text-gray-700 whitespace-nowrap">人件費</td>
+                  {weeklyData.map((_, index) => {
+                    const metrics = calculateDayMetrics(index)
+                    return (
+                      <td key={index} className="border p-3 text-center text-sm text-gray-900">
+                        {metrics.laborCost.toLocaleString()}円
+                      </td>
+                    )
+                  })}
+                  <td className="border p-3 text-center text-sm font-bold text-gray-900 bg-gray-50">
+                    {weeklyData.reduce((sum, _, index) => sum + calculateDayMetrics(index).laborCost, 0).toLocaleString()}円
+                  </td>
+                </tr>
+                <tr>
+                  <td className="border p-3 text-sm font-medium text-gray-700 whitespace-nowrap">人件費率</td>
+                  {weeklyData.map((_, index) => {
+                    const metrics = calculateDayMetrics(index)
+                    return (
+                      <td key={index} className="border p-3 text-center text-sm text-gray-900">
+                        {metrics.laborCostRatio.toFixed(1)}%
+                      </td>
+                    )
+                  })}
+                  <td className="border p-3 text-center text-sm font-bold text-gray-900 bg-gray-50">
+                    {(() => {
+                      const totalLaborCost = weeklyData.reduce((sum, _, index) => sum + calculateDayMetrics(index).laborCost, 0)
+                      const totalSales = weeklyData.reduce((sum, _, index) => sum + calculateDayMetrics(index).sales, 0)
+                      return totalSales > 0 ? ((totalLaborCost / totalSales) * 100).toFixed(1) : "0.0"
+                    })()}%
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* シフトテーブル */}
+        <div className="rounded-lg bg-white p-4 shadow-sm">
+          {renderWeeklyTable(hallMembers, "ホール", "bg-blue-50", "text-blue-700")}
+          {renderWeeklyTable(kitchenMembers, "キッチン", "bg-emerald-50", "text-emerald-700")}
+        </div>
       </div>
     )
   }
 
+  // 日別の労働時間、人件費、人件費率を計算（全体）
+  const calculateDailyMetrics = (date: Date) => {
+    const allStaff = [...hallStaff, ...kitchenStaff]
+    let totalHours = 0
+
+    allStaff.forEach((member) => {
+      member.shifts.forEach((shift) => {
+        const startHour = Number.parseInt(shift.start.split(":")[0])
+        const endHour = Number.parseInt(shift.end.split(":")[0])
+        const startMinute = Number.parseInt(shift.start.split(":")[1] || "0")
+        const endMinute = Number.parseInt(shift.end.split(":")[1] || "0")
+        const hours = endHour - startHour + (endMinute - startMinute) / 60
+        totalHours += hours
+      })
+    })
+
+    const laborCost = totalHours * HOURLY_WAGE
+    const sales = generateMockSales(date)
+    const actualSales = Math.floor(sales * (0.85 + Math.random() * 0.15)) // 実績は予測の85-100%
+    const laborCostRatio = sales > 0 ? (laborCost / sales) * 100 : 0
+
+    return { totalHours, laborCost, laborCostRatio, sales, actualSales }
+  }
+
+  // 日別の労働時間、人件費、人件費率を計算（ロール別）
+  const calculateDailyMetricsByRole = (date: Date, role: "ホール" | "キッチン") => {
+    const staffList = role === "ホール" ? hallStaff : kitchenStaff
+    let totalHours = 0
+
+    staffList.forEach((member) => {
+      member.shifts.forEach((shift) => {
+        const startHour = Number.parseInt(shift.start.split(":")[0])
+        const endHour = Number.parseInt(shift.end.split(":")[0])
+        const startMinute = Number.parseInt(shift.start.split(":")[1] || "0")
+        const endMinute = Number.parseInt(shift.end.split(":")[1] || "0")
+        const hours = endHour - startHour + (endMinute - startMinute) / 60
+        totalHours += hours
+      })
+    })
+
+    const laborCost = totalHours * HOURLY_WAGE
+    const sales = generateMockSales(date)
+    const laborCostRatio = sales > 0 ? (laborCost / sales) * 100 : 0
+
+    return { totalHours, laborCost, laborCostRatio }
+  }
+
   return viewMode === "daily" ? (
-    <div className="mt-6 rounded-lg bg-white p-4 shadow-sm space-y-6">
-      {/* ホールセクション */}
-      {renderRoleTable(hallStaff, "ホール", "bg-blue-50", "text-blue-700")}
+    <div className="mt-6 space-y-6">
+      {/* 日別指標テーブル（統合） */}
+      {(() => {
+        const totalMetrics = calculateDailyMetrics(currentDate)
+        const hallMetrics = calculateDailyMetricsByRole(currentDate, "ホール")
+        const kitchenMetrics = calculateDailyMetricsByRole(currentDate, "キッチン")
+        
+        return (
+          <div className="rounded-lg bg-white p-4 shadow-sm">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              {format(currentDate, "yyyy年M月d日", { locale: ja })} 日別指標
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    <th className="border p-3 bg-gray-50 text-left text-sm font-medium text-gray-600 min-w-[120px] whitespace-nowrap">指標</th>
+                    <th className="border p-3 bg-gray-50 text-center text-sm font-medium text-gray-600 min-w-[120px]">合計</th>
+                    <th className="border p-3 bg-blue-50 text-center text-sm font-medium text-blue-700 min-w-[120px]">ホール</th>
+                    <th className="border p-3 bg-emerald-50 text-center text-sm font-medium text-emerald-700 min-w-[120px]">キッチン</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="border p-3 text-sm font-medium text-gray-700 whitespace-nowrap">売上予測</td>
+                    <td className="border p-3 text-center text-sm text-gray-900">{totalMetrics.sales.toLocaleString()}円</td>
+                    <td className="border p-3 text-center text-sm text-gray-900 bg-blue-50/30">-</td>
+                    <td className="border p-3 text-center text-sm text-gray-900 bg-emerald-50/30">-</td>
+                  </tr>
+                  <tr>
+                    <td className="border p-3 text-sm font-medium text-gray-700 whitespace-nowrap">売上実績</td>
+                    <td className="border p-3 text-center text-sm text-gray-900">{totalMetrics.actualSales.toLocaleString()}円</td>
+                    <td className="border p-3 text-center text-sm text-gray-900 bg-blue-50/30">-</td>
+                    <td className="border p-3 text-center text-sm text-gray-900 bg-emerald-50/30">-</td>
+                  </tr>
+                  <tr>
+                    <td className="border p-3 text-sm font-medium text-gray-700 whitespace-nowrap">投入労働時間</td>
+                    <td className="border p-3 text-center text-sm text-gray-900">{totalMetrics.totalHours.toFixed(1)}h</td>
+                    <td className="border p-3 text-center text-sm text-gray-900 bg-blue-50/30">{hallMetrics.totalHours.toFixed(1)}h</td>
+                    <td className="border p-3 text-center text-sm text-gray-900 bg-emerald-50/30">{kitchenMetrics.totalHours.toFixed(1)}h</td>
+                  </tr>
+                  <tr>
+                    <td className="border p-3 text-sm font-medium text-gray-700 whitespace-nowrap">人件費</td>
+                    <td className="border p-3 text-center text-sm text-gray-900">{totalMetrics.laborCost.toLocaleString()}円</td>
+                    <td className="border p-3 text-center text-sm text-gray-900 bg-blue-50/30">{hallMetrics.laborCost.toLocaleString()}円</td>
+                    <td className="border p-3 text-center text-sm text-gray-900 bg-emerald-50/30">{kitchenMetrics.laborCost.toLocaleString()}円</td>
+                  </tr>
+                  <tr>
+                    <td className="border p-3 text-sm font-medium text-gray-700 whitespace-nowrap">人件費率</td>
+                    <td className="border p-3 text-center text-sm text-gray-900">{totalMetrics.laborCostRatio.toFixed(1)}%</td>
+                    <td className="border p-3 text-center text-sm text-gray-900 bg-blue-50/30">{hallMetrics.laborCostRatio.toFixed(1)}%</td>
+                    <td className="border p-3 text-center text-sm text-gray-900 bg-emerald-50/30">{kitchenMetrics.laborCostRatio.toFixed(1)}%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
+      })()}
       
-      {/* キッチンセクション */}
-      {renderRoleTable(kitchenStaff, "キッチン", "bg-emerald-50", "text-emerald-700")}
+      <div className="rounded-lg bg-white p-4 shadow-sm space-y-6">
+        {/* ホールセクション */}
+        {renderRoleTable(hallStaff, "ホール", "bg-blue-50", "text-blue-700")}
+        
+        {/* キッチンセクション */}
+        {renderRoleTable(kitchenStaff, "キッチン", "bg-emerald-50", "text-emerald-700")}
+      </div>
     </div>
   ) : viewMode === "weekly" ? (
     renderWeeklyView()
