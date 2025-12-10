@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { format, addDays, getDaysInMonth, startOfMonth, getDay } from "date-fns"
 import { ja } from "date-fns/locale"
 import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { ChevronLeft, ChevronRight, Printer } from "lucide-react"
 
 interface ShiftTime {
   start: string
@@ -14,6 +15,7 @@ interface ShiftTime {
 interface EmployeeShift {
   employeeId: string
   employeeName: string
+  position: "ホール" | "キッチン"
   shifts: Record<string, ShiftTime[]> // key is date in format "YYYY-MM-DD"
   totalHours: number
 }
@@ -27,6 +29,7 @@ function generateMockShifts(month: Date): EmployeeShift[] {
     {
       employeeId: "1",
       employeeName: "田中 花子",
+      position: "ホール",
       shifts: Array.from({ length: daysInMonth }, (_, i) => {
         const day = addDays(startDay, i)
         const isWeekend = getDay(day) === 0 || getDay(day) === 6
@@ -44,6 +47,7 @@ function generateMockShifts(month: Date): EmployeeShift[] {
     {
       employeeId: "2",
       employeeName: "佐藤 一郎",
+      position: "キッチン",
       shifts: Array.from({ length: daysInMonth }, (_, i) => {
         const day = addDays(startDay, i)
         const isWeekend = getDay(day) === 0 || getDay(day) === 6
@@ -61,6 +65,7 @@ function generateMockShifts(month: Date): EmployeeShift[] {
     {
       employeeId: "3",
       employeeName: "山田 太郎",
+      position: "ホール",
       shifts: Array.from({ length: daysInMonth }, (_, i) => {
         const day = addDays(startDay, i)
         const isWeekend = getDay(day) === 0 || getDay(day) === 6
@@ -78,6 +83,7 @@ function generateMockShifts(month: Date): EmployeeShift[] {
     {
       employeeId: "4",
       employeeName: "鈴木 美咲",
+      position: "キッチン",
       shifts: Array.from({ length: daysInMonth }, (_, i) => {
         const day = addDays(startDay, i)
         const isWeekend = getDay(day) === 0 || getDay(day) === 6
@@ -98,6 +104,7 @@ function generateMockShifts(month: Date): EmployeeShift[] {
     {
       employeeId: "5",
       employeeName: "高橋 健太",
+      position: "ホール",
       shifts: Array.from({ length: daysInMonth }, (_, i) => {
         const day = addDays(startDay, i)
         const isWeekend = getDay(day) === 0 || getDay(day) === 6
@@ -118,6 +125,7 @@ function generateMockShifts(month: Date): EmployeeShift[] {
     {
       employeeId: "6",
       employeeName: "伊藤 真理",
+      position: "キッチン",
       shifts: Array.from({ length: daysInMonth }, (_, i) => {
         const day = addDays(startDay, i)
         const isWeekend = getDay(day) === 0 || getDay(day) === 6
@@ -172,6 +180,11 @@ function generateMockMetrics(month: Date) {
 // Modify the MonthlyShiftTable function to include the metrics section
 export function MonthlyShiftTable() {
   const [currentMonth, setCurrentMonth] = useState(new Date())
+  const printRef = useRef<HTMLDivElement>(null)
+
+  const handlePrint = () => {
+    window.print()
+  }
 
   // Generate mock data for the current month
   const employeeShifts = generateMockShifts(currentMonth)
@@ -206,18 +219,23 @@ export function MonthlyShiftTable() {
     setCurrentMonth(nextMonth)
   }
 
+  const hallEmployees = employeeShifts.filter((emp) => emp.position === "ホール")
+  const kitchenEmployees = employeeShifts.filter((emp) => emp.position === "キッチン")
+  const hallHours = hallEmployees.reduce((sum, emp) => sum + emp.totalHours, 0)
+  const kitchenHours = kitchenEmployees.reduce((sum, emp) => sum + emp.totalHours, 0)
+
   // Helper function to render shift cells
   const renderShiftCell = (employee: EmployeeShift, day: { date: Date; dayOfWeek: string; isWeekend: boolean }) => {
     const dateKey = format(day.date, "yyyy-MM-dd")
     const shifts = employee.shifts[dateKey] || []
 
     return (
-      <td key={`${employee.employeeId}-${dateKey}`} className={`p-2 ${day.isWeekend ? "bg-red-50" : ""}`}>
+      <td key={`${employee.employeeId}-${dateKey}`} className={`p-2 ${day.isWeekend ? "bg-red-50 weekend-cell" : ""}`}>
         <div className="flex flex-col gap-1">
           {shifts.map((shift, idx) => (
-            <div key={idx} className="text-xs bg-blue-100 rounded px-2 py-1 text-center">
-              <div className="font-medium">{shift.start}</div>
-              <div className="text-gray-600">{shift.end}</div>
+            <div key={idx} className="text-xs bg-blue-100 rounded px-2 py-1 text-center shift-cell-blue print:px-1 print:py-0">
+              <div className="font-medium print:text-[8px]">{shift.start}</div>
+              <div className="text-gray-600 print:text-[8px]">{shift.end}</div>
             </div>
           ))}
         </div>
@@ -238,10 +256,20 @@ export function MonthlyShiftTable() {
   const avgLaborRatio = ((monthlyTotals.laborCost / monthlyTotals.forecastSales) * 100).toFixed(1)
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
+    <div className="space-y-4" ref={printRef}>
+      {/* 印刷用ヘッダー（画面では非表示） */}
+      <div className="print-header hidden print:block">
+        <h1>月間シフト表</h1>
+        <p>{format(currentMonth, "yyyy年M月", { locale: ja })} - Plate One 東京店</p>
+      </div>
+
+      <div className="flex justify-between items-center no-print">
         <h2 className="text-xl font-semibold text-gray-800">月間シフト表</h2>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handlePrint} className="gap-2">
+            <Printer className="h-4 w-4" />
+            印刷
+          </Button>
           <Button variant="outline" size="sm" onClick={handlePrevMonth}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -255,164 +283,102 @@ export function MonthlyShiftTable() {
       </div>
 
       {/* Monthly summary metrics */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-4 print-summary">
         <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
           <div className="text-sm text-gray-600">月間売上予測/実績</div>
-          <div className="mt-1 text-xl font-semibold text-gray-900">
+          <div className="mt-1 text-xl font-semibold text-gray-900 print:text-base">
             ¥{(monthlyTotals.forecastSales / 10000).toFixed(1)}万 / ¥{(monthlyTotals.actualSales / 10000).toFixed(1)}万
           </div>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
           <div className="text-sm text-gray-600">月間客数予測/実績</div>
-          <div className="mt-1 text-xl font-semibold text-gray-900">
+          <div className="mt-1 text-xl font-semibold text-gray-900 print:text-base">
             {monthlyTotals.forecastCustomers}人 /{monthlyTotals.actualCustomers}人
           </div>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
           <div className="text-sm text-gray-600">月間人件費/人件費率</div>
-          <div className="mt-1 text-xl font-semibold text-gray-900">
+          <div className="mt-1 text-xl font-semibold text-gray-900 print:text-base">
             ¥{(monthlyTotals.laborCost / 10000).toFixed(1)}万 /{avgLaborRatio}%
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th
-                  className="sticky left-0 z-10 text-left p-3 font-medium text-gray-700 min-w-[120px] text-sm bg-gray-50"
-                  rowSpan={2}
-                >
-                  項目
-                </th>
-                {days.map((day) => (
-                  <th
-                    key={format(day.date, "d")}
-                    className={`p-3 text-center font-medium min-w-[60px] text-sm ${
-                      day.isWeekend ? "text-red-600 bg-red-50" : "text-gray-700"
-                    }`}
-                  >
-                    {format(day.date, "d")}日
-                  </th>
-                ))}
-                <th className="text-center p-3 font-medium text-gray-700 text-sm" rowSpan={2}>
-                  合計
-                </th>
-              </tr>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                {days.map((day) => (
-                  <th
-                    key={`dow-${format(day.date, "d")}`}
-                    className={`p-3 text-center text-xs font-medium ${
-                      day.isWeekend ? "text-red-600 bg-red-50" : "text-gray-600"
-                    }`}
-                  >
-                    {day.dayOfWeek}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {/* Metrics rows */}
-              <tr className="border-b border-gray-200 hover:bg-gray-50">
-                <td className="sticky left-0 z-10 p-3 font-medium text-gray-700 bg-blue-50 text-sm">売上予測</td>
-                {metricsData.map((day, idx) => (
-                  <td
-                    key={`forecast-${day.date}`}
-                    className={`p-3 text-center text-sm ${days[idx].isWeekend ? "bg-red-50" : ""}`}
-                  >
-                    {(day.forecastSales / 10000).toFixed(1)}万
-                  </td>
-                ))}
-                <td className="p-3 text-center font-medium bg-blue-50 text-sm">
-                  {(monthlyTotals.forecastSales / 10000).toFixed(1)}万
-                </td>
-              </tr>
-              <tr className="border-b border-gray-200 hover:bg-gray-50">
-                <td className="sticky left-0 z-10 p-3 font-medium text-gray-700 bg-blue-50 text-sm">売上実績</td>
-                {metricsData.map((day, idx) => (
-                  <td
-                    key={`actual-${day.date}`}
-                    className={`p-3 text-center text-sm ${days[idx].isWeekend ? "bg-red-50" : ""}`}
-                  >
-                    {day.actualSales ? (day.actualSales / 10000).toFixed(1) + "万" : "-"}
-                  </td>
-                ))}
-                <td className="p-3 text-center font-medium bg-blue-50 text-sm">
-                  {(monthlyTotals.actualSales / 10000).toFixed(1)}万
-                </td>
-              </tr>
-              <tr className="border-b border-gray-200 hover:bg-gray-50">
-                <td className="sticky left-0 z-10 p-3 font-medium text-gray-700 bg-green-50 text-sm">客数予測</td>
-                {metricsData.map((day, idx) => (
-                  <td
-                    key={`cust-forecast-${day.date}`}
-                    className={`p-3 text-center text-sm ${days[idx].isWeekend ? "bg-red-50" : ""}`}
-                  >
-                    {day.forecastCustomers}人
-                  </td>
-                ))}
-                <td className="p-3 text-center font-medium bg-green-50 text-sm">{monthlyTotals.forecastCustomers}人</td>
-              </tr>
-              <tr className="border-b border-gray-200 hover:bg-gray-50">
-                <td className="sticky left-0 z-10 p-3 font-medium text-gray-700 bg-green-50 text-sm">客数実績</td>
-                {metricsData.map((day, idx) => (
-                  <td
-                    key={`cust-actual-${day.date}`}
-                    className={`p-3 text-center text-sm ${days[idx].isWeekend ? "bg-red-50" : ""}`}
-                  >
-                    {day.actualCustomers ? day.actualCustomers + "人" : "-"}
-                  </td>
-                ))}
-                <td className="p-3 text-center font-medium bg-green-50 text-sm">{monthlyTotals.actualCustomers}人</td>
-              </tr>
-              <tr className="border-b border-gray-200 hover:bg-gray-50">
-                <td className="sticky left-0 z-10 p-3 font-medium text-gray-700 bg-amber-50 text-sm">人件費</td>
-                {metricsData.map((day, idx) => (
-                  <td
-                    key={`labor-${day.date}`}
-                    className={`p-3 text-center text-sm ${days[idx].isWeekend ? "bg-red-50" : ""}`}
-                  >
-                    {(day.laborCost / 10000).toFixed(1)}万
-                  </td>
-                ))}
-                <td className="p-3 text-center font-medium bg-amber-50 text-sm">
-                  {(monthlyTotals.laborCost / 10000).toFixed(1)}万
-                </td>
-              </tr>
-              <tr className="border-b border-gray-200 hover:bg-gray-50">
-                <td className="sticky left-0 z-10 p-3 font-medium text-gray-700 bg-amber-50 text-sm">人件費率</td>
-                {metricsData.map((day, idx) => (
-                  <td
-                    key={`ratio-${day.date}`}
-                    className={`p-3 text-center text-sm ${days[idx].isWeekend ? "bg-red-50" : ""}`}
-                  >
-                    {day.laborRatio}%
-                  </td>
-                ))}
-                <td className="p-3 text-center font-medium bg-amber-50 text-sm">{avgLaborRatio}%</td>
-              </tr>
+      {/* ポジション別表示（ホール／キッチン） */}
+      <div className="flex flex-wrap gap-3">
+        <Badge variant="secondary" className="text-sm">
+          ホール {hallEmployees.length}名 / {hallHours}h
+        </Badge>
+        <Badge variant="secondary" className="text-sm">
+          キッチン {kitchenEmployees.length}名 / {kitchenHours}h
+        </Badge>
+      </div>
 
-              {/* Separator row */}
-              <tr>
-                <td colSpan={daysInMonth + 2} className="p-2 bg-gray-100"></td>
-              </tr>
-
-              {/* Employee shift rows */}
-              {employeeShifts.map((employee) => (
-                <tr key={employee.employeeId} className="border-b border-gray-200 hover:bg-gray-50">
-                  <td className="sticky left-0 z-10 p-3 font-medium text-gray-700 bg-gray-50 text-sm">
-                    {employee.employeeName}
-                  </td>
-                  {days.map((day) => renderShiftCell(employee, day))}
-                  <td className="p-3 font-medium text-center bg-gray-50 text-sm">{employee.totalHours}h</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      <div className="space-y-6">
+        {[
+          { title: "ホール", employees: hallEmployees, totalHours: hallHours },
+          { title: "キッチン", employees: kitchenEmployees, totalHours: kitchenHours },
+        ].map((section) => (
+          <div key={section.title} className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
+            <div className="flex items-center justify-between px-4 py-3 border-b bg-gray-50">
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-gray-800">{section.title}</h3>
+                <Badge variant="secondary">{section.employees.length}名 / {section.totalHours}h</Badge>
+              </div>
+            </div>
+            <div className="overflow-x-auto print:overflow-visible">
+              <table className="w-full print-table">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th
+                      className="sticky left-0 z-10 text-left p-3 font-medium text-gray-700 min-w-[120px] text-sm bg-gray-50"
+                      rowSpan={2}
+                    >
+                      項目
+                    </th>
+                    {days.map((day) => (
+                      <th
+                        key={format(day.date, "d")}
+                        className={`p-3 text-center font-medium min-w-[60px] text-sm ${
+                          day.isWeekend ? "text-red-600 bg-red-50" : "text-gray-700"
+                        }`}
+                      >
+                        {format(day.date, "d")}日
+                      </th>
+                    ))}
+                    <th className="text-center p-3 font-medium text-gray-700 text-sm" rowSpan={2}>
+                      合計
+                    </th>
+                  </tr>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    {days.map((day) => (
+                      <th
+                        key={`dow-${format(day.date, "d")}`}
+                        className={`p-3 text-center text-xs font-medium ${
+                          day.isWeekend ? "text-red-600 bg-red-50" : "text-gray-600"
+                        }`}
+                      >
+                        {day.dayOfWeek}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Employee shift rows */}
+                  {section.employees.map((employee) => (
+                    <tr key={employee.employeeId} className="border-b border-gray-200 hover:bg-gray-50 avoid-break">
+                      <td className="sticky left-0 z-10 p-3 font-medium text-gray-700 bg-gray-50 text-sm print:bg-white">
+                        {employee.employeeName}
+                      </td>
+                      {days.map((day) => renderShiftCell(employee, day))}
+                      <td className="p-3 font-medium text-center bg-gray-50 text-sm">{employee.totalHours}h</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )

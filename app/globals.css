@@ -90,3 +90,174 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* 印刷用スタイル */
+@media print {
+  /* 基本設定 */
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+
+  body {
+    background: white !important;
+    font-size: 10px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* サイドバー・ヘッダーを非表示 */
+  .sidebar,
+  header,
+  .no-print {
+    display: none !important;
+  }
+
+  /* メインコンテンツを全幅に */
+  main {
+    padding: 0 !important;
+    background: white !important;
+    overflow: visible !important;
+  }
+
+  .flex.h-screen > div:first-child {
+    display: none !important;
+  }
+
+  .flex.h-screen {
+    display: block !important;
+  }
+
+  .flex-1.overflow-y-auto {
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  /* 印刷用テーブル調整 */
+  .print-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 8px !important;
+  }
+
+  .print-table th,
+  .print-table td {
+    border: 1px solid #333 !important;
+    padding: 2px 4px !important;
+    page-break-inside: avoid !important;
+  }
+
+  .print-table th {
+    background-color: #f3f4f6 !important;
+    font-weight: bold !important;
+  }
+
+  /* 印刷用ヘッダー */
+  .print-header {
+    display: block !important;
+    text-align: center;
+    margin-bottom: 10px;
+    border-bottom: 2px solid #333;
+    padding-bottom: 10px;
+  }
+
+  .print-header h1 {
+    font-size: 18px !important;
+    font-weight: bold !important;
+    margin: 0 !important;
+  }
+
+  .print-header p {
+    font-size: 12px !important;
+    color: #666 !important;
+    margin: 5px 0 0 0 !important;
+  }
+
+  /* 週末の色を印刷で表示 */
+  .weekend-cell {
+    background-color: #fef2f2 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* シフトセルの色 */
+  .shift-cell-blue {
+    background-color: #dbeafe !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* メトリクスセクションの色 */
+  .metrics-blue {
+    background-color: #eff6ff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .metrics-green {
+    background-color: #f0fdf4 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .metrics-amber {
+    background-color: #fffbeb !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* ボタン非表示 */
+  button {
+    display: none !important;
+  }
+
+  /* カードの影を削除 */
+  .shadow-sm,
+  .shadow {
+    box-shadow: none !important;
+  }
+
+  /* 角丸を削除 */
+  .rounded-lg {
+    border-radius: 0 !important;
+  }
+
+  /* オーバーフローを解除 */
+  .overflow-x-auto,
+  .overflow-hidden {
+    overflow: visible !important;
+  }
+
+  /* sticky位置を解除 */
+  .sticky {
+    position: static !important;
+  }
+
+  /* 印刷時のサマリーカード */
+  .print-summary {
+    display: flex !important;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    gap: 10px;
+  }
+
+  .print-summary > div {
+    flex: 1;
+    border: 1px solid #333;
+    padding: 5px;
+    text-align: center;
+  }
+
+  /* ページ分割設定 */
+  .page-break-before {
+    page-break-before: always;
+  }
+
+  .page-break-after {
+    page-break-after: always;
+  }
+
+  .avoid-break {
+    page-break-inside: avoid;
+  }
+}

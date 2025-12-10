@@ -179,13 +179,15 @@ export default function DemandForecastPage() {
   }))
 
   return (
-    <div className="container py-8 space-y-8">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">{storeData.name}</h1>
-          <p className="text-muted-foreground mt-1">1ヶ月先までの詳細需要予測</p>
-        </div>
-        <div className="flex items-center gap-4">
+    <div className="bg-white rounded-lg shadow-sm">
+      <div className="border-b">
+        <div className="p-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-xl font-semibold text-gray-800">{storeData.name}</h1>
+              <p className="text-sm text-gray-600 mt-1">1ヶ月先までの詳細需要予測</p>
+            </div>
+            <div className="flex items-center gap-4">
           <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as "daily" | "weekly" | "monthly")}>
             <TabsList>
               <TabsTrigger value="daily">日別</TabsTrigger>
@@ -211,62 +213,46 @@ export default function DemandForecastPage() {
               <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
+            </div>
+          </div>
         </div>
       </div>
-
-      {/* 月間サマリー */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">月間予測売上</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">¥{((storeData.totals.predictedRevenue * 30) / 10000).toFixed(1)}万</div>
-            <p className="text-xs text-muted-foreground">
+      <div className="p-6 space-y-6">
+        {/* 月間サマリー */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <div className="bg-gray-50 rounded-lg p-4">
+            <p className="text-sm font-medium text-gray-600">月間予測売上</p>
+            <div className="text-2xl font-bold text-gray-900 mt-2">¥{((storeData.totals.predictedRevenue * 30) / 10000).toFixed(1)}万</div>
+            <p className="text-xs text-gray-600 mt-1">
               前月比 +{((storeData.totals.predictedRevenue / storeData.totals.actualRevenue - 1) * 100).toFixed(1)}%
             </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">月間予測客数</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{storeData.totals.predictedCustomers * 30}人</div>
-            <p className="text-xs text-muted-foreground">
+          </div>
+          <div className="bg-gray-50 rounded-lg p-4">
+            <p className="text-sm font-medium text-gray-600">月間予測客数</p>
+            <div className="text-2xl font-bold text-gray-900 mt-2">{storeData.totals.predictedCustomers * 30}人</div>
+            <p className="text-xs text-gray-600 mt-1">
               前月比 +{((storeData.totals.predictedCustomers / storeData.totals.actualCustomers - 1) * 100).toFixed(1)}%
             </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">平均客単価</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
+          </div>
+          <div className="bg-gray-50 rounded-lg p-4">
+            <p className="text-sm font-medium text-gray-600">平均客単価</p>
+            <div className="text-2xl font-bold text-gray-900 mt-2">
               ¥{Math.round(storeData.totals.predictedRevenue / storeData.totals.predictedCustomers).toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground">前月比 +2.3%</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">予測精度</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">94.2%</div>
-            <p className="text-xs text-muted-foreground">過去30日平均</p>
-          </CardContent>
-        </Card>
-      </div>
+            <p className="text-xs text-gray-600 mt-1">前月比 +2.3%</p>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-4">
+            <p className="text-sm font-medium text-gray-600">予測精度</p>
+            <div className="text-2xl font-bold text-gray-900 mt-2">94.2%</div>
+            <p className="text-xs text-gray-600 mt-1">過去30日平均</p>
+          </div>
+        </div>
 
-      {/* 1ヶ月予測チャート */}
-      <Card>
-        <CardHeader>
-          <CardTitle>1ヶ月間の需要予測</CardTitle>
-          <CardDescription>売上と客数の推移予測</CardDescription>
-        </CardHeader>
-        <CardContent>
+        {/* 1ヶ月予測チャート */}
+        <div className="bg-gray-50 rounded-lg p-4">
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">1ヶ月間の需要予測</h3>
+          <p className="text-sm text-gray-600 mb-4">売上と客数の推移予測</p>
+          <div>
           <div className="h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
@@ -296,24 +282,24 @@ export default function DemandForecastPage() {
               </LineChart>
             </ResponsiveContainer>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* 詳細予測データ */}
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">詳細予測データ（1ヶ月間）</h2>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm">
-              CSVエクスポート
-            </Button>
-            <Button variant="outline" size="sm">
-              予測を更新
-            </Button>
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-1">
+        {/* 詳細予測データ */}
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold text-gray-800">詳細予測データ（1ヶ月間）</h2>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm">
+                CSVエクスポート
+              </Button>
+              <Button variant="outline" size="sm">
+                予測を更新
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-1">
           {Array.from({ length: 30 }, (_, i) => {
             const date = addDays(new Date(), i)
             const isWeekend = date.getDay() === 0 || date.getDay() === 6
@@ -330,8 +316,8 @@ export default function DemandForecastPage() {
             const events = i % 7 === 0 ? ["地域祭り", "コンサート"] : i % 5 === 0 ? ["商店街セール"] : []
 
             return (
-              <Card key={i} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
+              <div key={i} className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors">
+                <div className="p-4">
                   <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-center">
                     <div className="md:col-span-1">
                       <div className="font-medium text-lg">
@@ -387,23 +373,20 @@ export default function DemandForecastPage() {
                       </Button>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             )
           })}
         </div>
-      </div>
+        </div>
 
-      {/* イベント管理セクション */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        {/* イベント管理セクション */}
+        <div className="bg-gray-50 rounded-lg p-4">
+          <h3 className="text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2">
             <Calendar className="h-5 w-5" />
             イベント管理
-          </CardTitle>
-          <CardDescription>売上に影響するイベント情報を管理</CardDescription>
-        </CardHeader>
-        <CardContent>
+          </h3>
+          <p className="text-sm text-gray-600 mb-4">売上に影響するイベント情報を管理</p>
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="font-medium">登録済みイベント</h3>
@@ -439,8 +422,8 @@ export default function DemandForecastPage() {
               ))}
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }

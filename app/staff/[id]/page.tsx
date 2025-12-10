@@ -324,21 +324,25 @@ export default function StaffDetail() {
   }
 
   return (
-    <div className="container py-8 space-y-6">
-      <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" asChild>
-          <Link href="/staff">
-            <ArrowLeft className="h-4 w-4 mr-1" /> 戻る
-          </Link>
-        </Button>
-        <h1 className="text-2xl font-bold">スタッフ詳細</h1>
+    <div className="bg-white rounded-lg shadow-sm">
+      <div className="border-b">
+        <div className="p-6">
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/staff">
+                <ArrowLeft className="h-4 w-4 mr-1" /> 戻る
+              </Link>
+            </Button>
+            <h1 className="text-xl font-semibold text-gray-800">スタッフ詳細</h1>
+          </div>
+        </div>
       </div>
+      <div className="p-6 space-y-6">
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* 左カラム - スタッフ基本情報 */}
-        <div className="space-y-6">
-          <Card>
-            <CardContent className="pt-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* 左カラム - スタッフ基本情報 */}
+          <div className="space-y-6">
+            <div className="bg-gray-50 rounded-lg p-6">
               {isEditing ? (
                 <div className="space-y-6">
                   <div className="flex flex-col items-center text-center mb-6">
@@ -535,8 +539,7 @@ export default function StaffDetail() {
                   <Trash2 className="h-4 w-4 mr-1" /> 削除
                 </Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
           {/* 緊急連絡先 */}
           {staff.emergencyContact && (
@@ -562,11 +565,9 @@ export default function StaffDetail() {
 
           {/* 資格・証明書 */}
           {staff.certifications && staff.certifications.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">資格・証明書</CardTitle>
-              </CardHeader>
-              <CardContent>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">資格・証明書</h3>
+              <div>
                 <div className="space-y-4">
                   {staff.certifications.map((cert, index) => (
                     <div key={index} className="flex items-start gap-2">
@@ -581,8 +582,8 @@ export default function StaffDetail() {
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
         </div>
 
@@ -598,12 +599,10 @@ export default function StaffDetail() {
 
             {/* スキルタブ */}
             <TabsContent value="skills" className="mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>スキル詳細</CardTitle>
-                  <CardDescription>スタッフのスキルレベルと専門知識</CardDescription>
-                </CardHeader>
-                <CardContent>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">スキル詳細</h3>
+                <p className="text-sm text-gray-600 mb-4">スタッフのスキルレベルと専門知識</p>
+                <div>
                   <div className="space-y-6">
                     {staff.skills.map((skill, index) => (
                       <div key={index}>
@@ -624,35 +623,31 @@ export default function StaffDetail() {
                       </div>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </TabsContent>
 
             {/* 勤務可能時間タブ */}
             <TabsContent value="schedule" className="mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>勤務可能時間</CardTitle>
-                  <CardDescription>スタッフの希望勤務時間帯</CardDescription>
-                </CardHeader>
-                <CardContent>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">勤務可能時間</h3>
+                <p className="text-sm text-gray-600 mb-4">スタッフの希望勤務時間帯</p>
+                <div>
                   {staff.availability ? (
                     <AvailabilityTable availability={staff.availability} />
                   ) : (
                     <p>勤務可能時間の情報がありません。</p>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </TabsContent>
 
             {/* シフト履歴タブ */}
             <TabsContent value="shifts" className="mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>シフト履歴</CardTitle>
-                  <CardDescription>過去のシフト情報と今後の予定</CardDescription>
-                </CardHeader>
-                <CardContent>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">シフト履歴</h3>
+                <p className="text-sm text-gray-600 mb-4">過去のシフト情報と今後の予定</p>
+                <div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div>
                       <h3 className="font-medium mb-2">カレンダー</h3>
@@ -691,18 +686,16 @@ export default function StaffDetail() {
                       )}
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </TabsContent>
 
             {/* メモタブ */}
             <TabsContent value="notes" className="mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>メモ</CardTitle>
-                  <CardDescription>スタッフに関する追加情報とメモ</CardDescription>
-                </CardHeader>
-                <CardContent>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">メモ</h3>
+                <p className="text-sm text-gray-600 mb-4">スタッフに関する追加情報とメモ</p>
+                <div>
                   {staff.notes ? (
                     <div className="p-4 bg-muted rounded-md">
                       <div className="flex items-start gap-2">
@@ -713,11 +706,12 @@ export default function StaffDetail() {
                   ) : (
                     <p>メモはありません</p>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </TabsContent>
           </Tabs>
         </div>
+      </div>
       </div>
     </div>
   )

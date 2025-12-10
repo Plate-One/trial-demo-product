@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
@@ -26,11 +27,8 @@ export function ShiftHeader({
   viewMode: "daily" | "weekly" | "monthly"
   setViewMode: (mode: "daily" | "weekly" | "monthly") => void
   currentDate: Date
-  setCurrentDate: (date: Date) => void
+  setCurrentDate: React.Dispatch<React.SetStateAction<Date>>
 }) {
-  // const [currentDate, setCurrentDate] = useState(new Date())
-  // const [viewMode, setViewMode] = useState<"daily" | "weekly">("daily")
-
   const handlePreviousDay = () => {
     setCurrentDate((prevDate) => subDays(prevDate, 1))
   }

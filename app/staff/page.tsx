@@ -1,415 +1,883 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { ChevronLeft, ChevronRight, UserPlus, Calendar, Clock } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import {
-  format,
-  addMonths,
-  subMonths,
-  startOfMonth,
-  endOfMonth,
-  eachDayOfInterval,
-  getDay,
-  isSameMonth,
-  isToday,
-} from "date-fns"
-import { ja } from "date-fns/locale"
+  UserPlus, 
+  Search, 
+  Edit, 
+  Trash2, 
+  MoreHorizontal,
+  Building,
+  Phone,
+  Mail,
+  Filter,
+  Download,
+  Upload
+} from "lucide-react"
 import Link from "next/link"
 
 // スタッフデータの型定義
 interface StaffMember {
   id: string
   name: string
+  nameKana: string
   avatar?: string
-  role: "店長" | "ホールスタッフ" | "キッチンスタッフ" | "ホールマネージャー" | "キッチンチーフ"
+  store: string
+  position: "ホール" | "キッチン" | "両方"
+  role: "店長" | "マネージャー" | "チーフ" | "スタッフ"
   employmentType: "正社員" | "パート" | "アルバイト"
+  skills: string[]
+  phone: string
+  email: string
+  joinDate: string
+  hourlyRate?: number
+  status: "在籍" | "休職" | "退職"
 }
 
-interface ShiftData {
-  staffId: string
-  startTime: string
-  endTime: string
-  position: "ホール" | "キッチン"
-}
-
-interface DayData {
-  date: Date
-  shifts: ShiftData[]
-}
-
-// サンプルスタッフデータ
-const staffMembers: StaffMember[] = [
+// 初期スタッフデータ
+const initialStaffData: StaffMember[] = [
   {
     id: "1",
     name: "佐藤 一郎",
-    avatar: "/placeholder.svg?height=32&width=32",
+    nameKana: "さとう いちろう",
+    avatar: "/placeholder.svg?height=40&width=40",
+    store: "Plate One 東京店",
+    position: "両方",
     role: "店長",
     employmentType: "正社員",
+    skills: ["調理", "接客", "マネジメント", "発注管理"],
+    phone: "090-1234-5678",
+    email: "i.sato@example.com",
+    joinDate: "2020-01-15",
+    status: "在籍",
   },
   {
     id: "2",
     name: "田中 花子",
-    avatar: "/placeholder.svg?height=32&width=32",
-    role: "ホールスタッフ",
+    nameKana: "たなか はなこ",
+    avatar: "/placeholder.svg?height=40&width=40",
+    store: "Plate One 東京店",
+    position: "ホール",
+    role: "スタッフ",
     employmentType: "パート",
+    skills: ["接客", "レジ", "ドリンク"],
+    phone: "090-2345-6789",
+    email: "h.tanaka@example.com",
+    joinDate: "2021-04-10",
+    hourlyRate: 1200,
+    status: "在籍",
   },
   {
     id: "3",
     name: "鈴木 健太",
-    avatar: "/placeholder.svg?height=32&width=32",
-    role: "キッチンスタッフ",
+    nameKana: "すずき けんた",
+    avatar: "/placeholder.svg?height=40&width=40",
+    store: "Plate One 東京店",
+    position: "キッチン",
+    role: "スタッフ",
     employmentType: "アルバイト",
+    skills: ["調理補助", "食器洗浄", "仕込み"],
+    phone: "090-3456-7890",
+    email: "k.suzuki@example.com",
+    joinDate: "2022-08-01",
+    hourlyRate: 1100,
+    status: "在籍",
   },
   {
     id: "4",
     name: "山田 太郎",
-    avatar: "/placeholder.svg?height=32&width=32",
-    role: "ホールマネージャー",
+    nameKana: "やまだ たろう",
+    avatar: "/placeholder.svg?height=40&width=40",
+    store: "Plate One 東京店",
+    position: "ホール",
+    role: "マネージャー",
     employmentType: "正社員",
+    skills: ["接客", "マネジメント", "クレーム対応", "予約管理"],
+    phone: "090-4567-8901",
+    email: "t.yamada@example.com",
+    joinDate: "2019-06-01",
+    status: "在籍",
   },
   {
     id: "5",
     name: "伊藤 美咲",
-    avatar: "/placeholder.svg?height=32&width=32",
-    role: "ホールスタッフ",
+    nameKana: "いとう みさき",
+    avatar: "/placeholder.svg?height=40&width=40",
+    store: "Plate One 東京店",
+    position: "ホール",
+    role: "スタッフ",
     employmentType: "アルバイト",
+    skills: ["接客", "レジ"],
+    phone: "090-5678-9012",
+    email: "m.ito@example.com",
+    joinDate: "2023-03-15",
+    hourlyRate: 1100,
+    status: "在籍",
   },
   {
     id: "6",
     name: "渡辺 直樹",
-    avatar: "/placeholder.svg?height=32&width=32",
-    role: "キッチンチーフ",
+    nameKana: "わたなべ なおき",
+    avatar: "/placeholder.svg?height=40&width=40",
+    store: "Plate One 東京店",
+    position: "キッチン",
+    role: "チーフ",
     employmentType: "正社員",
+    skills: ["調理", "メニュー開発", "在庫管理", "衛生管理"],
+    phone: "090-6789-0123",
+    email: "n.watanabe@example.com",
+    joinDate: "2018-09-01",
+    status: "在籍",
+  },
+  {
+    id: "7",
+    name: "高橋 美咲",
+    nameKana: "たかはし みさき",
+    avatar: "/placeholder.svg?height=40&width=40",
+    store: "Plate One 大阪店",
+    position: "キッチン",
+    role: "スタッフ",
+    employmentType: "パート",
+    skills: ["調理", "盛り付け"],
+    phone: "090-7890-1234",
+    email: "m.takahashi@example.com",
+    joinDate: "2022-01-10",
+    hourlyRate: 1150,
+    status: "在籍",
+  },
+  {
+    id: "8",
+    name: "中村 翔太",
+    nameKana: "なかむら しょうた",
+    avatar: "/placeholder.svg?height=40&width=40",
+    store: "Plate One 大阪店",
+    position: "両方",
+    role: "スタッフ",
+    employmentType: "アルバイト",
+    skills: ["接客", "調理補助", "清掃"],
+    phone: "090-8901-2345",
+    email: "s.nakamura@example.com",
+    joinDate: "2023-06-01",
+    hourlyRate: 1100,
+    status: "在籍",
   },
 ]
 
-// シフトデータを生成する関数
-const generateShiftData = (month: Date): DayData[] => {
-  const start = startOfMonth(month)
-  const end = endOfMonth(month)
-  const days = eachDayOfInterval({ start, end })
-
-  return days.map((date) => {
-    const dayOfWeek = getDay(date)
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
-
-    // 週末は少し多めのシフト、平日は標準的なシフト
-    const shiftCount = isWeekend ? Math.floor(Math.random() * 6) + 4 : Math.floor(Math.random() * 5) + 3
-
-    const shifts: ShiftData[] = []
-    const usedStaff = new Set<string>()
-
-    for (let i = 0; i < shiftCount && usedStaff.size < staffMembers.length; i++) {
-      const availableStaff = staffMembers.filter((staff) => !usedStaff.has(staff.id))
-      if (availableStaff.length === 0) break
-
-      const staff = availableStaff[Math.floor(Math.random() * availableStaff.length)]
-      usedStaff.add(staff.id)
-
-      // シフト時間をランダムに生成
-      const shiftTypes = [
-        { start: "09:00", end: "17:00" },
-        { start: "10:00", end: "18:00" },
-        { start: "11:00", end: "19:00" },
-        { start: "13:00", end: "21:00" },
-        { start: "17:00", end: "23:00" },
-      ]
-
-      const shiftType = shiftTypes[Math.floor(Math.random() * shiftTypes.length)]
-      const position = staff.role.includes("キッチン") ? "キッチン" : "ホール"
-
-      shifts.push({
-        staffId: staff.id,
-        startTime: shiftType.start,
-        endTime: shiftType.end,
-        position,
-      })
-    }
-
-    return { date, shifts }
-  })
+// スキルの色を取得
+const getSkillColor = (skill: string) => {
+  const skillColors: Record<string, string> = {
+    "調理": "bg-orange-100 text-orange-800",
+    "接客": "bg-blue-100 text-blue-800",
+    "マネジメント": "bg-purple-100 text-purple-800",
+    "レジ": "bg-green-100 text-green-800",
+    "ドリンク": "bg-cyan-100 text-cyan-800",
+    "調理補助": "bg-amber-100 text-amber-800",
+    "食器洗浄": "bg-gray-100 text-gray-800",
+    "仕込み": "bg-yellow-100 text-yellow-800",
+    "クレーム対応": "bg-red-100 text-red-800",
+    "予約管理": "bg-indigo-100 text-indigo-800",
+    "メニュー開発": "bg-pink-100 text-pink-800",
+    "在庫管理": "bg-teal-100 text-teal-800",
+    "衛生管理": "bg-lime-100 text-lime-800",
+    "発注管理": "bg-violet-100 text-violet-800",
+    "盛り付け": "bg-rose-100 text-rose-800",
+    "清掃": "bg-slate-100 text-slate-800",
+  }
+  return skillColors[skill] || "bg-gray-100 text-gray-800"
 }
 
-// 役職に応じた色を取得
+// ポジションの色を取得
+const getPositionColor = (position: string) => {
+  switch (position) {
+    case "ホール":
+      return "bg-blue-100 text-blue-800 border-blue-300"
+    case "キッチン":
+      return "bg-emerald-100 text-emerald-800 border-emerald-300"
+    case "両方":
+      return "bg-purple-100 text-purple-800 border-purple-300"
+    default:
+      return "bg-gray-100 text-gray-800 border-gray-300"
+  }
+}
+
+// 役職の色を取得
 const getRoleColor = (role: string) => {
   switch (role) {
     case "店長":
-      return "bg-purple-100 text-purple-800 border-purple-200"
-    case "ホールマネージャー":
-      return "bg-blue-100 text-blue-800 border-blue-200"
-    case "キッチンチーフ":
-      return "bg-green-100 text-green-800 border-green-200"
-    case "ホールスタッフ":
-      return "bg-sky-100 text-sky-800 border-sky-200"
-    case "キッチンスタッフ":
-      return "bg-emerald-100 text-emerald-800 border-emerald-200"
+      return "bg-red-100 text-red-800"
+    case "マネージャー":
+      return "bg-orange-100 text-orange-800"
+    case "チーフ":
+      return "bg-yellow-100 text-yellow-800"
+    case "スタッフ":
+      return "bg-gray-100 text-gray-800"
     default:
-      return "bg-gray-100 text-gray-800 border-gray-200"
+      return "bg-gray-100 text-gray-800"
   }
 }
 
-// ポジションに応じた色を取得
-const getPositionColor = (position: "ホール" | "キッチン") => {
-  return position === "ホール" ? "bg-blue-50 border-l-4 border-l-blue-400" : "bg-green-50 border-l-4 border-l-green-400"
+// 雇用形態の色を取得
+const getEmploymentColor = (type: string) => {
+  switch (type) {
+    case "正社員":
+      return "bg-indigo-100 text-indigo-800"
+    case "パート":
+      return "bg-cyan-100 text-cyan-800"
+    case "アルバイト":
+      return "bg-teal-100 text-teal-800"
+    default:
+      return "bg-gray-100 text-gray-800"
+  }
 }
 
-export default function StaffCalendar() {
-  const [currentMonth, setCurrentMonth] = useState(new Date())
-  const [calendarData, setCalendarData] = useState<DayData[]>(() => generateShiftData(new Date()))
+export default function StaffManagement() {
+  const [staffList, setStaffList] = useState<StaffMember[]>(initialStaffData)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [filterStore, setFilterStore] = useState<string>("all")
+  const [filterPosition, setFilterPosition] = useState<string>("all")
+  const [filterEmployment, setFilterEmployment] = useState<string>("all")
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null)
+  const [newStaff, setNewStaff] = useState<Partial<StaffMember>>({
+    name: "",
+    nameKana: "",
+    store: "Plate One 東京店",
+    position: "ホール",
+    role: "スタッフ",
+    employmentType: "アルバイト",
+    skills: [],
+    phone: "",
+    email: "",
+    joinDate: new Date().toISOString().split("T")[0],
+    status: "在籍",
+  })
 
-  const handlePrevMonth = () => {
-    const newMonth = subMonths(currentMonth, 1)
-    setCurrentMonth(newMonth)
-    setCalendarData(generateShiftData(newMonth))
-  }
+  // フィルタリングされたスタッフリスト
+  const filteredStaff = staffList.filter((staff) => {
+    const matchesSearch = 
+      staff.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      staff.nameKana.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      staff.email.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesStore = filterStore === "all" || staff.store === filterStore
+    const matchesPosition = filterPosition === "all" || staff.position === filterPosition
+    const matchesEmployment = filterEmployment === "all" || staff.employmentType === filterEmployment
+    
+    return matchesSearch && matchesStore && matchesPosition && matchesEmployment
+  })
 
-  const handleNextMonth = () => {
-    const newMonth = addMonths(currentMonth, 1)
-    setCurrentMonth(newMonth)
-    setCalendarData(generateShiftData(newMonth))
-  }
-
-  const handleToday = () => {
-    const today = new Date()
-    setCurrentMonth(today)
-    setCalendarData(generateShiftData(today))
-  }
-
-  // カレンダーのグリッドを作成（月曜始まり）
-  const createCalendarGrid = () => {
-    const start = startOfMonth(currentMonth)
-    const end = endOfMonth(currentMonth)
-    const startDate = new Date(start)
-
-    // 月曜日から始まるように調整
-    const startDay = getDay(start)
-    const daysToSubtract = startDay === 0 ? 6 : startDay - 1
-    startDate.setDate(start.getDate() - daysToSubtract)
-
-    const days = []
-    const current = new Date(startDate)
-
-    // 6週間分のデータを生成
-    for (let week = 0; week < 6; week++) {
-      for (let day = 0; day < 7; day++) {
-        days.push(new Date(current))
-        current.setDate(current.getDate() + 1)
-      }
+  // スタッフ作成
+  const handleCreateStaff = () => {
+    const id = (Math.max(...staffList.map((s) => parseInt(s.id))) + 1).toString()
+    const staff: StaffMember = {
+      ...newStaff as StaffMember,
+      id,
     }
-
-    return days
+    setStaffList([...staffList, staff])
+    setIsCreateModalOpen(false)
+    setNewStaff({
+      name: "",
+      nameKana: "",
+      store: "Plate One 東京店",
+      position: "ホール",
+      role: "スタッフ",
+      employmentType: "アルバイト",
+      skills: [],
+      phone: "",
+      email: "",
+      joinDate: new Date().toISOString().split("T")[0],
+      status: "在籍",
+    })
   }
 
-  const calendarDays = createCalendarGrid()
-  const weekdays = ["月", "火", "水", "木", "金", "土", "日"]
-
-  // 月間統計を計算
-  const monthlyStats = {
-    totalShifts: calendarData.reduce((sum, day) => sum + day.shifts.length, 0),
-    totalStaff: new Set(calendarData.flatMap((day) => day.shifts.map((shift) => shift.staffId))).size,
-    avgShiftsPerDay: (calendarData.reduce((sum, day) => sum + day.shifts.length, 0) / calendarData.length).toFixed(1),
+  // スタッフ更新
+  const handleUpdateStaff = () => {
+    if (!selectedStaff) return
+    setStaffList(staffList.map((s) => (s.id === selectedStaff.id ? selectedStaff : s)))
+    setIsEditModalOpen(false)
+    setSelectedStaff(null)
   }
+
+  // スタッフ削除
+  const handleDeleteStaff = () => {
+    if (!selectedStaff) return
+    setStaffList(staffList.filter((s) => s.id !== selectedStaff.id))
+    setIsDeleteModalOpen(false)
+    setSelectedStaff(null)
+  }
+
+  // 統計情報
+  const stats = {
+    total: staffList.length,
+    hall: staffList.filter((s) => s.position === "ホール" || s.position === "両方").length,
+    kitchen: staffList.filter((s) => s.position === "キッチン" || s.position === "両方").length,
+    fullTime: staffList.filter((s) => s.employmentType === "正社員").length,
+  }
+
+  // スキル一覧
+  const allSkills = ["調理", "接客", "マネジメント", "レジ", "ドリンク", "調理補助", "食器洗浄", "仕込み", "クレーム対応", "予約管理", "メニュー開発", "在庫管理", "衛生管理", "発注管理", "盛り付け", "清掃"]
 
   return (
-    <div className="container py-8 space-y-6">
-      {/* ヘッダー */}
+    <div className="bg-white rounded-lg shadow-sm">
+      <div className="border-b">
+        <div className="p-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">スタッフカレンダー</h1>
-          <p className="text-gray-600 mt-1">月間シフトスケジュール管理</p>
+              <h1 className="text-xl font-semibold text-gray-800">スタッフ管理</h1>
+              <p className="text-sm text-gray-600 mt-1">スタッフ情報の登録・編集・削除</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline">
-            <Calendar className="mr-2 h-4 w-4" />
-            シフト表出力
+              <Button variant="outline" size="sm">
+                <Download className="mr-2 h-4 w-4" />
+                エクスポート
+              </Button>
+              <Button variant="outline" size="sm">
+                <Upload className="mr-2 h-4 w-4" />
+                インポート
           </Button>
-          <Button>
+              <Button size="sm" onClick={() => setIsCreateModalOpen(true)}>
             <UserPlus className="mr-2 h-4 w-4" />
-            新規スタッフ登録
+                新規登録
           </Button>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* 月間統計 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">月間総シフト数</p>
-                <p className="text-2xl font-bold text-gray-900">{monthlyStats.totalShifts}</p>
-              </div>
-              <Clock className="h-8 w-8 text-blue-500" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">稼働スタッフ数</p>
-                <p className="text-2xl font-bold text-gray-900">{monthlyStats.totalStaff}人</p>
-              </div>
-              <UserPlus className="h-8 w-8 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">1日平均シフト数</p>
-                <p className="text-2xl font-bold text-gray-900">{monthlyStats.avgShiftsPerDay}</p>
-              </div>
-              <Calendar className="h-8 w-8 text-purple-500" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <div className="p-6 space-y-6">
+        {/* 統計情報 */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-gray-50 rounded-lg p-4">
+            <p className="text-sm font-medium text-gray-600">総スタッフ数</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{stats.total}名</p>
+          </div>
+          <div className="bg-blue-50 rounded-lg p-4">
+            <p className="text-sm font-medium text-blue-600">ホール担当</p>
+            <p className="text-2xl font-bold text-blue-900 mt-1">{stats.hall}名</p>
+          </div>
+          <div className="bg-emerald-50 rounded-lg p-4">
+            <p className="text-sm font-medium text-emerald-600">キッチン担当</p>
+            <p className="text-2xl font-bold text-emerald-900 mt-1">{stats.kitchen}名</p>
+          </div>
+          <div className="bg-purple-50 rounded-lg p-4">
+            <p className="text-sm font-medium text-purple-600">正社員</p>
+            <p className="text-2xl font-bold text-purple-900 mt-1">{stats.fullTime}名</p>
+          </div>
+        </div>
 
-      {/* カレンダーナビゲーション */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-xl">{format(currentMonth, "yyyy年M月", { locale: ja })}</CardTitle>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handlePrevMonth}>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleToday}>
-                今月
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleNextMonth}>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+        {/* 検索・フィルター */}
+        <div className="bg-gray-50 rounded-lg p-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="名前、フリガナ、メールで検索..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Select value={filterStore} onValueChange={setFilterStore}>
+                <SelectTrigger className="w-[160px]">
+                  <Building className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="店舗" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">すべての店舗</SelectItem>
+                  <SelectItem value="Plate One 東京店">東京店</SelectItem>
+                  <SelectItem value="Plate One 大阪店">大阪店</SelectItem>
+                  <SelectItem value="Plate One 福岡店">福岡店</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filterPosition} onValueChange={setFilterPosition}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="ポジション" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">すべて</SelectItem>
+                  <SelectItem value="ホール">ホール</SelectItem>
+                  <SelectItem value="キッチン">キッチン</SelectItem>
+                  <SelectItem value="両方">両方</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filterEmployment} onValueChange={setFilterEmployment}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="雇用形態" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">すべて</SelectItem>
+                  <SelectItem value="正社員">正社員</SelectItem>
+                  <SelectItem value="パート">パート</SelectItem>
+                  <SelectItem value="アルバイト">アルバイト</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          {/* カレンダーグリッド */}
-          <div className="grid grid-cols-7 gap-1">
-            {/* 曜日ヘッダー */}
-            {weekdays.map((day, index) => (
-              <div
-                key={day}
-                className={`p-3 text-center text-sm font-semibold ${
-                  index >= 5 ? "text-red-600 bg-red-50" : "text-gray-700 bg-gray-50"
-                } rounded-t-lg`}
-              >
-                {day}
+        </div>
+
+        {/* スタッフリスト */}
+        <div className="bg-white rounded-lg border overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 border-b">
+                  <th className="text-left p-4 font-medium text-gray-600">スタッフ</th>
+                  <th className="text-left p-4 font-medium text-gray-600">所属店舗</th>
+                  <th className="text-left p-4 font-medium text-gray-600">ポジション</th>
+                  <th className="text-left p-4 font-medium text-gray-600">役職</th>
+                  <th className="text-left p-4 font-medium text-gray-600">雇用形態</th>
+                  <th className="text-left p-4 font-medium text-gray-600">連絡先</th>
+                  <th className="text-center p-4 font-medium text-gray-600">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredStaff.map((staff) => (
+                  <tr key={staff.id} className="border-b hover:bg-gray-50 transition-colors">
+                    <td className="p-4">
+                      <Link href={`/staff/${staff.id}`} className="flex items-center gap-3 hover:underline">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={staff.avatar} alt={staff.name} />
+                          <AvatarFallback>{staff.name.slice(0, 2)}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium text-gray-900">{staff.name}</p>
+                          <p className="text-xs text-gray-500">{staff.nameKana}</p>
+                        </div>
+                      </Link>
+                    </td>
+                    <td className="p-4">
+                      <span className="text-sm text-gray-700">{staff.store}</span>
+                    </td>
+                    <td className="p-4">
+                      <Badge variant="outline" className={getPositionColor(staff.position)}>
+                        {staff.position}
+                      </Badge>
+                    </td>
+                    <td className="p-4">
+                      <Badge className={getRoleColor(staff.role)}>
+                        {staff.role}
+                      </Badge>
+                    </td>
+                    <td className="p-4">
+                      <Badge variant="outline" className={getEmploymentColor(staff.employmentType)}>
+                        {staff.employmentType}
+                      </Badge>
+                      {staff.hourlyRate && (
+                        <p className="text-xs text-gray-500 mt-1">¥{staff.hourlyRate}/h</p>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      <div className="text-sm">
+                        <div className="flex items-center gap-1 text-gray-600">
+                          <Phone className="h-3 w-3" />
+                          <span className="text-xs">{staff.phone}</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-gray-600 mt-1">
+                          <Mail className="h-3 w-3" />
+                          <span className="text-xs truncate max-w-[120px]">{staff.email}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center justify-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedStaff(staff)
+                            setIsEditModalOpen(true)
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => {
+                            setSelectedStaff(staff)
+                            setIsDeleteModalOpen(true)
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {filteredStaff.length === 0 && (
+            <div className="text-center py-12 text-gray-500">
+              該当するスタッフが見つかりません
+            </div>
+          )}
+        </div>
+
+        {/* 新規登録モーダル */}
+        <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>新規スタッフ登録</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700">名前 *</label>
+                  <Input
+                    value={newStaff.name || ""}
+                    onChange={(e) => setNewStaff({ ...newStaff, name: e.target.value })}
+                    placeholder="山田 太郎"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">フリガナ *</label>
+                  <Input
+                    value={newStaff.nameKana || ""}
+                    onChange={(e) => setNewStaff({ ...newStaff, nameKana: e.target.value })}
+                    placeholder="やまだ たろう"
+                  />
+                </div>
               </div>
-            ))}
-
-            {/* カレンダー日付 */}
-            {calendarDays.map((day, index) => {
-              const dayData = calendarData.find(
-                (d) => d.date.getDate() === day.getDate() && d.date.getMonth() === day.getMonth(),
-              )
-              const isCurrentMonth = isSameMonth(day, currentMonth)
-              const isWeekend = getDay(day) >= 5
-              const todayClass = isToday(day) ? "ring-2 ring-blue-500 bg-blue-50" : ""
-
-              return (
-                <div
-                  key={index}
-                  className={`min-h-[120px] p-2 border border-gray-200 transition-all hover:shadow-md ${
-                    !isCurrentMonth ? "bg-gray-50 opacity-50" : "bg-white"
-                  } ${isWeekend ? "bg-red-50" : ""} ${todayClass}`}
-                >
-                  {/* 日付 */}
-                  <div
-                    className={`text-sm font-semibold mb-2 ${
-                      isToday(day) ? "text-blue-600" : isWeekend ? "text-red-600" : "text-gray-900"
-                    }`}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700">所属店舗 *</label>
+                  <Select
+                    value={newStaff.store}
+                    onValueChange={(value) => setNewStaff({ ...newStaff, store: value })}
                   >
-                    {format(day, "d")}
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Plate One 東京店">Plate One 東京店</SelectItem>
+                      <SelectItem value="Plate One 大阪店">Plate One 大阪店</SelectItem>
+                      <SelectItem value="Plate One 福岡店">Plate One 福岡店</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">ポジション *</label>
+                  <Select
+                    value={newStaff.position}
+                    onValueChange={(value) => setNewStaff({ ...newStaff, position: value as any })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ホール">ホール</SelectItem>
+                      <SelectItem value="キッチン">キッチン</SelectItem>
+                      <SelectItem value="両方">両方</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700">役職 *</label>
+                  <Select
+                    value={newStaff.role}
+                    onValueChange={(value) => setNewStaff({ ...newStaff, role: value as any })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="店長">店長</SelectItem>
+                      <SelectItem value="マネージャー">マネージャー</SelectItem>
+                      <SelectItem value="チーフ">チーフ</SelectItem>
+                      <SelectItem value="スタッフ">スタッフ</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">雇用形態 *</label>
+                  <Select
+                    value={newStaff.employmentType}
+                    onValueChange={(value) => setNewStaff({ ...newStaff, employmentType: value as any })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="正社員">正社員</SelectItem>
+                      <SelectItem value="パート">パート</SelectItem>
+                      <SelectItem value="アルバイト">アルバイト</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700">電話番号 *</label>
+                  <Input
+                    value={newStaff.phone || ""}
+                    onChange={(e) => setNewStaff({ ...newStaff, phone: e.target.value })}
+                    placeholder="090-1234-5678"
+                  />
+                </div>
+              <div>
+                  <label className="text-sm font-medium text-gray-700">メールアドレス *</label>
+                  <Input
+                    type="email"
+                    value={newStaff.email || ""}
+                    onChange={(e) => setNewStaff({ ...newStaff, email: e.target.value })}
+                    placeholder="example@email.com"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700">入社日 *</label>
+                  <Input
+                    type="date"
+                    value={newStaff.joinDate || ""}
+                    onChange={(e) => setNewStaff({ ...newStaff, joinDate: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">時給（パート・アルバイトのみ）</label>
+                  <Input
+                    type="number"
+                    value={newStaff.hourlyRate || ""}
+                    onChange={(e) => setNewStaff({ ...newStaff, hourlyRate: parseInt(e.target.value) || undefined })}
+                    placeholder="1100"
+                  />
+                </div>
+            </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">スキル</label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {allSkills.map((skill) => (
+                    <Badge
+                      key={skill}
+                      variant={newStaff.skills?.includes(skill) ? "default" : "outline"}
+                      className={`cursor-pointer ${newStaff.skills?.includes(skill) ? "" : "hover:bg-gray-100"}`}
+                      onClick={() => {
+                        const skills = newStaff.skills || []
+                        if (skills.includes(skill)) {
+                          setNewStaff({ ...newStaff, skills: skills.filter((s) => s !== skill) })
+                        } else {
+                          setNewStaff({ ...newStaff, skills: [...skills, skill] })
+                        }
+                      }}
+                    >
+                      {skill}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>
+                キャンセル
+              </Button>
+              <Button onClick={handleCreateStaff} disabled={!newStaff.name || !newStaff.phone || !newStaff.email}>
+                登録する
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* 編集モーダル */}
+        <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>スタッフ情報編集</DialogTitle>
+            </DialogHeader>
+            {selectedStaff && (
+              <div className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">名前 *</label>
+                    <Input
+                      value={selectedStaff.name}
+                      onChange={(e) => setSelectedStaff({ ...selectedStaff, name: e.target.value })}
+                    />
                   </div>
-
-                  {/* シフト情報 */}
-                  {isCurrentMonth && dayData && (
-                    <div className="space-y-1">
-                      {dayData.shifts.slice(0, 3).map((shift, shiftIndex) => {
-                        const staff = staffMembers.find((s) => s.id === shift.staffId)
-                        if (!staff) return null
-
-                        return (
-                          <Link
-                            key={shiftIndex}
-                            href={`/staff/${staff.id}`}
-                            className={`block p-1.5 rounded-md text-xs transition-all hover:shadow-sm cursor-pointer ${getPositionColor(shift.position)}`}
-                          >
-                            <div className="flex items-center gap-1.5">
-                              <Avatar className="h-5 w-5">
-                                <AvatarImage src={staff.avatar || "/placeholder.svg"} alt={staff.name} />
-                                <AvatarFallback className="text-xs">{staff.name.slice(0, 2)}</AvatarFallback>
-                              </Avatar>
-                              <div className="flex-1 min-w-0">
-                                <div className="font-medium truncate">{staff.name}</div>
-                                <div className="text-gray-600 flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  {shift.startTime}-{shift.endTime}
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">フリガナ *</label>
+                    <Input
+                      value={selectedStaff.nameKana}
+                      onChange={(e) => setSelectedStaff({ ...selectedStaff, nameKana: e.target.value })}
+                    />
+            </div>
+          </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">所属店舗 *</label>
+                    <Select
+                      value={selectedStaff.store}
+                      onValueChange={(value) => setSelectedStaff({ ...selectedStaff, store: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Plate One 東京店">Plate One 東京店</SelectItem>
+                        <SelectItem value="Plate One 大阪店">Plate One 大阪店</SelectItem>
+                        <SelectItem value="Plate One 福岡店">Plate One 福岡店</SelectItem>
+                      </SelectContent>
+                    </Select>
+              </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">ポジション *</label>
+                    <Select
+                      value={selectedStaff.position}
+                      onValueChange={(value) => setSelectedStaff({ ...selectedStaff, position: value as any })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ホール">ホール</SelectItem>
+                        <SelectItem value="キッチン">キッチン</SelectItem>
+                        <SelectItem value="両方">両方</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">役職 *</label>
+                    <Select
+                      value={selectedStaff.role}
+                      onValueChange={(value) => setSelectedStaff({ ...selectedStaff, role: value as any })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="店長">店長</SelectItem>
+                        <SelectItem value="マネージャー">マネージャー</SelectItem>
+                        <SelectItem value="チーフ">チーフ</SelectItem>
+                        <SelectItem value="スタッフ">スタッフ</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">雇用形態 *</label>
+                    <Select
+                      value={selectedStaff.employmentType}
+                      onValueChange={(value) => setSelectedStaff({ ...selectedStaff, employmentType: value as any })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="正社員">正社員</SelectItem>
+                        <SelectItem value="パート">パート</SelectItem>
+                        <SelectItem value="アルバイト">アルバイト</SelectItem>
+                      </SelectContent>
+                    </Select>
                                 </div>
                               </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">電話番号 *</label>
+                    <Input
+                      value={selectedStaff.phone}
+                      onChange={(e) => setSelectedStaff({ ...selectedStaff, phone: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">メールアドレス *</label>
+                    <Input
+                      type="email"
+                      value={selectedStaff.email}
+                      onChange={(e) => setSelectedStaff({ ...selectedStaff, email: e.target.value })}
+                    />
                             </div>
-                            <div className="mt-1">
-                              <Badge variant="outline" className={`text-xs ${getRoleColor(staff.role)}`}>
-                                {shift.position}
-                              </Badge>
                             </div>
-                          </Link>
-                        )
-                      })}
-
-                      {/* 追加のシフトがある場合 */}
-                      {dayData.shifts.length > 3 && (
-                        <div className="text-xs text-gray-500 text-center py-1">
-                          +{dayData.shifts.length - 3}件のシフト
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">入社日 *</label>
+                    <Input
+                      type="date"
+                      value={selectedStaff.joinDate}
+                      onChange={(e) => setSelectedStaff({ ...selectedStaff, joinDate: e.target.value })}
+                    />
                         </div>
-                      )}
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">時給</label>
+                    <Input
+                      type="number"
+                      value={selectedStaff.hourlyRate || ""}
+                      onChange={(e) => setSelectedStaff({ ...selectedStaff, hourlyRate: parseInt(e.target.value) || undefined })}
+                    />
                     </div>
-                  )}
                 </div>
-              )
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* スタッフ一覧 */}
-      <Card>
-        <CardHeader>
-          <CardTitle>スタッフ一覧</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {staffMembers.map((staff) => (
-              <Link
-                key={staff.id}
-                href={`/staff/${staff.id}`}
-                className="block p-4 border border-gray-200 rounded-lg hover:shadow-md transition-all hover:border-gray-300"
-              >
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage src={staff.avatar || "/placeholder.svg"} alt={staff.name} />
-                    <AvatarFallback>{staff.name.slice(0, 2)}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <h3 className="font-medium text-gray-900">{staff.name}</h3>
-                    <p className="text-sm text-gray-600">{staff.role}</p>
-                    <Badge variant="outline" className="mt-1 text-xs">
-                      {staff.employmentType}
+                <div>
+                  <label className="text-sm font-medium text-gray-700">スキル</label>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {allSkills.map((skill) => (
+                      <Badge
+                        key={skill}
+                        variant={selectedStaff.skills.includes(skill) ? "default" : "outline"}
+                        className={`cursor-pointer ${selectedStaff.skills.includes(skill) ? "" : "hover:bg-gray-100"}`}
+                        onClick={() => {
+                          if (selectedStaff.skills.includes(skill)) {
+                            setSelectedStaff({ ...selectedStaff, skills: selectedStaff.skills.filter((s) => s !== skill) })
+                          } else {
+                            setSelectedStaff({ ...selectedStaff, skills: [...selectedStaff.skills, skill] })
+                          }
+                        }}
+                      >
+                        {skill}
                     </Badge>
+                    ))}
                   </div>
                 </div>
-              </Link>
-            ))}
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
+                キャンセル
+              </Button>
+              <Button onClick={handleUpdateStaff}>
+                更新する
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* 削除確認モーダル */}
+        <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>スタッフを削除しますか？</DialogTitle>
+            </DialogHeader>
+            {selectedStaff && (
+              <div className="py-4">
+                <p className="text-gray-600">
+                  <strong>{selectedStaff.name}</strong> さんの情報を削除します。
+                  この操作は取り消せません。
+                </p>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
+                キャンセル
+              </Button>
+              <Button variant="destructive" onClick={handleDeleteStaff}>
+                削除する
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
           </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }

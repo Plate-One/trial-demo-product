@@ -9,7 +9,7 @@ import { PencilIcon, SaveIcon } from "lucide-react"
 
 export default function ShiftManagement() {
   const [isEditing, setIsEditing] = useState(false)
-  const [viewMode, setViewMode] = useState<"daily" | "weekly" | "monthly">("monthly")
+  const [viewMode, setViewMode] = useState<"daily" | "weekly" | "monthly">("daily")
   const [currentDate, setCurrentDate] = useState(new Date())
 
   const handleToggleEdit = () => {
