@@ -506,7 +506,7 @@ export default function MultiStoreHelpOptimization() {
                 </Button>
               </Link>
               <div>
-                <h1 className="text-xl font-semibold text-gray-800">複数店舗ヘルプ一括最適化</h1>
+                <h1 className="text-xl font-semibold text-gray-800">ヘルプ一括作成</h1>
                 <p className="text-sm text-gray-600 mt-1">
                   {format(weekStart, "yyyy年M月d日", { locale: ja })} 〜 {format(addDays(weekStart, 6), "M月d日", { locale: ja })}
                 </p>
@@ -655,14 +655,14 @@ export default function MultiStoreHelpOptimization() {
             <div className="bg-white rounded-lg shadow-sm border p-6 text-center">
               <Sparkles className="h-8 w-8 text-blue-600 mx-auto mb-3" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                横浜・町田エリア 5店舗のヘルプ枠を一括で最適化
+                横浜・町田エリア 5店舗のヘルプ枠を一括で作成
               </h3>
               <p className="text-sm text-gray-600 mb-4 max-w-lg mx-auto">
                 各店舗の不足枠と空きスタッフを照合し、移動コスト・スキル適合度を考慮した最適なヘルプ配置を自動で提案します。
               </p>
               <Button size="lg" onClick={handleOptimize} className="gap-2">
                 <Sparkles className="h-5 w-5" />
-                一括最適化を実行
+                一括作成を実行
               </Button>
             </div>
           </>
@@ -674,7 +674,7 @@ export default function MultiStoreHelpOptimization() {
             <div className="bg-white rounded-lg shadow-sm border p-6 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600" />
-                <h3 className="text-xl font-semibold text-gray-900">複数店舗ヘルプ最適化中...</h3>
+                <h3 className="text-xl font-semibold text-gray-900">ヘルプ一括作成中...</h3>
               </div>
               <Progress value={(currentStep / steps.length) * 100} className="h-3" />
               <p className="text-sm text-gray-600">
