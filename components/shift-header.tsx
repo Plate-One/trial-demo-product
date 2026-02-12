@@ -45,12 +45,16 @@ export function ShiftHeader({
     <div className="space-y-4 rounded-lg bg-white p-6 shadow-sm">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Select>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Plate One東京店" />
+          <Select defaultValue="bayquarter">
+            <SelectTrigger className="w-[280px]">
+              <SelectValue placeholder="キリンシティ 横浜ベイクォーター店" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="plateone-tokyo">Plate One東京店</SelectItem>
+              <SelectItem value="bayquarter">キリンシティ 横浜ベイクォーター店</SelectItem>
+              <SelectItem value="mores">キリンシティ 横浜モアーズ店</SelectItem>
+              <SelectItem value="fti">キリンシティ FOOD＆TIME ISETAN YOKOHAMA店</SelectItem>
+              <SelectItem value="cial">キリンシティ CIAL桜木町店</SelectItem>
+              <SelectItem value="machida">キリンシティ 町田店</SelectItem>
             </SelectContent>
           </Select>
           <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as "daily" | "weekly" | "monthly")}>

@@ -928,7 +928,7 @@ export default function ShiftManagement() {
               <HandHelping className="h-10 w-10 text-blue-600 mx-auto mb-3" />
               <h3 className="font-semibold text-blue-900 mb-2">複数店舗間のヘルプ最適化で解決できます</h3>
               <p className="text-sm text-blue-700 mb-4">
-                東京店・大阪店・福岡店のヘルプ必要枠と空きスタッフを一括で最適化し、店舗間のヘルプ配置を自動で提案します。
+                横浜ベイクォーター店・横浜モアーズ店・CIAL桜木町店・FTI横浜店・町田店のヘルプ必要枠と空きスタッフを一括で最適化し、店舗間のヘルプ配置を自動で提案します。
               </p>
               <Link href="/shifts/help">
                 <Button className="gap-2">

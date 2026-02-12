@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge"
 
 // 店舗データ（実際のアプリケーションではAPIから取得）
 const storeData = {
-  name: "焼肉サキミル 渋谷店",
+  name: "キリンシティ 横浜ベイクォーター店",
   period: "2025年2月21日〜27日",
   totals: {
     predictedCustomers: 574,

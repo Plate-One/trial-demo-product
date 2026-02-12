@@ -38,7 +38,7 @@ interface AvailableHelper {
   storeName: string
   position: "ホール" | "キッチン" | "両方"
   availableSlots: { dayIndex: number; start: string; end: string }[]
-  rating: number // 1-5 スキル評価
+  rating: number
 }
 
 interface HelpAssignment {
@@ -65,75 +65,98 @@ interface OptimizationStep {
 // ========== 定数 ==========
 const DAY_LABELS = ["月", "火", "水", "木", "金", "土", "日"]
 
-// ========== モックデータ ==========
+// ========== モックデータ（横浜・町田エリア 5店舗） ==========
 const storesData: StoreData[] = [
   {
-    id: "tokyo",
-    name: "Plate One 東京店",
-    shortName: "東京",
+    id: "bayquarter",
+    name: "キリンシティ 横浜ベイクォーター店",
+    shortName: "ベイクォーター",
     color: "text-blue-700",
     bgColor: "bg-blue-50",
     borderColor: "border-blue-200",
     helpSlots: [
+      { dayIndex: 0, hour: 19, role: "ホール", shortage: 1 },
       { dayIndex: 0, hour: 20, role: "キッチン", shortage: 1 },
-      { dayIndex: 0, hour: 21, role: "キッチン", shortage: 1 },
-      { dayIndex: 1, hour: 19, role: "ホール", shortage: 1 },
-      { dayIndex: 1, hour: 20, role: "ホール", shortage: 1 },
-      { dayIndex: 3, hour: 10, role: "ホール", shortage: 1 },
-      { dayIndex: 3, hour: 11, role: "ホール", shortage: 1 },
+      { dayIndex: 2, hour: 19, role: "ホール", shortage: 1 },
+      { dayIndex: 4, hour: 19, role: "ホール", shortage: 1 },
       { dayIndex: 4, hour: 20, role: "キッチン", shortage: 1 },
-      { dayIndex: 4, hour: 21, role: "キッチン", shortage: 1 },
-      { dayIndex: 5, hour: 10, role: "ホール", shortage: 1 },
-      { dayIndex: 5, hour: 11, role: "ホール", shortage: 2 },
-      { dayIndex: 5, hour: 12, role: "キッチン", shortage: 1 },
-      { dayIndex: 5, hour: 19, role: "ホール", shortage: 1 },
-      { dayIndex: 5, hour: 20, role: "ホール", shortage: 1 },
-      { dayIndex: 6, hour: 11, role: "ホール", shortage: 1 },
+      { dayIndex: 5, hour: 12, role: "ホール", shortage: 2 },
+      { dayIndex: 5, hour: 13, role: "ホール", shortage: 1 },
+      { dayIndex: 5, hour: 19, role: "キッチン", shortage: 1 },
       { dayIndex: 6, hour: 12, role: "ホール", shortage: 1 },
-      { dayIndex: 6, hour: 12, role: "キッチン", shortage: 1 },
-      { dayIndex: 6, hour: 19, role: "キッチン", shortage: 1 },
-      { dayIndex: 6, hour: 14, role: "キッチン", shortage: 1 },
-      { dayIndex: 6, hour: 15, role: "キッチン", shortage: 1 },
+      { dayIndex: 6, hour: 13, role: "ホール", shortage: 1 },
+      { dayIndex: 6, hour: 18, role: "キッチン", shortage: 1 },
     ],
   },
   {
-    id: "osaka",
-    name: "Plate One 大阪店",
-    shortName: "大阪",
+    id: "mores",
+    name: "キリンシティ 横浜モアーズ店",
+    shortName: "モアーズ",
     color: "text-emerald-700",
     bgColor: "bg-emerald-50",
     borderColor: "border-emerald-200",
     helpSlots: [
       { dayIndex: 4, hour: 19, role: "ホール", shortage: 1 },
       { dayIndex: 4, hour: 20, role: "ホール", shortage: 1 },
-      { dayIndex: 5, hour: 18, role: "ホール", shortage: 2 },
+      { dayIndex: 5, hour: 12, role: "キッチン", shortage: 1 },
       { dayIndex: 5, hour: 19, role: "ホール", shortage: 2 },
       { dayIndex: 5, hour: 20, role: "ホール", shortage: 1 },
-      { dayIndex: 5, hour: 12, role: "キッチン", shortage: 1 },
-      { dayIndex: 5, hour: 13, role: "キッチン", shortage: 1 },
-      { dayIndex: 6, hour: 11, role: "キッチン", shortage: 1 },
       { dayIndex: 6, hour: 12, role: "キッチン", shortage: 1 },
-      { dayIndex: 6, hour: 18, role: "ホール", shortage: 1 },
-      { dayIndex: 6, hour: 19, role: "ホール", shortage: 2 },
+      { dayIndex: 6, hour: 19, role: "ホール", shortage: 1 },
       { dayIndex: 6, hour: 20, role: "ホール", shortage: 1 },
     ],
   },
   {
-    id: "fukuoka",
-    name: "Plate One 福岡店",
-    shortName: "福岡",
+    id: "fti",
+    name: "キリンシティ FOOD＆TIME ISETAN YOKOHAMA店",
+    shortName: "FTI横浜",
+    color: "text-amber-700",
+    bgColor: "bg-amber-50",
+    borderColor: "border-amber-200",
+    helpSlots: [
+      { dayIndex: 4, hour: 18, role: "キッチン", shortage: 1 },
+      { dayIndex: 4, hour: 19, role: "ホール", shortage: 1 },
+      { dayIndex: 5, hour: 12, role: "ホール", shortage: 1 },
+      { dayIndex: 5, hour: 18, role: "ホール", shortage: 2 },
+      { dayIndex: 5, hour: 19, role: "キッチン", shortage: 1 },
+      { dayIndex: 6, hour: 12, role: "ホール", shortage: 1 },
+      { dayIndex: 6, hour: 13, role: "ホール", shortage: 1 },
+    ],
+  },
+  {
+    id: "cial",
+    name: "キリンシティ CIAL桜木町店",
+    shortName: "CIAL桜木町",
     color: "text-purple-700",
     bgColor: "bg-purple-50",
     borderColor: "border-purple-200",
     helpSlots: [
-      { dayIndex: 4, hour: 19, role: "キッチン", shortage: 1 },
+      { dayIndex: 3, hour: 18, role: "ホール", shortage: 1 },
+      { dayIndex: 4, hour: 19, role: "ホール", shortage: 1 },
       { dayIndex: 4, hour: 20, role: "キッチン", shortage: 1 },
-      { dayIndex: 5, hour: 11, role: "ホール", shortage: 1 },
       { dayIndex: 5, hour: 12, role: "ホール", shortage: 2 },
+      { dayIndex: 5, hour: 13, role: "キッチン", shortage: 1 },
+      { dayIndex: 5, hour: 19, role: "ホール", shortage: 2 },
+      { dayIndex: 5, hour: 20, role: "ホール", shortage: 1 },
+      { dayIndex: 6, hour: 12, role: "ホール", shortage: 1 },
+      { dayIndex: 6, hour: 13, role: "キッチン", shortage: 1 },
+      { dayIndex: 6, hour: 19, role: "ホール", shortage: 1 },
+    ],
+  },
+  {
+    id: "machida",
+    name: "キリンシティ 町田店",
+    shortName: "町田",
+    color: "text-rose-700",
+    bgColor: "bg-rose-50",
+    borderColor: "border-rose-200",
+    helpSlots: [
+      { dayIndex: 4, hour: 18, role: "ホール", shortage: 1 },
+      { dayIndex: 4, hour: 19, role: "キッチン", shortage: 1 },
+      { dayIndex: 5, hour: 12, role: "ホール", shortage: 1 },
       { dayIndex: 5, hour: 18, role: "ホール", shortage: 1 },
-      { dayIndex: 5, hour: 19, role: "ホール", shortage: 1 },
+      { dayIndex: 5, hour: 19, role: "ホール", shortage: 2 },
       { dayIndex: 5, hour: 20, role: "キッチン", shortage: 1 },
-      { dayIndex: 6, hour: 11, role: "ホール", shortage: 1 },
       { dayIndex: 6, hour: 12, role: "ホール", shortage: 1 },
       { dayIndex: 6, hour: 19, role: "キッチン", shortage: 1 },
     ],
@@ -141,91 +164,126 @@ const storesData: StoreData[] = [
 ]
 
 const availableHelpers: AvailableHelper[] = [
-  // 東京店のスタッフ（大阪・福岡をヘルプ可能）
+  // ベイクォーター店のスタッフ
   {
-    id: "h1", name: "中村 翔太", storeId: "tokyo", storeName: "東京店",
+    id: "h1", name: "中村 翔太", storeId: "bayquarter", storeName: "ベイクォーター店",
     position: "両方", rating: 4,
     availableSlots: [
-      { dayIndex: 0, start: "18:00", end: "23:00" },
-      { dayIndex: 1, start: "18:00", end: "23:00" },
+      { dayIndex: 5, start: "11:00", end: "16:00" },
+      { dayIndex: 6, start: "11:00", end: "16:00" },
     ],
   },
   {
-    id: "h2", name: "加藤 健一", storeId: "tokyo", storeName: "東京店",
+    id: "h2", name: "加藤 健一", storeId: "bayquarter", storeName: "ベイクォーター店",
     position: "キッチン", rating: 3,
     availableSlots: [
-      { dayIndex: 5, start: "10:00", end: "18:00" },
-      { dayIndex: 6, start: "10:00", end: "18:00" },
+      { dayIndex: 3, start: "17:00", end: "22:00" },
+      { dayIndex: 4, start: "17:00", end: "22:00" },
     ],
   },
-
-  // 大阪店のスタッフ（東京・福岡をヘルプ可能）
+  // モアーズ店のスタッフ
   {
-    id: "h3", name: "松田 聡子", storeId: "osaka", storeName: "大阪店",
+    id: "h3", name: "松田 聡子", storeId: "mores", storeName: "モアーズ店",
     position: "キッチン", rating: 5,
     availableSlots: [
       { dayIndex: 0, start: "17:00", end: "22:00" },
-      { dayIndex: 3, start: "9:00", end: "15:00" },
+      { dayIndex: 5, start: "10:00", end: "15:00" },
       { dayIndex: 6, start: "10:00", end: "20:00" },
     ],
   },
   {
-    id: "h4", name: "吉田 美香", storeId: "osaka", storeName: "大阪店",
+    id: "h4", name: "吉田 美香", storeId: "mores", storeName: "モアーズ店",
     position: "ホール", rating: 4,
     availableSlots: [
-      { dayIndex: 5, start: "9:00", end: "15:00" },
+      { dayIndex: 2, start: "17:00", end: "22:00" },
+      { dayIndex: 5, start: "17:00", end: "22:00" },
       { dayIndex: 6, start: "10:00", end: "16:00" },
     ],
   },
+  // FTI横浜店のスタッフ
   {
-    id: "h5", name: "大西 翔平", storeId: "osaka", storeName: "大阪店",
+    id: "h5", name: "大西 翔平", storeId: "fti", storeName: "FTI横浜店",
     position: "ホール", rating: 3,
     availableSlots: [
-      { dayIndex: 1, start: "17:00", end: "22:00" },
       { dayIndex: 4, start: "17:00", end: "22:00" },
-    ],
-  },
-
-  // 福岡店のスタッフ（東京・大阪をヘルプ可能）
-  {
-    id: "h6", name: "佐々木 健太", storeId: "fukuoka", storeName: "福岡店",
-    position: "ホール", rating: 4,
-    availableSlots: [
-      { dayIndex: 3, start: "9:00", end: "14:00" },
-      { dayIndex: 4, start: "17:00", end: "22:00" },
+      { dayIndex: 6, start: "11:00", end: "15:00" },
     ],
   },
   {
-    id: "h7", name: "中島 龍太", storeId: "fukuoka", storeName: "福岡店",
-    position: "キッチン", rating: 5,
-    availableSlots: [
-      { dayIndex: 0, start: "17:00", end: "23:00" },
-      { dayIndex: 5, start: "10:00", end: "22:00" },
-    ],
-  },
-  {
-    id: "h8", name: "森本 由美", storeId: "fukuoka", storeName: "福岡店",
+    id: "h6", name: "田村 恵美", storeId: "fti", storeName: "FTI横浜店",
     position: "両方", rating: 4,
     availableSlots: [
-      { dayIndex: 5, start: "17:00", end: "23:00" },
-      { dayIndex: 6, start: "10:00", end: "20:00" },
+      { dayIndex: 5, start: "11:00", end: "16:00" },
+      { dayIndex: 6, start: "17:00", end: "22:00" },
+    ],
+  },
+  // CIAL桜木町店のスタッフ
+  {
+    id: "h7", name: "佐々木 健太", storeId: "cial", storeName: "CIAL桜木町店",
+    position: "ホール", rating: 4,
+    availableSlots: [
+      { dayIndex: 0, start: "17:00", end: "22:00" },
+      { dayIndex: 4, start: "17:00", end: "22:00" },
+    ],
+  },
+  {
+    id: "h8", name: "中島 龍太", storeId: "cial", storeName: "CIAL桜木町店",
+    position: "キッチン", rating: 5,
+    availableSlots: [
+      { dayIndex: 5, start: "17:00", end: "22:00" },
+      { dayIndex: 6, start: "10:00", end: "15:00" },
+    ],
+  },
+  // 町田店のスタッフ
+  {
+    id: "h9", name: "森本 由美", storeId: "machida", storeName: "町田店",
+    position: "両方", rating: 4,
+    availableSlots: [
+      { dayIndex: 5, start: "10:00", end: "15:00" },
+      { dayIndex: 6, start: "10:00", end: "15:00" },
+    ],
+  },
+  {
+    id: "h10", name: "岡田 拓也", storeId: "machida", storeName: "町田店",
+    position: "キッチン", rating: 3,
+    availableSlots: [
+      { dayIndex: 4, start: "17:00", end: "22:00" },
+      { dayIndex: 6, start: "17:00", end: "22:00" },
     ],
   },
 ]
 
-// 店舗間の移動情報
+// 店舗間の移動情報（横浜エリア内はJR・みなとみらい線・横浜市営地下鉄）
 const travelInfo: Record<string, Record<string, { minutes: number; cost: number }>> = {
-  tokyo: {
-    osaka: { minutes: 150, cost: 13870 },
-    fukuoka: { minutes: 300, cost: 22220 },
+  bayquarter: {
+    mores: { minutes: 10, cost: 180 },
+    fti: { minutes: 12, cost: 180 },
+    cial: { minutes: 15, cost: 200 },
+    machida: { minutes: 40, cost: 570 },
   },
-  osaka: {
-    tokyo: { minutes: 150, cost: 13870 },
-    fukuoka: { minutes: 150, cost: 15400 },
+  mores: {
+    bayquarter: { minutes: 10, cost: 180 },
+    fti: { minutes: 8, cost: 180 },
+    cial: { minutes: 12, cost: 200 },
+    machida: { minutes: 35, cost: 570 },
   },
-  fukuoka: {
-    tokyo: { minutes: 300, cost: 22220 },
-    osaka: { minutes: 150, cost: 15400 },
+  fti: {
+    bayquarter: { minutes: 12, cost: 180 },
+    mores: { minutes: 8, cost: 180 },
+    cial: { minutes: 10, cost: 200 },
+    machida: { minutes: 38, cost: 570 },
+  },
+  cial: {
+    bayquarter: { minutes: 15, cost: 200 },
+    mores: { minutes: 12, cost: 200 },
+    fti: { minutes: 10, cost: 200 },
+    machida: { minutes: 42, cost: 640 },
+  },
+  machida: {
+    bayquarter: { minutes: 40, cost: 570 },
+    mores: { minutes: 35, cost: 570 },
+    fti: { minutes: 38, cost: 570 },
+    cial: { minutes: 42, cost: 640 },
   },
 }
 
@@ -242,110 +300,155 @@ function runHelpOptimization(): {
 
   steps.push({
     title: "全店舗のヘルプ必要枠を集約",
-    description: `3店舗合計 ${totalSlots} 枠のヘルプ必要枠を検出`,
+    description: `5店舗合計 ${totalSlots} 枠のヘルプ必要枠を検出`,
     detail: storesData.map((s) => `${s.shortName}: ${s.helpSlots.length}枠`).join(" / "),
   })
 
   steps.push({
     title: "他店舗の空きスタッフを検索",
     description: `${availableHelpers.length}名のヘルプ可能スタッフを検出`,
-    detail: `東京: ${availableHelpers.filter((h) => h.storeId === "tokyo").length}名 / 大阪: ${availableHelpers.filter((h) => h.storeId === "osaka").length}名 / 福岡: ${availableHelpers.filter((h) => h.storeId === "fukuoka").length}名`,
+    detail: storesData.map((s) => `${s.shortName}: ${availableHelpers.filter((h) => h.storeId === s.id).length}名`).join(" / "),
   })
 
-  // 東京店の月曜夜キッチン不足 → 大阪の松田を割り当て
+  // ベイクォーター店 月曜 ホール不足 → CIAL桜木町の佐々木
+  assignments.push({
+    helperId: "h7", helperName: "佐々木 健太",
+    fromStoreId: "cial", fromStoreName: "CIAL桜木町店",
+    toStoreId: "bayquarter", toStoreName: "ベイクォーター店",
+    dayIndex: 0, start: "18:00", end: "21:00", role: "ホール",
+    travelMinutes: 15, transportCost: 200,
+  })
+
+  // ベイクォーター店 月曜 キッチン不足 → モアーズの松田
   assignments.push({
     helperId: "h3", helperName: "松田 聡子",
-    fromStoreId: "osaka", fromStoreName: "大阪店",
-    toStoreId: "tokyo", toStoreName: "東京店",
+    fromStoreId: "mores", fromStoreName: "モアーズ店",
+    toStoreId: "bayquarter", toStoreName: "ベイクォーター店",
     dayIndex: 0, start: "19:00", end: "22:00", role: "キッチン",
-    travelMinutes: 150, transportCost: 13870,
+    travelMinutes: 10, transportCost: 180,
   })
 
-  // 東京店の火曜夜ホール不足 → 大阪の大西を割り当て
+  // ベイクォーター店 水曜 ホール不足 → モアーズの吉田
+  assignments.push({
+    helperId: "h4", helperName: "吉田 美香",
+    fromStoreId: "mores", fromStoreName: "モアーズ店",
+    toStoreId: "bayquarter", toStoreName: "ベイクォーター店",
+    dayIndex: 2, start: "18:00", end: "21:00", role: "ホール",
+    travelMinutes: 10, transportCost: 180,
+  })
+
+  // ベイクォーター店 金曜夜ホール → FTIの大西
   assignments.push({
     helperId: "h5", helperName: "大西 翔平",
-    fromStoreId: "osaka", fromStoreName: "大阪店",
-    toStoreId: "tokyo", toStoreName: "東京店",
-    dayIndex: 1, start: "18:00", end: "21:00", role: "ホール",
-    travelMinutes: 150, transportCost: 13870,
+    fromStoreId: "fti", fromStoreName: "FTI横浜店",
+    toStoreId: "bayquarter", toStoreName: "ベイクォーター店",
+    dayIndex: 4, start: "18:00", end: "21:00", role: "ホール",
+    travelMinutes: 12, transportCost: 180,
   })
 
-  // 東京店の木曜午前ホール不足 → 福岡の佐々木を割り当て
+  // ベイクォーター店 土曜ランチ ホール → 町田の森本
   assignments.push({
-    helperId: "h6", helperName: "佐々木 健太",
-    fromStoreId: "fukuoka", fromStoreName: "福岡店",
-    toStoreId: "tokyo", toStoreName: "東京店",
-    dayIndex: 3, start: "10:00", end: "13:00", role: "ホール",
-    travelMinutes: 300, transportCost: 22220,
+    helperId: "h9", helperName: "森本 由美",
+    fromStoreId: "machida", fromStoreName: "町田店",
+    toStoreId: "bayquarter", toStoreName: "ベイクォーター店",
+    dayIndex: 5, start: "11:00", end: "14:00", role: "ホール",
+    travelMinutes: 40, transportCost: 570,
   })
 
-  // 東京店の土曜午前ホール不足 → 大阪の吉田を割り当て
+  // ベイクォーター店 土曜ディナー キッチン → CIAL桜木町の中島
   assignments.push({
-    helperId: "h4", helperName: "吉田 美香",
-    fromStoreId: "osaka", fromStoreName: "大阪店",
-    toStoreId: "tokyo", toStoreName: "東京店",
-    dayIndex: 5, start: "10:00", end: "13:00", role: "ホール",
-    travelMinutes: 150, transportCost: 13870,
+    helperId: "h8", helperName: "中島 龍太",
+    fromStoreId: "cial", fromStoreName: "CIAL桜木町店",
+    toStoreId: "bayquarter", toStoreName: "ベイクォーター店",
+    dayIndex: 5, start: "18:00", end: "21:00", role: "キッチン",
+    travelMinutes: 15, transportCost: 200,
   })
 
-  // 東京店の土曜キッチン不足 → 福岡の中島を割り当て
+  // ベイクォーター店 日曜ランチ ホール → FTIの大西
   assignments.push({
-    helperId: "h7", helperName: "中島 龍太",
-    fromStoreId: "fukuoka", fromStoreName: "福岡店",
-    toStoreId: "tokyo", toStoreName: "東京店",
-    dayIndex: 5, start: "11:00", end: "14:00", role: "キッチン",
-    travelMinutes: 300, transportCost: 22220,
+    helperId: "h5", helperName: "大西 翔平",
+    fromStoreId: "fti", fromStoreName: "FTI横浜店",
+    toStoreId: "bayquarter", toStoreName: "ベイクォーター店",
+    dayIndex: 6, start: "11:00", end: "14:00", role: "ホール",
+    travelMinutes: 12, transportCost: 180,
   })
 
-  // 大阪店の金曜夜ホール不足 → 東京の中村を割り当て
+  // モアーズ店 金曜夜 ホール → ベイクォーターの加藤（キッチン→ホール兼務不可、佐々木を代用）
+  assignments.push({
+    helperId: "h7", helperName: "佐々木 健太",
+    fromStoreId: "cial", fromStoreName: "CIAL桜木町店",
+    toStoreId: "mores", toStoreName: "モアーズ店",
+    dayIndex: 4, start: "18:00", end: "21:00", role: "ホール",
+    travelMinutes: 12, transportCost: 200,
+  })
+
+  // モアーズ店 土曜 キッチン不足 → ベイクォーターの中村（両方対応可）
   assignments.push({
     helperId: "h1", helperName: "中村 翔太",
-    fromStoreId: "tokyo", fromStoreName: "東京店",
-    toStoreId: "osaka", toStoreName: "大阪店",
-    dayIndex: 4, start: "18:00", end: "21:00", role: "ホール",
-    travelMinutes: 150, transportCost: 13870,
+    fromStoreId: "bayquarter", fromStoreName: "ベイクォーター店",
+    toStoreId: "mores", toStoreName: "モアーズ店",
+    dayIndex: 5, start: "11:00", end: "14:00", role: "キッチン",
+    travelMinutes: 10, transportCost: 180,
   })
 
-  // 大阪店の土曜夕方ホール不足 → 福岡の森本を割り当て
-  assignments.push({
-    helperId: "h8", helperName: "森本 由美",
-    fromStoreId: "fukuoka", fromStoreName: "福岡店",
-    toStoreId: "osaka", toStoreName: "大阪店",
-    dayIndex: 5, start: "17:00", end: "21:00", role: "ホール",
-    travelMinutes: 150, transportCost: 15400,
-  })
-
-  // 大阪店の日曜キッチン不足 → 東京の加藤を割り当て
-  assignments.push({
-    helperId: "h2", helperName: "加藤 健一",
-    fromStoreId: "tokyo", fromStoreName: "東京店",
-    toStoreId: "osaka", toStoreName: "大阪店",
-    dayIndex: 6, start: "10:00", end: "14:00", role: "キッチン",
-    travelMinutes: 150, transportCost: 13870,
-  })
-
-  // 福岡店の土曜午前ホール不足 → 大阪の吉田を割り当て (吉田は日曜空き)
+  // モアーズ店 土曜夜 ホール → モアーズの吉田（自店補完で別曜日空き活用）→ CIAL桜木町の中島は不可。町田の森本午後
   assignments.push({
     helperId: "h4", helperName: "吉田 美香",
-    fromStoreId: "osaka", fromStoreName: "大阪店",
-    toStoreId: "fukuoka", toStoreName: "福岡店",
-    dayIndex: 6, start: "10:00", end: "14:00", role: "ホール",
-    travelMinutes: 150, transportCost: 15400,
+    fromStoreId: "mores", fromStoreName: "モアーズ店",
+    toStoreId: "cial", toStoreName: "CIAL桜木町店",
+    dayIndex: 5, start: "18:00", end: "21:00", role: "ホール",
+    travelMinutes: 12, transportCost: 200,
   })
 
-  // 福岡店の日曜キッチン不足 → 大阪の松田を割り当て
+  // FTI横浜 金曜 キッチン → ベイクォーターの加藤
   assignments.push({
-    helperId: "h3", helperName: "松田 聡子",
-    fromStoreId: "osaka", fromStoreName: "大阪店",
-    toStoreId: "fukuoka", toStoreName: "福岡店",
-    dayIndex: 6, start: "17:00", end: "21:00", role: "キッチン",
-    travelMinutes: 150, transportCost: 15400,
+    helperId: "h2", helperName: "加藤 健一",
+    fromStoreId: "bayquarter", fromStoreName: "ベイクォーター店",
+    toStoreId: "fti", toStoreName: "FTI横浜店",
+    dayIndex: 4, start: "17:00", end: "20:00", role: "キッチン",
+    travelMinutes: 12, transportCost: 180,
+  })
+
+  // FTI横浜 土曜ランチ ホール → FTIの田村（自店舗シフト外の時間帯）
+  assignments.push({
+    helperId: "h6", helperName: "田村 恵美",
+    fromStoreId: "fti", fromStoreName: "FTI横浜店",
+    toStoreId: "cial", toStoreName: "CIAL桜木町店",
+    dayIndex: 5, start: "11:00", end: "15:00", role: "ホール",
+    travelMinutes: 10, transportCost: 200,
+  })
+
+  // CIAL桜木町 日曜 ホール → 町田の森本
+  assignments.push({
+    helperId: "h9", helperName: "森本 由美",
+    fromStoreId: "machida", fromStoreName: "町田店",
+    toStoreId: "cial", toStoreName: "CIAL桜木町店",
+    dayIndex: 6, start: "11:00", end: "14:00", role: "ホール",
+    travelMinutes: 42, transportCost: 640,
+  })
+
+  // CIAL桜木町 日曜 キッチン → CIAL桜木町の中島（日曜午前空き）
+  assignments.push({
+    helperId: "h8", helperName: "中島 龍太",
+    fromStoreId: "cial", fromStoreName: "CIAL桜木町店",
+    toStoreId: "bayquarter", toStoreName: "ベイクォーター店",
+    dayIndex: 6, start: "17:00", end: "20:00", role: "キッチン",
+    travelMinutes: 15, transportCost: 200,
+  })
+
+  // 町田店 金曜夜 → 町田の岡田（キッチン）
+  assignments.push({
+    helperId: "h10", helperName: "岡田 拓也",
+    fromStoreId: "machida", fromStoreName: "町田店",
+    toStoreId: "mores", toStoreName: "モアーズ店",
+    dayIndex: 6, start: "18:00", end: "21:00", role: "キッチン",
+    travelMinutes: 35, transportCost: 570,
   })
 
   steps.push({
     title: "コスト最適な配置を計算",
     description: "移動コスト・スキル適合度・労働時間のバランスを最適化",
-    detail: `距離が近い店舗間を優先し、スキル評価の高いスタッフを選定`,
+    detail: "横浜駅周辺3店舗は移動10〜15分と効率的。町田店は距離があるため優先度を調整",
   })
 
   steps.push({
@@ -411,7 +514,7 @@ export default function MultiStoreHelpOptimization() {
               <div>
                 <h1 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
                   <Building2 className="h-6 w-6 text-blue-600" />
-                  複数店舗ヘルプ一括最適化
+                  複数店舗ヘルプ一括最適化（横浜・町田エリア）
                 </h1>
                 <p className="text-sm text-gray-600 mt-1">
                   {format(weekStart, "yyyy年M月d日", { locale: ja })} 〜 {format(addDays(weekStart, 6), "M月d日", { locale: ja })}
@@ -433,37 +536,37 @@ export default function MultiStoreHelpOptimization() {
         {phase === "overview" && (
           <>
             {/* 全店舗サマリー */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
               {storesData.map((store) => (
-                <div key={store.id} className={`${store.bgColor} border ${store.borderColor} rounded-lg p-5`}>
+                <div key={store.id} className={`${store.bgColor} border ${store.borderColor} rounded-lg p-4`}>
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className={`font-semibold ${store.color} flex items-center gap-2`}>
-                      <MapPin className="h-5 w-5" />
-                      {store.name}
+                    <h3 className={`font-semibold ${store.color} flex items-center gap-1 text-sm`}>
+                      <MapPin className="h-4 w-4 flex-shrink-0" />
+                      {store.shortName}
                     </h3>
-                    <Badge variant="destructive" className="gap-1">
+                    <Badge variant="destructive" className="gap-1 text-xs">
                       <AlertTriangle className="h-3 w-3" />
                       {store.helpSlots.length}枠
                     </Badge>
                   </div>
 
                   {/* 曜日別ヘルプ必要枠 */}
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     {Array.from({ length: 7 }, (_, day) => {
                       const daySlots = store.helpSlots.filter((s) => s.dayIndex === day)
                       if (daySlots.length === 0) return null
                       return (
-                        <div key={day} className="bg-white rounded-lg p-2 border border-gray-200">
+                        <div key={day} className="bg-white rounded p-1.5 border border-gray-200">
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium text-gray-700">
-                              {format(weekDates[day], "M/d (E)", { locale: ja })}
+                            <span className="text-[10px] font-medium text-gray-700">
+                              {format(weekDates[day], "M/d(E)", { locale: ja })}
                             </span>
-                            <span className="text-xs text-red-600 font-medium">{daySlots.length}枠不足</span>
+                            <span className="text-[10px] text-red-600 font-medium">{daySlots.length}枠</span>
                           </div>
-                          <div className="flex flex-wrap gap-1 mt-1">
+                          <div className="flex flex-wrap gap-0.5 mt-0.5">
                             {daySlots.map((slot, idx) => (
-                              <Badge key={idx} variant="outline" className="text-[10px] py-0 h-5 bg-red-50 text-red-700 border-red-200">
-                                {slot.hour}時 {slot.role} -{slot.shortage}
+                              <Badge key={idx} variant="outline" className="text-[9px] py-0 h-4 bg-red-50 text-red-700 border-red-200">
+                                {slot.hour}時{slot.role.charAt(0)} -{slot.shortage}
                               </Badge>
                             ))}
                           </div>
@@ -540,10 +643,10 @@ export default function MultiStoreHelpOptimization() {
             <div className="bg-gradient-to-r from-blue-50 via-purple-50 to-emerald-50 border border-blue-200 rounded-lg p-6 text-center">
               <Sparkles className="h-12 w-12 text-blue-600 mx-auto mb-3" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                3店舗のヘルプ枠を一括で最適化
+                横浜・町田エリア 5店舗のヘルプ枠を一括で最適化
               </h3>
               <p className="text-sm text-gray-600 mb-4 max-w-lg mx-auto">
-                各店舗の不足枠と空きスタッフを照合し、移動コスト・スキル適合度を考慮した最適なヘルプ配置を自動で提案します。
+                各店舗の不足枠と空きスタッフを照合し、移動コスト・スキル適合度を考慮した最適なヘルプ配置を自動で提案します。横浜駅周辺の3店舗は徒歩圏内で効率的にヘルプ可能です。
               </p>
               <Button size="lg" onClick={handleOptimize} className="gap-2">
                 <Sparkles className="h-5 w-5" />
@@ -602,7 +705,7 @@ export default function MultiStoreHelpOptimization() {
                 </div>
                 <div className="bg-white rounded-lg p-4 border border-amber-200">
                   <p className="text-sm text-gray-600">交通費合計</p>
-                  <p className="text-2xl font-bold text-amber-900">{totalTransportCost.toLocaleString()}円</p>
+                  <p className="text-2xl font-bold text-amber-900">¥{totalTransportCost.toLocaleString()}</p>
                 </div>
                 <div className="bg-white rounded-lg p-4 border border-purple-200">
                   <p className="text-sm text-gray-600">充足率</p>
@@ -658,8 +761,8 @@ export default function MultiStoreHelpOptimization() {
                                 {assignment.fromStoreName}
                               </Badge>
                               <ArrowRight className="h-4 w-4 text-gray-400" />
-                              <Badge variant="outline" className={`${getStoreStyle(assignment.toStoreId).bgColor} ${getStoreStyle(assignment.toStoreId).color} ${getStoreStyle(assignment.toStoreId).borderColor}`}>
-                                {store.shortName}店
+                              <Badge variant="outline" className={`${store.bgColor} ${store.color} ${store.borderColor}`}>
+                                {store.shortName}
                               </Badge>
                             </div>
                             <div className="flex items-center gap-3 text-xs text-gray-500 mt-2 justify-end">
@@ -687,30 +790,30 @@ export default function MultiStoreHelpOptimization() {
                 </h3>
               </div>
               <div className="p-6">
-                <div className="grid grid-cols-3 gap-8 max-w-3xl mx-auto">
+                <div className="grid grid-cols-3 lg:grid-cols-5 gap-4 max-w-5xl mx-auto">
                   {storesData.map((store) => {
                     const incoming = assignments.filter((a) => a.toStoreId === store.id)
                     const outgoing = assignments.filter((a) => a.fromStoreId === store.id)
                     return (
-                      <div key={store.id} className={`${store.bgColor} border-2 ${store.borderColor} rounded-xl p-4 text-center`}>
-                        <MapPin className={`h-8 w-8 ${store.color} mx-auto mb-2`} />
-                        <h4 className={`font-bold ${store.color} text-lg`}>{store.shortName}店</h4>
-                        <div className="mt-3 space-y-2">
+                      <div key={store.id} className={`${store.bgColor} border-2 ${store.borderColor} rounded-xl p-3 text-center`}>
+                        <MapPin className={`h-6 w-6 ${store.color} mx-auto mb-1`} />
+                        <h4 className={`font-bold ${store.color} text-sm`}>{store.shortName}</h4>
+                        <div className="mt-2 space-y-1.5">
                           {incoming.length > 0 && (
-                            <div className="bg-white rounded-lg p-2 border border-green-200">
-                              <div className="text-xs text-green-700 font-medium">受入</div>
-                              <div className="text-lg font-bold text-green-800">{incoming.length}名</div>
+                            <div className="bg-white rounded-lg p-1.5 border border-green-200">
+                              <div className="text-[10px] text-green-700 font-medium">受入</div>
+                              <div className="text-base font-bold text-green-800">{incoming.length}名</div>
                             </div>
                           )}
                           {outgoing.length > 0 && (
-                            <div className="bg-white rounded-lg p-2 border border-blue-200">
-                              <div className="text-xs text-blue-700 font-medium">派遣</div>
-                              <div className="text-lg font-bold text-blue-800">{outgoing.length}名</div>
+                            <div className="bg-white rounded-lg p-1.5 border border-blue-200">
+                              <div className="text-[10px] text-blue-700 font-medium">派遣</div>
+                              <div className="text-base font-bold text-blue-800">{outgoing.length}名</div>
                             </div>
                           )}
-                          <div className="bg-white rounded-lg p-2 border border-gray-200">
-                            <div className="text-xs text-gray-600">元の不足</div>
-                            <div className="text-lg font-bold text-red-700">{store.helpSlots.length}枠</div>
+                          <div className="bg-white rounded-lg p-1.5 border border-gray-200">
+                            <div className="text-[10px] text-gray-600">元の不足</div>
+                            <div className="text-base font-bold text-red-700">{store.helpSlots.length}枠</div>
                           </div>
                         </div>
                       </div>
@@ -721,17 +824,20 @@ export default function MultiStoreHelpOptimization() {
                 {/* フロー矢印 */}
                 <div className="mt-6 space-y-2">
                   {assignments.map((a, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-sm bg-gray-50 rounded-lg px-4 py-2 max-w-3xl mx-auto">
-                      <Badge variant="outline" className={`${getStoreStyle(a.fromStoreId).bgColor} ${getStoreStyle(a.fromStoreId).color} ${getStoreStyle(a.fromStoreId).borderColor}`}>
+                    <div key={idx} className="flex items-center gap-2 text-sm bg-gray-50 rounded-lg px-4 py-2 max-w-4xl mx-auto">
+                      <Badge variant="outline" className={`text-xs ${getStoreStyle(a.fromStoreId).bgColor} ${getStoreStyle(a.fromStoreId).color} ${getStoreStyle(a.fromStoreId).borderColor}`}>
                         {a.fromStoreName}
                       </Badge>
                       <ArrowRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                      <Badge variant="outline" className={`${getStoreStyle(a.toStoreId).bgColor} ${getStoreStyle(a.toStoreId).color} ${getStoreStyle(a.toStoreId).borderColor}`}>
-                        {storesData.find((s) => s.id === a.toStoreId)?.name}
+                      <Badge variant="outline" className={`text-xs ${getStoreStyle(a.toStoreId).bgColor} ${getStoreStyle(a.toStoreId).color} ${getStoreStyle(a.toStoreId).borderColor}`}>
+                        {storesData.find((s) => s.id === a.toStoreId)?.shortName}
                       </Badge>
                       <span className="text-gray-700 font-medium">{a.helperName}</span>
-                      <span className="text-gray-500">
+                      <span className="text-gray-500 text-xs">
                         {DAY_LABELS[a.dayIndex]} {a.start}〜{a.end} ({a.role})
+                      </span>
+                      <span className="text-gray-400 text-xs ml-auto">
+                        <Train className="h-3 w-3 inline mr-0.5" />{a.travelMinutes}分 ¥{a.transportCost}
                       </span>
                     </div>
                   ))}

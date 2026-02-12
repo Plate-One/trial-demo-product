@@ -38,14 +38,16 @@ export default function RootLayout({
             <header className="bg-white shadow-sm">
               <div className="flex items-center justify-between p-4">
                 <div className="flex items-center">
-                  <Select defaultValue="tokyo">
-                    <SelectTrigger className="w-[180px]">
+                  <Select defaultValue="bayquarter">
+                    <SelectTrigger className="w-[280px]">
                       <SelectValue placeholder="店舗を選択" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="tokyo">Plate One 東京店</SelectItem>
-                      <SelectItem value="osaka">Plate One 大阪店</SelectItem>
-                      <SelectItem value="fukuoka">Plate One 福岡店</SelectItem>
+                      <SelectItem value="bayquarter">キリンシティ 横浜ベイクォーター店</SelectItem>
+                      <SelectItem value="mores">キリンシティ 横浜モアーズ店</SelectItem>
+                      <SelectItem value="fti">キリンシティ FOOD＆TIME ISETAN YOKOHAMA店</SelectItem>
+                      <SelectItem value="cial">キリンシティ CIAL桜木町店</SelectItem>
+                      <SelectItem value="machida">キリンシティ 町田店</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
