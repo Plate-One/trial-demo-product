@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
-import { BarChart2, CalendarDays, FileText, Users, Settings, ChevronLeft, ChevronRight } from "lucide-react"
+import { BarChart2, CalendarDays, FileText, Users, Settings, ChevronLeft, ChevronRight, HandHelping } from "lucide-react"
 import Image from "next/image"
 
 export function Sidebar() {
@@ -31,6 +31,7 @@ export function Sidebar() {
       subItems: [
         { title: "シフト管理", href: "/shifts" },
         { title: "シフト作成", href: "/shifts/create" },
+        { title: "ヘルプ最適化", href: "/shifts/help" },
       ],
     },
     {
