@@ -6,18 +6,25 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { format, addDays, startOfWeek, endOfWeek, addWeeks, subWeeks } from "date-fns"
 import { ja } from "date-fns/locale"
-import { Send, Save, Plus, Minus, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Sparkles, X } from "lucide-react"
+import {
+  Send, Save, Plus, Minus, ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
+  Sparkles, X, Cloud, Sun, CloudRain, CloudSun, Umbrella,
+  Users, TrendingUp, DollarSign, BarChart3, Utensils, Info,
+} from "lucide-react"
 
+// ========== 型定義 ==========
 interface HourlyStaffing {
   [hour: number]: number
 }
 
 interface HourlyForecast {
   [hour: number]: {
-    sales: number
     customers: number
+    avgSpend: number
+    sales: number
     suggestedHall: number
     suggestedKitchen: number
+    isPeak: boolean
   }
 }
 
@@ -28,76 +35,144 @@ interface DayStaffing {
   forecastSales: number
   forecastCustomers: number
   hourlyForecast: HourlyForecast
+  weather: { icon: string; label: string; tempHigh: number; tempLow: number; impact: number }
+  event?: string
   isHoliday?: boolean
   holidayName?: string
 }
 
-const OPERATING_HOURS = Array.from({ length: 12 }, (_, i) => i + 11)
+// ========== 定数 ==========
+const OPERATING_HOURS = Array.from({ length: 12 }, (_, i) => i + 11) // 11:00〜22:00
+const HOURLY_WAGE_HALL = 1150
+const HOURLY_WAGE_KITCHEN = 1200
+const SEAT_COUNT = 60
 
 const holidays: Record<string, string> = {
-  "2025-01-01": "元日",
-  "2025-01-13": "成人の日",
-  "2025-02-11": "建国記念の日",
-  "2025-02-23": "天皇誕生日",
-  "2025-03-20": "春分の日",
-  "2025-04-29": "昭和の日",
-  "2025-05-03": "憲法記念日",
-  "2025-05-04": "みどりの日",
-  "2025-05-05": "こどもの日",
-  "2025-07-21": "海の日",
-  "2025-08-11": "山の日",
-  "2025-09-15": "敬老の日",
-  "2025-09-23": "秋分の日",
-  "2025-10-13": "スポーツの日",
-  "2025-11-03": "文化の日",
-  "2025-11-23": "勤労感謝の日",
-  "2025-12-23": "天皇誕生日",
+  "2026-01-01": "元日", "2026-01-12": "成人の日", "2026-02-11": "建国記念の日",
+  "2026-02-23": "天皇誕生日", "2026-03-20": "春分の日", "2026-04-29": "昭和の日",
+  "2026-05-03": "憲法記念日", "2026-05-04": "みどりの日", "2026-05-05": "こどもの日",
+  "2026-05-06": "振替休日", "2026-07-20": "海の日", "2026-08-11": "山の日",
+  "2026-09-21": "敬老の日", "2026-09-23": "秋分の日", "2026-10-12": "スポーツの日",
+  "2026-11-03": "文化の日", "2026-11-23": "勤労感謝の日",
 }
 
+// ========== リアルな時間帯別パターン（キリンシティ 横浜ベイクォーター店 実績ベース） ==========
+// 実際の売上データ（2026年1月）を基にした曜日別の来店客数パターン
+// ビアレストランのため午後の谷間が深く、ランチ・ディナーのメリハリが大きい
+const WEEKDAY_CUSTOMER_PATTERN: Record<number, number> = {
+  11: 15, 12: 25, 13: 8,  14: 8,  15: 4,  16: 5,
+  17: 8,  18: 8,  19: 8,  20: 8,  21: 4,  22: 2,
+}
+
+const FRIDAY_CUSTOMER_PATTERN: Record<number, number> = {
+  11: 18, 12: 32, 13: 14, 14: 8,  15: 8,  16: 8,
+  17: 16, 18: 24, 19: 30, 20: 18, 21: 8,  22: 4,
+}
+
+const WEEKEND_CUSTOMER_PATTERN: Record<number, number> = {
+  11: 24, 12: 38, 13: 36, 14: 28, 15: 22, 16: 16,
+  17: 22, 18: 26, 19: 28, 20: 24, 21: 10, 22: 2,
+}
+
+// 時間帯別の客単価（ビアレストランのため全体的に高め。ディナーはビール込みで高単価）
+const AVG_SPEND_BY_HOUR: Record<number, number> = {
+  11: 2200, 12: 1800, 13: 2000, 14: 1800, 15: 1600, 16: 2000,
+  17: 3200, 18: 3800, 19: 4000, 20: 4200, 21: 3400, 22: 2800,
+}
+
+// 天気パターン（曜日のオフセットで決定的に割り当て）
+const WEATHER_PATTERNS = [
+  { icon: "sun", label: "晴れ", tempHigh: 12, tempLow: 3, impact: 1.05 },
+  { icon: "cloud-sun", label: "曇り時々晴", tempHigh: 10, tempLow: 2, impact: 1.0 },
+  { icon: "cloud", label: "曇り", tempHigh: 9, tempLow: 1, impact: 0.95 },
+  { icon: "sun", label: "晴れ", tempHigh: 13, tempLow: 4, impact: 1.05 },
+  { icon: "cloud-sun", label: "曇りのち晴", tempHigh: 11, tempLow: 3, impact: 1.0 },
+  { icon: "rain", label: "雨", tempHigh: 8, tempLow: 2, impact: 0.85 },
+  { icon: "cloud-sun", label: "曇り時々晴", tempHigh: 14, tempLow: 5, impact: 1.02 },
+]
+
+// ========== ピーク判定 ==========
+const isPeakHour = (hour: number): boolean => {
+  return (hour >= 12 && hour <= 13) || (hour >= 18 && hour <= 20)
+}
+
+// ========== 推奨人員ロジック ==========
+// キリンシティ 横浜ベイクォーター店（60席）。ピーク時5〜6名、通常時でも最低2名は配置
+// ホール: ピーク時は同時滞在客8人あたり1名（配膳・注文・会計の並行対応）
+//         通常時は客12人あたり1名、営業中は最低2名
+// キッチン: ピーク時はオーダー9件あたり1名（調理・盛付・仕込みの並行対応）
+//           通常時は客14人あたり1名、営業中は最低2名
+const MIN_STAFF = 2 // 営業中の最低配置人数
+
+const calculateRecommendedHall = (customers: number, hour: number): number => {
+  const peak = isPeakHour(hour)
+  const ratio = peak ? 8 : 12
+  return Math.max(MIN_STAFF, Math.ceil(customers / ratio))
+}
+
+const calculateRecommendedKitchen = (customers: number, hour: number): number => {
+  const peak = isPeakHour(hour)
+  const ratio = peak ? 9 : 14
+  return Math.max(MIN_STAFF, Math.ceil(customers / ratio))
+}
+
+// ========== 決定的なばらつき（日付ベースのシード） ==========
+const seededVariation = (dateStr: string, hour: number, salt: number): number => {
+  let hash = 0
+  const input = `${dateStr}-${hour}-${salt}`
+  for (let i = 0; i < input.length; i++) {
+    const char = input.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash |= 0
+  }
+  // JSの負数モジュロ対策: 必ず0〜6の範囲にしてから-3する → -3〜+3
+  return (((hash % 7) + 7) % 7) - 3
+}
+
+// ========== データ生成 ==========
 const isHolidayCheck = (date: Date): { isHoliday: boolean; holidayName?: string } => {
   const dateStr = format(date, "yyyy-MM-dd")
-  const holidayName = holidays[dateStr]
-  return { isHoliday: !!holidayName, holidayName }
+  return { isHoliday: !!holidays[dateStr], holidayName: holidays[dateStr] }
 }
 
-const generateHourlyForecast = (date: Date, totalSales: number, totalCustomers: number): HourlyForecast => {
-  const isWeekend = date.getDay() === 0 || date.getDay() === 6
-  const holidayInfo = isHolidayCheck(date)
-  const isSpecialDay = isWeekend || holidayInfo.isHoliday
+const getCustomerPattern = (date: Date): Record<number, number> => {
+  const dow = date.getDay()
+  if (dow === 0 || dow === 6) return WEEKEND_CUSTOMER_PATTERN
+  if (dow === 5) return FRIDAY_CUSTOMER_PATTERN
+  return WEEKDAY_CUSTOMER_PATTERN
+}
 
+const generateHourlyForecast = (date: Date, weatherImpact: number): HourlyForecast => {
+  const basePattern = getCustomerPattern(date)
+  const holidayInfo = isHolidayCheck(date)
+  const dateStr = format(date, "yyyy-MM-dd")
   const hourlyForecast: HourlyForecast = {}
 
+  // 祝日は週末パターンに近づける
+  const effectivePattern = holidayInfo.isHoliday ? WEEKEND_CUSTOMER_PATTERN : basePattern
+
   OPERATING_HOURS.forEach((hour) => {
-    let salesRatio = 0.05
-    let customerRatio = 0.05
+    const baseCustomers = effectivePattern[hour] || 5
+    // 日付ごとの小さなばらつき（±15%程度）
+    const variation = seededVariation(dateStr, hour, 42)
+    const variationFactor = 1 + (variation / 20) // ±15%
+    const customers = Math.max(2, Math.round(baseCustomers * weatherImpact * variationFactor))
 
-    if (hour >= 11 && hour <= 13) {
-      salesRatio = isSpecialDay ? 0.12 : 0.1
-      customerRatio = isSpecialDay ? 0.12 : 0.1
-    } else if (hour >= 18 && hour <= 20) {
-      salesRatio = isSpecialDay ? 0.15 : 0.12
-      customerRatio = isSpecialDay ? 0.15 : 0.12
-    } else if (hour >= 14 && hour <= 17) {
-      salesRatio = 0.03
-      customerRatio = 0.03
-    } else if (hour >= 21) {
-      salesRatio = isSpecialDay ? 0.08 : 0.06
-      customerRatio = isSpecialDay ? 0.08 : 0.06
-    }
+    const avgSpend = AVG_SPEND_BY_HOUR[hour] || 1500
+    // 客単価にも小さなばらつき
+    const spendVariation = seededVariation(dateStr, hour, 99)
+    const adjustedSpend = Math.round((avgSpend + spendVariation * 50) / 10) * 10
 
-    const hourlySales = Math.floor(totalSales * salesRatio)
-    const hourlyCustomers = Math.floor(totalCustomers * customerRatio)
-    const adjustedCustomers = Math.max(5, Math.min(50, hourlyCustomers))
-
-    const peakMultiplier = (hour >= 11 && hour <= 13) || (hour >= 18 && hour <= 20) ? 1.5 : 1
-    const suggestedHall = Math.max(1, Math.ceil((adjustedCustomers / 20) * peakMultiplier))
-    const suggestedKitchen = Math.max(1, Math.ceil((adjustedCustomers / 30) * peakMultiplier))
+    const sales = customers * adjustedSpend
+    const peak = isPeakHour(hour)
 
     hourlyForecast[hour] = {
-      sales: Math.max(10000, Math.min(120000, hourlySales)),
-      customers: adjustedCustomers,
-      suggestedHall,
-      suggestedKitchen,
+      customers,
+      avgSpend: adjustedSpend,
+      sales,
+      suggestedHall: calculateRecommendedHall(customers, hour),
+      suggestedKitchen: calculateRecommendedKitchen(customers, hour),
+      isPeak: peak,
     }
   })
 
@@ -105,34 +180,35 @@ const generateHourlyForecast = (date: Date, totalSales: number, totalCustomers: 
 }
 
 const generateWeekData = (weekStart: Date): DayStaffing[] => {
-  const days = []
+  const days: DayStaffing[] = []
   for (let i = 0; i < 7; i++) {
     const date = addDays(weekStart, i)
-    const isWeekend = date.getDay() === 0 || date.getDay() === 6
     const holidayInfo = isHolidayCheck(date)
-    const isSpecialDay = isWeekend || holidayInfo.isHoliday
-    const multiplier = isSpecialDay ? 1.3 : 1.0
+    const weather = WEATHER_PATTERNS[i % WEATHER_PATTERNS.length]
 
-    const forecastSales = Math.floor((150000 + Math.random() * 100000) * multiplier)
-    const forecastCustomers = Math.floor((80 + Math.random() * 60) * multiplier)
-    const hourlyForecast = generateHourlyForecast(date, forecastSales, forecastCustomers)
+    // 曜日ごとのイベント例
+    let event: string | undefined
+    const dow = date.getDay()
+    if (dow === 3) event = "レディースデー"
+    if (dow === 5) event = "プレミアムフライデー"
 
+    const hourlyForecast = generateHourlyForecast(date, weather.impact)
+
+    // 日の合計を算出
+    const forecastSales = OPERATING_HOURS.reduce((sum, h) => sum + hourlyForecast[h].sales, 0)
+    const forecastCustomers = OPERATING_HOURS.reduce((sum, h) => sum + hourlyForecast[h].customers, 0)
+
+    // 現在の人員配置（推奨からやや外れた現実的なデフォルト値）
     const hallStaffing: HourlyStaffing = {}
     const kitchenStaffing: HourlyStaffing = {}
 
     OPERATING_HOURS.forEach((hour) => {
-      const forecast = hourlyForecast[hour]
+      const rec = hourlyForecast[hour]
+      const drift = seededVariation(format(date, "yyyy-MM-dd"), hour, 7)
+      const driftVal = drift > 1 ? 1 : drift < -1 ? -1 : 0
 
-      // デフォルト値を少し揺らしつつ0〜5に収める
-      const clamp = (value: number) => Math.max(0, Math.min(5, value))
-      const drift = () => Math.round(Math.random() * 2) - 1 // -1,0,1
-
-      const baseHall = clamp(forecast.suggestedHall + drift())
-      const baseKitchen = clamp(forecast.suggestedKitchen + drift())
-
-      // 推奨がある場合は最低1は確保
-      hallStaffing[hour] = forecast.suggestedHall > 0 ? Math.max(1, baseHall) : baseHall
-      kitchenStaffing[hour] = forecast.suggestedKitchen > 0 ? Math.max(1, baseKitchen) : baseKitchen
+      hallStaffing[hour] = Math.max(1, rec.suggestedHall + driftVal)
+      kitchenStaffing[hour] = Math.max(1, rec.suggestedKitchen + (driftVal > 0 ? 0 : driftVal))
     })
 
     days.push({
@@ -142,6 +218,8 @@ const generateWeekData = (weekStart: Date): DayStaffing[] => {
       forecastSales,
       forecastCustomers,
       hourlyForecast,
+      weather,
+      event,
       isHoliday: holidayInfo.isHoliday,
       holidayName: holidayInfo.holidayName,
     })
@@ -154,65 +232,60 @@ const generateAIProposal = (weeklyData: DayStaffing[]): DayStaffing[] => {
   return weeklyData.map((day) => {
     const hallStaffing: HourlyStaffing = {}
     const kitchenStaffing: HourlyStaffing = {}
-
     OPERATING_HOURS.forEach((hour) => {
       hallStaffing[hour] = day.hourlyForecast[hour].suggestedHall
       kitchenStaffing[hour] = day.hourlyForecast[hour].suggestedKitchen
     })
-
-    return {
-      ...day,
-      hallStaffing,
-      kitchenStaffing,
-    }
+    return { ...day, hallStaffing, kitchenStaffing }
   })
 }
 
+// ========== 天気アイコン ==========
+const WeatherIcon = ({ icon, className = "h-4 w-4" }: { icon: string; className?: string }) => {
+  switch (icon) {
+    case "sun": return <Sun className={`${className} text-orange-500`} />
+    case "cloud": return <Cloud className={`${className} text-gray-500`} />
+    case "cloud-sun": return <CloudSun className={`${className} text-amber-500`} />
+    case "rain": return <CloudRain className={`${className} text-blue-500`} />
+    default: return <Sun className={`${className} text-orange-500`} />
+  }
+}
 
+// ========== メインコンポーネント ==========
 export default function ShiftCreation() {
   const [currentWeekStart, setCurrentWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
   const [weeklyData, setWeeklyData] = useState<DayStaffing[]>([])
-  const [expandedHours, setExpandedHours] = useState<Set<number>>(new Set())
+  const [expandedHours, setExpandedHours] = useState<Set<number>>(new Set(OPERATING_HOURS))
   const [showProblemsOnly, setShowProblemsOnly] = useState(false)
   const [showAIProposal, setShowAIProposal] = useState(false)
   const [aiProposalData, setAIProposalData] = useState<DayStaffing[]>([])
+  const [showForecastDetail, setShowForecastDetail] = useState(false)
 
   useEffect(() => {
     const data = generateWeekData(currentWeekStart)
     setWeeklyData(data)
     setAIProposalData(generateAIProposal(data))
-    
-    // 問題のある時間帯を自動展開
-    const problemHours = new Set<number>()
-    data.forEach((day) => {
-      OPERATING_HOURS.forEach((hour) => {
-        const hallDiff = (day.hallStaffing[hour] || 0) - day.hourlyForecast[hour].suggestedHall
-        const kitchenDiff = (day.kitchenStaffing[hour] || 0) - day.hourlyForecast[hour].suggestedKitchen
-        if (hallDiff < 0 || kitchenDiff < 0 || hallDiff > 0 || kitchenDiff > 0) {
-          problemHours.add(hour)
-        }
-      })
-    })
-    setExpandedHours(problemHours)
   }, [currentWeekStart])
-
 
   // KPI計算
   const kpis = useMemo(() => {
-    const hallTotal = weeklyData.reduce((sum, day) => 
+    if (weeklyData.length === 0) return { hallTotal: 0, kitchenTotal: 0, totalHours: 0, laborCost: 0, totalSales: 0, laborCostRatio: 0, totalCustomers: 0, avgCustomersPerDay: 0 }
+    const hallTotal = weeklyData.reduce((sum, day) =>
       sum + Object.values(day.hallStaffing).reduce((s, v) => s + v, 0), 0)
-    const kitchenTotal = weeklyData.reduce((sum, day) => 
+    const kitchenTotal = weeklyData.reduce((sum, day) =>
       sum + Object.values(day.kitchenStaffing).reduce((s, v) => s + v, 0), 0)
     const totalHours = hallTotal + kitchenTotal
-    const laborCost = totalHours * 1200
+    const laborCost = hallTotal * HOURLY_WAGE_HALL + kitchenTotal * HOURLY_WAGE_KITCHEN
     const totalSales = weeklyData.reduce((sum, day) => sum + day.forecastSales, 0)
     const laborCostRatio = totalSales > 0 ? (laborCost / totalSales) * 100 : 0
+    const totalCustomers = weeklyData.reduce((sum, day) => sum + day.forecastCustomers, 0)
+    const avgCustomersPerDay = Math.round(totalCustomers / 7)
 
-    return { hallTotal, kitchenTotal, totalHours, laborCost, totalSales, laborCostRatio }
+    return { hallTotal, kitchenTotal, totalHours, laborCost, totalSales, laborCostRatio, totalCustomers, avgCustomersPerDay }
   }, [weeklyData])
 
-  // 問題のある時間帯を検出
   const hasProblem = (dayIndex: number, hour: number, position: "hall" | "kitchen") => {
+    if (!weeklyData[dayIndex]) return false
     const day = weeklyData[dayIndex]
     const staffing = position === "hall" ? day.hallStaffing : day.kitchenStaffing
     const currentCount = staffing[hour] || 0
@@ -253,11 +326,8 @@ export default function ShiftCreation() {
   const toggleHourExpansion = (hour: number) => {
     setExpandedHours((prev) => {
       const newSet = new Set(prev)
-      if (newSet.has(hour)) {
-        newSet.delete(hour)
-      } else {
-        newSet.add(hour)
-      }
+      if (newSet.has(hour)) newSet.delete(hour)
+      else newSet.add(hour)
       return newSet
     })
   }
@@ -269,72 +339,191 @@ export default function ShiftCreation() {
 
   const weekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 })
 
+  if (weeklyData.length === 0) return null
+
+  // ========== 予測詳細テーブル ==========
+  const renderForecastDetail = () => (
+    <div className="rounded-lg border overflow-hidden bg-white">
+      <div
+        className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-indigo-50 to-blue-50 cursor-pointer"
+        onClick={() => setShowForecastDetail(!showForecastDetail)}
+      >
+        <div className="flex items-center gap-2">
+          <BarChart3 className="h-5 w-5 text-indigo-600" />
+          <h3 className="text-base font-semibold text-gray-800">時間帯別 売上予測詳細</h3>
+          <Badge variant="secondary" className="text-xs">需要予測モデル v2.1</Badge>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500">席数 {SEAT_COUNT}席</span>
+          {showForecastDetail ? <ChevronUp className="h-4 w-4 text-gray-500" /> : <ChevronDown className="h-4 w-4 text-gray-500" />}
+        </div>
+      </div>
+      {showForecastDetail && (
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse min-w-[1100px]">
+            <thead>
+              <tr className="bg-gray-50">
+                <th className="sticky left-0 z-10 bg-gray-50 border-b border-r p-2 text-center text-xs font-medium text-gray-600 w-20">時間</th>
+                <th className="border-b border-r p-2 text-center text-xs font-medium text-gray-600 w-12">指標</th>
+                {weeklyData.map((day, i) => {
+                  const isWeekend = day.date.getDay() === 0 || day.date.getDay() === 6
+                  const isSpecial = isWeekend || day.isHoliday
+                  return (
+                    <th key={i} className={`border-b border-r p-2 text-center min-w-[110px] ${isSpecial ? "bg-red-50" : "bg-gray-50"}`}>
+                      <div className="flex flex-col items-center gap-0.5">
+                        <span className={`text-xs font-medium ${isSpecial ? "text-red-600" : "text-gray-700"}`}>
+                          {format(day.date, "M/d (E)", { locale: ja })}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <WeatherIcon icon={day.weather.icon} className="h-3.5 w-3.5" />
+                          <span className="text-[10px] text-gray-500">{day.weather.tempHigh}°/{day.weather.tempLow}°</span>
+                        </div>
+                        {day.event && <Badge variant="outline" className="text-[9px] py-0 h-4 border-purple-200 text-purple-600">{day.event}</Badge>}
+                        {day.isHoliday && <Badge variant="outline" className="text-[9px] py-0 h-4 border-red-200 text-red-600">{day.holidayName}</Badge>}
+                      </div>
+                    </th>
+                  )
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              {OPERATING_HOURS.map((hour) => {
+                const peak = isPeakHour(hour)
+                return (
+                  <tr key={hour} className={peak ? "bg-amber-50/40" : ""}>
+                    <td rowSpan={1} className={`sticky left-0 z-10 border-b border-r p-1.5 text-center text-xs font-medium ${peak ? "bg-amber-50 text-amber-800" : "bg-white text-gray-600"}`}>
+                      <div>{hour}:00</div>
+                      {peak && <Badge variant="outline" className="text-[8px] py-0 h-3.5 border-amber-300 text-amber-700 mt-0.5">ピーク</Badge>}
+                    </td>
+                    <td className="border-b border-r p-0 text-[10px]">
+                      <div className="flex flex-col divide-y">
+                        <div className="px-1.5 py-0.5 text-gray-500 flex items-center gap-1"><Users className="h-2.5 w-2.5" />客数</div>
+                        <div className="px-1.5 py-0.5 text-gray-500 flex items-center gap-1"><Utensils className="h-2.5 w-2.5" />客単価</div>
+                        <div className="px-1.5 py-0.5 text-gray-500 flex items-center gap-1"><DollarSign className="h-2.5 w-2.5" />売上</div>
+                      </div>
+                    </td>
+                    {weeklyData.map((day, dayIndex) => {
+                      const f = day.hourlyForecast[hour]
+                      const isWeekend = day.date.getDay() === 0 || day.date.getDay() === 6
+                      return (
+                        <td key={dayIndex} className={`border-b border-r p-0 text-[10px] ${isWeekend || day.isHoliday ? "bg-red-50/30" : ""}`}>
+                          <div className="flex flex-col divide-y">
+                            <div className="px-1.5 py-0.5 text-center font-semibold text-gray-900">{f.customers}人</div>
+                            <div className="px-1.5 py-0.5 text-center text-gray-600">¥{f.avgSpend.toLocaleString()}</div>
+                            <div className="px-1.5 py-0.5 text-center font-medium text-gray-800">¥{f.sales.toLocaleString()}</div>
+                          </div>
+                        </td>
+                      )
+                    })}
+                  </tr>
+                )
+              })}
+              {/* 日計 */}
+              <tr className="bg-gray-100 font-semibold">
+                <td className="sticky left-0 z-10 bg-gray-100 border-t p-2 text-center text-xs">日計</td>
+                <td className="border-t border-r p-0 text-[10px]">
+                  <div className="flex flex-col divide-y">
+                    <div className="px-1.5 py-0.5 text-gray-600">客数</div>
+                    <div className="px-1.5 py-0.5 text-gray-600">売上</div>
+                  </div>
+                </td>
+                {weeklyData.map((day, i) => (
+                  <td key={i} className="border-t border-r p-0 text-[10px]">
+                    <div className="flex flex-col divide-y">
+                      <div className="px-1.5 py-1 text-center font-bold text-gray-900">{day.forecastCustomers}人</div>
+                      <div className="px-1.5 py-1 text-center font-bold text-gray-900">¥{day.forecastSales.toLocaleString()}</div>
+                    </div>
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+
+  // ========== 推奨ロジック説明 ==========
+  const renderStaffingLogic = () => (
+    <div className="bg-blue-50/50 border border-blue-200 rounded-lg p-4 text-sm">
+      <div className="flex items-start gap-2">
+        <Info className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+        <div>
+          <p className="font-medium text-blue-900 mb-1">推奨人員の算出ロジック</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-blue-800">
+            <div className="bg-white rounded p-2 border border-blue-100">
+              <span className="font-semibold">ホール:</span> ピーク時（12〜13時, 18〜20時）= 同時滞在客8名あたり1名 / 通常時 = 客12名あたり1名（営業中は最低2名）
+            </div>
+            <div className="bg-white rounded p-2 border border-blue-100">
+              <span className="font-semibold">キッチン:</span> ピーク時 = オーダー9件あたり1名 / 通常時 = 客14名あたり1名（営業中は最低2名）
+            </div>
+          </div>
+          <p className="text-xs text-blue-600 mt-1">※ 客数予測は過去実績・曜日・天候・イベントをもとにAIモデルが算出</p>
+        </div>
+      </div>
+    </div>
+  )
+
+  // ========== シフトテーブル ==========
   const renderShiftTable = (position: "hall" | "kitchen", title: string, hours: number, bg: string) => {
     const dataToShow = showAIProposal ? aiProposalData : weeklyData
+    const wage = position === "hall" ? HOURLY_WAGE_HALL : HOURLY_WAGE_KITCHEN
 
-  return (
+    return (
       <div key={position} className={`rounded-lg border overflow-hidden ${bg}`}>
         <div className="flex items-center justify-between px-4 py-3 border-b bg-white/60 backdrop-blur">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
             <Badge variant="secondary">{hours}h</Badge>
+            <span className="text-xs text-gray-500">@¥{wage.toLocaleString()}/h</span>
           </div>
           <div className="flex items-center gap-2">
-        <Button
+            <Button
               variant="outline"
               size="sm"
               onClick={() => setShowProblemsOnly(!showProblemsOnly)}
               className={showProblemsOnly ? "bg-amber-50" : ""}
             >
-              {showProblemsOnly ? "すべて表示" : "問題のみ"}
-        </Button>
+              {showProblemsOnly ? "すべて表示" : "差異のみ"}
+            </Button>
             {showAIProposal && (
               <Button variant="outline" size="sm" onClick={() => setShowAIProposal(false)}>
                 <X className="h-4 w-4 mr-1" />
                 提案を閉じる
-        </Button>
+              </Button>
             )}
           </div>
-      </div>
-          <div className="overflow-x-auto">
-          <table className="w-full border-collapse min-w-[900px]">
-              <thead>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse min-w-[1000px]">
+            <thead>
               <tr className="bg-gray-50 sticky top-0 z-10">
-                <th className="sticky left-0 z-10 bg-gray-50 border-b border-r p-3 text-center font-medium text-gray-600 w-20">
-                  時間
-                    </th>
+                <th className="sticky left-0 z-20 bg-gray-50 border-b border-r p-2 text-center font-medium text-gray-600 w-24">
+                  <div className="text-xs">時間</div>
+                </th>
                 {weeklyData.map((day, dayIndex) => {
                   const isWeekend = day.date.getDay() === 0 || day.date.getDay() === 6
                   const isSpecialDay = isWeekend || day.isHoliday
-
                   return (
-                    <th
-                      key={dayIndex}
-                      id={`day-${dayIndex}`}
-                      className={`border-b border-r p-3 text-center min-w-[110px] ${
-                        isSpecialDay ? "bg-red-50" : "bg-gray-50"
-                      }`}
-                    >
-                      <div className="flex flex-col items-center gap-1">
+                    <th key={dayIndex} className={`border-b border-r p-2 text-center min-w-[120px] ${isSpecialDay ? "bg-red-50" : "bg-gray-50"}`}>
+                      <div className="flex flex-col items-center gap-0.5">
                         <span className={`text-xs ${isSpecialDay ? "text-red-600" : "text-gray-500"}`}>
                           {format(day.date, "E", { locale: ja })}
                         </span>
-                        <span className={`text-lg font-bold ${isSpecialDay ? "text-red-600" : "text-gray-800"}`}>
+                        <span className={`text-base font-bold ${isSpecialDay ? "text-red-600" : "text-gray-800"}`}>
                           {format(day.date, "d")}
                         </span>
-                        {day.isHoliday && (
-                          <span className="text-[10px] text-red-600">{day.holidayName}</span>
-                        )}
-                        <span className="text-[10px] text-gray-500">
-                          予測 {day.forecastCustomers}人
-                        </span>
+                        <div className="flex items-center gap-1">
+                          <WeatherIcon icon={day.weather.icon} className="h-3 w-3" />
+                          <span className="text-[10px] text-gray-500">{day.weather.label}</span>
+                        </div>
+                        {day.isHoliday && <span className="text-[9px] text-red-600">{day.holidayName}</span>}
+                        <span className="text-[10px] text-gray-500">予測 {day.forecastCustomers}人</span>
                       </div>
                     </th>
                   )
                 })}
-                <th className="border-b p-3 text-center font-medium text-gray-600 w-16 bg-gray-100">
-                  合計
-                </th>
+                <th className="border-b p-2 text-center font-medium text-gray-600 w-16 bg-gray-100">合計</th>
               </tr>
             </thead>
             <tbody>
@@ -343,141 +532,123 @@ export default function ShiftCreation() {
                   const staffing = position === "hall" ? day.hallStaffing : day.kitchenStaffing
                   return sum + (staffing[hour] || 0)
                 }, 0)
-
-                // この時間帯に問題があるかチェック
-                const hasProblemInHour = weeklyData.some((day, dayIndex) => hasProblem(dayIndex, hour, position))
+                const hasProblemInHour = weeklyData.some((_, dayIndex) => hasProblem(dayIndex, hour, position))
                 const isExpanded = expandedHours.has(hour)
                 const shouldShow = !showProblemsOnly || hasProblemInHour
-
                 if (!shouldShow && !isExpanded) return null
+                const peak = isPeakHour(hour)
 
                 return (
                   <tr
                     key={hour}
-                    className={`hover:bg-gray-50 ${hasProblemInHour ? "bg-amber-50/30" : ""} ${
-                      !isExpanded && !hasProblemInHour ? "hidden" : ""
-                    }`}
+                    className={`hover:bg-gray-50/50 ${hasProblemInHour ? "bg-amber-50/30" : ""} ${!isExpanded && !hasProblemInHour ? "hidden" : ""} ${peak ? "border-l-4 border-l-amber-400" : ""}`}
                   >
-                    <td className="sticky left-0 z-10 bg-white border-b border-r p-2 text-center">
+                    <td className={`sticky left-0 z-10 border-b border-r p-1.5 text-center ${peak ? "bg-amber-50" : "bg-white"}`}>
                       <div className="flex items-center justify-center gap-1">
-                        <button
-                          onClick={() => toggleHourExpansion(hour)}
-                          className="p-1 hover:bg-gray-100 rounded"
-                        >
-                          {isExpanded ? (
-                            <ChevronUp className="h-4 w-4 text-gray-500" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4 text-gray-500" />
-                          )}
+                        <button onClick={() => toggleHourExpansion(hour)} className="p-0.5 hover:bg-gray-100 rounded">
+                          {isExpanded ? <ChevronUp className="h-3.5 w-3.5 text-gray-500" /> : <ChevronDown className="h-3.5 w-3.5 text-gray-500" />}
                         </button>
-                        <span className="text-sm font-medium text-gray-700">{hour}:00</span>
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">{hour}:00</span>
+                          {peak && <div className="text-[8px] text-amber-600 font-medium">ピーク</div>}
+                        </div>
                       </div>
-                      </td>
+                    </td>
                     {dataToShow.map((day, dayIndex) => {
                       const staffing = position === "hall" ? day.hallStaffing : day.kitchenStaffing
                       const currentCount = staffing[hour] || 0
-                      const suggested = position === "hall"
-                            ? day.hourlyForecast[hour].suggestedHall
-                            : day.hourlyForecast[hour].suggestedKitchen
+                      const forecast = day.hourlyForecast[hour]
+                      const suggested = position === "hall" ? forecast.suggestedHall : forecast.suggestedKitchen
                       const diff = currentCount - suggested
                       const isWeekend = day.date.getDay() === 0 || day.date.getDay() === 6
                       const isSpecialDay = isWeekend || day.isHoliday
-                      const isProblem = diff !== 0
+                      const isProblemCell = diff !== 0
 
-                        return (
+                      return (
                         <td
                           key={dayIndex}
-                          className={`border-b border-r p-1 ${isSpecialDay ? "bg-red-50/30" : ""} ${
-                            showAIProposal && isProblem ? "ring-2 ring-blue-300" : ""
-                          }`}
+                          className={`border-b border-r p-1 ${isSpecialDay ? "bg-red-50/30" : ""} ${showAIProposal && isProblemCell ? "ring-2 ring-blue-300" : ""}`}
                         >
                           <div className="flex flex-col items-center">
-                              <div className="flex items-center gap-1">
-                                <Button
-                                variant="ghost"
-                                  size="sm"
-                                className="h-11 w-11 min-h-[44px] min-w-[44px] p-0 rounded-full hover:bg-gray-200"
+                            {/* 客数表示 */}
+                            <div className="text-[9px] text-gray-400 mb-0.5">
+                              {forecast.customers}人 × ¥{forecast.avgSpend.toLocaleString()}
+                            </div>
+                            <div className="flex items-center gap-0.5">
+                              <Button
+                                variant="ghost" size="sm"
+                                className="h-9 w-9 min-h-[36px] min-w-[36px] p-0 rounded-full hover:bg-gray-200"
                                 onClick={() => handleStaffCountChange(dayIndex, hour, position, -1)}
                                 disabled={currentCount <= 0 || showAIProposal}
                               >
-                                <Minus className="h-5 w-5" />
-                                </Button>
-                                <Input
-                                  type="number"
-                                  value={currentCount}
+                                <Minus className="h-4 w-4" />
+                              </Button>
+                              <Input
+                                type="number" value={currentCount}
                                 onChange={(e) => handleDirectInput(dayIndex, hour, position, e.target.value)}
-                                className="w-12 h-11 text-center text-base font-semibold p-0 border-gray-200"
-                                  min="0"
-                                disabled={showAIProposal}
-                                />
-                                <Button
-                                variant="ghost"
-                                  size="sm"
-                                className="h-11 w-11 min-h-[44px] min-w-[44px] p-0 rounded-full hover:bg-gray-200"
+                                className="w-10 h-9 text-center text-sm font-semibold p-0 border-gray-200"
+                                min="0" disabled={showAIProposal}
+                              />
+                              <Button
+                                variant="ghost" size="sm"
+                                className="h-9 w-9 min-h-[36px] min-w-[36px] p-0 rounded-full hover:bg-gray-200"
                                 onClick={() => handleStaffCountChange(dayIndex, hour, position, 1)}
                                 disabled={showAIProposal}
                               >
-                                <Plus className="h-5 w-5" />
+                                <Plus className="h-4 w-4" />
                               </Button>
                             </div>
-                            <div className="text-[10px] text-gray-600 mt-1 flex items-center gap-1">
-                              <span>推奨 {suggested}</span>
+                            <div className="text-[10px] text-gray-600 mt-0.5 flex items-center gap-1">
+                              <span>推奨{suggested}</span>
                               {diff !== 0 && (
-                                <span
-                                  className={`px-1 rounded font-medium ${
-                                    diff < 0
-                                      ? "bg-red-100 text-red-700"
-                                      : "bg-amber-100 text-amber-700"
-                                  }`}
-                                >
+                                <span className={`px-1 rounded font-medium ${diff < 0 ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
                                   {diff > 0 ? `+${diff}` : diff}
                                 </span>
                               )}
                               {diff === 0 && (
-                                <span className="text-green-600 px-1 rounded bg-green-50 font-medium">充足</span>
+                                <span className="text-green-600 px-1 rounded bg-green-50 font-medium">OK</span>
                               )}
-                              </div>
                             </div>
-                          </td>
-                        )
-                      })}
-                    <td className="border-b p-2 text-center font-medium bg-gray-50">
-                      {hourTotal}
-                    </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-              <tfoot>
+                          </div>
+                        </td>
+                      )
+                    })}
+                    <td className="border-b p-2 text-center font-medium bg-gray-50 text-sm">{hourTotal}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+            <tfoot>
               <tr className="bg-gray-100">
-                <td className="sticky left-0 z-10 bg-gray-100 border-t p-3 text-center font-semibold">日計</td>
+                <td className="sticky left-0 z-10 bg-gray-100 border-t p-2 text-center font-semibold text-sm">日計</td>
                 {weeklyData.map((day, dayIndex) => {
                   const staffing = position === "hall" ? day.hallStaffing : day.kitchenStaffing
                   const total = Object.values(staffing).reduce((s, v) => s + v, 0)
-                    return (
-                    <td key={dayIndex} className="border-t border-r p-3 text-center">
-                      <div className="font-bold">{total}h</div>
-                      <div className="text-xs text-gray-500">{(total * 1200).toLocaleString()}円</div>
-                      </td>
-                    )
-                  })}
-                <td className="border-t p-3 text-center bg-gray-200">
-                  <div className="font-bold">
+                  return (
+                    <td key={dayIndex} className="border-t border-r p-2 text-center">
+                      <div className="font-bold text-sm">{total}h</div>
+                      <div className="text-[10px] text-gray-500">¥{(total * wage).toLocaleString()}</div>
+                    </td>
+                  )
+                })}
+                <td className="border-t p-2 text-center bg-gray-200">
+                  <div className="font-bold text-sm">
                     {weeklyData.reduce((sum, day) => {
                       const staffing = position === "hall" ? day.hallStaffing : day.kitchenStaffing
                       return sum + Object.values(staffing).reduce((s, v) => s + v, 0)
                     }, 0)}h
                   </div>
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-                    </div>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
     )
   }
 
-                        return (
+  // ========== レンダリング ==========
+  return (
     <div className="bg-white rounded-lg shadow-sm">
       {/* ヘッダー */}
       <div className="border-b">
@@ -485,7 +656,7 @@ export default function ShiftCreation() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h1 className="text-xl font-semibold text-gray-800">シフト作成</h1>
-              <p className="text-sm text-gray-600 mt-1">週間シフトの作成・編集</p>
+              <p className="text-sm text-gray-600 mt-1">売上予測に基づく週間シフトの作成・編集</p>
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm">
@@ -497,21 +668,19 @@ export default function ShiftCreation() {
                 従業員に通知
               </Button>
             </div>
-                              </div>
-                              </div>
-                            </div>
+          </div>
+        </div>
+      </div>
 
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-5">
         {/* 週選択 */}
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={handlePrevWeek}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" onClick={handleThisWeek}>
-              今週
-            </Button>
-            <span className="text-sm font-medium px-3 py-1 bg-gray-100 rounded">
+            <Button variant="outline" size="sm" onClick={handleThisWeek}>今週</Button>
+            <span className="text-sm font-medium px-3 py-1.5 bg-gray-100 rounded">
               {format(currentWeekStart, "yyyy年M月d日", { locale: ja })} 〜 {format(weekEnd, "M月d日", { locale: ja })}
             </span>
             <Button variant="outline" size="sm" onClick={handleNextWeek}>
@@ -519,41 +688,65 @@ export default function ShiftCreation() {
             </Button>
           </div>
           {!showAIProposal && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowAIProposal(true)}
-              className="gap-2"
-            >
+            <Button variant="outline" size="sm" onClick={() => setShowAIProposal(true)} className="gap-2">
               <Sparkles className="h-4 w-4" />
               AI提案を表示
             </Button>
           )}
-                          </div>
+        </div>
 
         {/* KPIサマリー */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-gray-50 rounded-lg p-4">
-            <p className="text-sm text-gray-600">週間予測売上</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{kpis.totalSales.toLocaleString()}円</p>
-                              </div>
-          <div className="bg-gray-50 rounded-lg p-4">
-            <p className="text-sm text-gray-600">総工数</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{kpis.totalHours}h</p>
-            <p className="text-xs text-gray-500">ホール {kpis.hallTotal}h / キッチン {kpis.kitchenTotal}h</p>
-                              </div>
-          <div className="bg-gray-50 rounded-lg p-4">
-            <p className="text-sm text-gray-600">人件費</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{kpis.laborCost.toLocaleString()}円</p>
-                            </div>
-          <div className="bg-gray-50 rounded-lg p-4">
-            <p className="text-sm text-gray-600">人件費率</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{kpis.laborCostRatio.toFixed(1)}%</p>
-                            </div>
-                          </div>
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+          <div className="bg-indigo-50 rounded-lg p-3 border border-indigo-100">
+            <div className="flex items-center gap-1.5 text-indigo-600 mb-1">
+              <TrendingUp className="h-4 w-4" />
+              <p className="text-xs font-medium">週間予測売上</p>
+            </div>
+            <p className="text-xl font-bold text-indigo-900">¥{kpis.totalSales.toLocaleString()}</p>
+          </div>
+          <div className="bg-cyan-50 rounded-lg p-3 border border-cyan-100">
+            <div className="flex items-center gap-1.5 text-cyan-600 mb-1">
+              <Users className="h-4 w-4" />
+              <p className="text-xs font-medium">週間予測客数</p>
+            </div>
+            <p className="text-xl font-bold text-cyan-900">{kpis.totalCustomers.toLocaleString()}人</p>
+            <p className="text-[10px] text-cyan-600">平均 {kpis.avgCustomersPerDay}人/日</p>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+            <div className="flex items-center gap-1.5 text-gray-600 mb-1">
+              <BarChart3 className="h-4 w-4" />
+              <p className="text-xs font-medium">総工数</p>
+            </div>
+            <p className="text-xl font-bold text-gray-900">{kpis.totalHours}h</p>
+            <p className="text-[10px] text-gray-500">ホール {kpis.hallTotal}h / キッチン {kpis.kitchenTotal}h</p>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+            <div className="flex items-center gap-1.5 text-gray-600 mb-1">
+              <DollarSign className="h-4 w-4" />
+              <p className="text-xs font-medium">人件費</p>
+            </div>
+            <p className="text-xl font-bold text-gray-900">¥{kpis.laborCost.toLocaleString()}</p>
+          </div>
+          <div className={`rounded-lg p-3 border ${kpis.laborCostRatio > 30 ? "bg-red-50 border-red-200" : kpis.laborCostRatio > 25 ? "bg-amber-50 border-amber-200" : "bg-green-50 border-green-200"}`}>
+            <p className="text-xs font-medium text-gray-600 mb-1">人件費率</p>
+            <p className={`text-xl font-bold ${kpis.laborCostRatio > 30 ? "text-red-900" : kpis.laborCostRatio > 25 ? "text-amber-900" : "text-green-900"}`}>
+              {kpis.laborCostRatio.toFixed(1)}%
+            </p>
+            <p className="text-[10px] text-gray-500">目標: 25.0%以下</p>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+            <p className="text-xs font-medium text-gray-600 mb-1">客単価（加重平均）</p>
+            <p className="text-xl font-bold text-gray-900">¥{kpis.totalCustomers > 0 ? Math.round(kpis.totalSales / kpis.totalCustomers).toLocaleString() : 0}</p>
+          </div>
+        </div>
 
+        {/* 予測詳細 */}
+        {renderForecastDetail()}
 
-        {/* AI提案表示時 */}
+        {/* 推奨ロジック */}
+        {renderStaffingLogic()}
+
+        {/* AI提案表示 */}
         {showAIProposal && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">
@@ -561,21 +754,17 @@ export default function ShiftCreation() {
                 <Sparkles className="h-5 w-5 text-blue-600" />
                 <h3 className="font-semibold text-blue-900">AI提案シフト案</h3>
                 <Badge variant="secondary">推奨値ベース</Badge>
-                    </div>
+              </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setShowAIProposal(false)}>
-                  キャンセル
-                </Button>
-                <Button size="sm" onClick={applyAIProposal} className="bg-blue-600 hover:bg-blue-700">
-                  提案を適用
-                </Button>
+                <Button variant="outline" size="sm" onClick={() => setShowAIProposal(false)}>キャンセル</Button>
+                <Button size="sm" onClick={applyAIProposal} className="bg-blue-600 hover:bg-blue-700">提案を適用</Button>
               </div>
             </div>
             <p className="text-sm text-blue-700">
-              推奨人数に基づいた最適なシフト案です。適用すると現在のシフトが上書きされます。
+              売上予測から算出した推奨人員数に基づいた最適なシフト案です。適用すると現在のシフトが上書きされます。
             </p>
-            </div>
-          )}
+          </div>
+        )}
 
         {/* シフトテーブル（ホール／キッチン縦並び） */}
         {([

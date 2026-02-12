@@ -80,7 +80,7 @@ const staffData: Record<string, StaffMember> = {
     nameKana: "さとう いちろう",
     avatar: "/placeholder.svg?height=120&width=120",
     role: "店長",
-    store: "Plate One 東京店",
+    store: "キリンシティ 横浜ベイクォーター店",
     employmentType: "正社員",
     skills: [
       {
@@ -144,7 +144,7 @@ const staffData: Record<string, StaffMember> = {
     nameKana: "たなか はなこ",
     avatar: "/placeholder.svg?height=120&width=120",
     role: "ホールスタッフ",
-    store: "Plate One 東京店",
+    store: "キリンシティ 横浜ベイクォーター店",
     employmentType: "パート",
     skills: [
       {
@@ -413,9 +413,11 @@ export default function StaffDetail() {
                           <SelectValue placeholder="所属店舗" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Plate One 東京店">Plate One 東京店</SelectItem>
-                          <SelectItem value="Plate One 大阪店">Plate One 大阪店</SelectItem>
-                          <SelectItem value="Plate One 福岡店">Plate One 福岡店</SelectItem>
+                          <SelectItem value="キリンシティ 横浜ベイクォーター店">キリンシティ 横浜ベイクォーター店</SelectItem>
+                          <SelectItem value="キリンシティ 横浜モアーズ店">キリンシティ 横浜モアーズ店</SelectItem>
+                          <SelectItem value="キリンシティ FOOD＆TIME ISETAN YOKOHAMA店">キリンシティ FTI横浜店</SelectItem>
+                          <SelectItem value="キリンシティ CIAL桜木町店">キリンシティ CIAL桜木町店</SelectItem>
+                          <SelectItem value="キリンシティ 町田店">キリンシティ 町田店</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

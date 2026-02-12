@@ -284,7 +284,7 @@ export function MonthlyShiftTable() {
       {/* 印刷用ヘッダー（画面では非表示） */}
       <div className="print-header hidden print:block">
         <h1>月間シフト表</h1>
-        <p>{format(currentMonth, "yyyy年M月", { locale: ja })} - Plate One 東京店</p>
+        <p>{format(currentMonth, "yyyy年M月", { locale: ja })} - キリンシティ 横浜ベイクォーター店</p>
       </div>
 
       <div className="flex justify-between items-center no-print">
