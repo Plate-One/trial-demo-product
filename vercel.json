@@ -1,5 +1,8 @@
 {
   "buildCommand": "npm run build",
-  "installCommand": "npm install"
+  "installCommand": "npm install",
+  "redirects": [
+    { "source": "/", "destination": "/demand-forecast", "permanent": false }
+  ]
 }
 
