@@ -13,7 +13,7 @@ export type ShiftStatus = "preferred" | "optimized" | "confirmed"
 
 export default function ShiftManagement() {
   const [isEditing, setIsEditing] = useState(false)
-  const [viewMode, setViewMode] = useState<"daily" | "weekly" | "monthly">("daily")
+  const [viewMode, setViewMode] = useState<"daily" | "monthly">("daily")
   const [currentDate, setCurrentDate] = useState(new Date())
   const [showOptimization, setShowOptimization] = useState(false)
   const [shiftStatus, setShiftStatus] = useState<ShiftStatus>("preferred")

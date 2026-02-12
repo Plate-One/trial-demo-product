@@ -4,19 +4,9 @@ import React from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
-import { format, addDays, subDays, startOfWeek, endOfWeek, addMonths, subMonths } from "date-fns"
+import { format, addDays, subDays, addMonths, subMonths } from "date-fns"
 import { ja } from "date-fns/locale"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-
-const formatWeekRange = (date: Date) => {
-  const monday = startOfWeek(date, { weekStartsOn: 1 })
-  const sunday = endOfWeek(date, { weekStartsOn: 1 })
-
-  if (monday.getMonth() === sunday.getMonth()) {
-    return `${format(monday, "yyyy年MM月dd日", { locale: ja })} - ${format(sunday, "dd日", { locale: ja })}`
-  }
-  return `${format(monday, "yyyy年MM月dd日", { locale: ja })} - ${format(sunday, "MM月dd日", { locale: ja })}`
-}
 
 export function ShiftHeader({
   viewMode,
@@ -24,8 +14,8 @@ export function ShiftHeader({
   currentDate,
   setCurrentDate,
 }: {
-  viewMode: "daily" | "weekly" | "monthly"
-  setViewMode: (mode: "daily" | "weekly" | "monthly") => void
+  viewMode: "daily" | "monthly"
+  setViewMode: (mode: "daily" | "monthly") => void
   currentDate: Date
   setCurrentDate: React.Dispatch<React.SetStateAction<Date>>
 }) {
@@ -53,10 +43,9 @@ export function ShiftHeader({
               <SelectItem value="plateone-tokyo">Plate One東京店</SelectItem>
             </SelectContent>
           </Select>
-          <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as "daily" | "weekly" | "monthly")}>
+          <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as "daily" | "monthly")}>
             <TabsList>
               <TabsTrigger value="daily">日別</TabsTrigger>
-              <TabsTrigger value="weekly">週別</TabsTrigger>
               <TabsTrigger value="monthly">月別</TabsTrigger>
             </TabsList>
           </Tabs>
@@ -68,9 +57,7 @@ export function ShiftHeader({
                 setCurrentDate((prevDate) =>
                   viewMode === "daily"
                     ? subDays(prevDate, 1)
-                    : viewMode === "weekly"
-                      ? subDays(prevDate, 7)
-                      : subMonths(prevDate, 1),
+                    : subMonths(prevDate, 1),
                 )
               }}
             >
@@ -82,9 +69,7 @@ export function ShiftHeader({
             <div className="w-[240px] text-center font-medium">
               {viewMode === "daily"
                 ? format(currentDate, "yyyy年MM月dd日", { locale: ja })
-                : viewMode === "weekly"
-                  ? formatWeekRange(currentDate)
-                  : format(currentDate, "yyyy年MM月", { locale: ja })}
+                : format(currentDate, "yyyy年MM月", { locale: ja })}
             </div>
             <Button
               variant="outline"
@@ -93,9 +78,7 @@ export function ShiftHeader({
                 setCurrentDate((prevDate) =>
                   viewMode === "daily"
                     ? addDays(prevDate, 1)
-                    : viewMode === "weekly"
-                      ? addDays(prevDate, 7)
-                      : addMonths(prevDate, 1),
+                    : addMonths(prevDate, 1),
                 )
               }}
             >

@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react"
 import { ChevronUpIcon, ChevronDownIcon, ChevronsUpDownIcon, Users, DollarSign, Clock, TrendingUp } from "lucide-react"
-import { format, addDays, startOfWeek } from "date-fns"
+import { format } from "date-fns"
 import { ja } from "date-fns/locale"
 import { MonthlyShiftTable } from "@/components/monthly-shift-table"
 import { Badge } from "@/components/ui/badge"
@@ -45,7 +45,7 @@ export function ShiftTimeline({
   viewMode,
   currentDate,
   shiftStatus = "preferred",
-}: { viewMode: "daily" | "weekly" | "monthly"; currentDate: Date; shiftStatus?: "preferred" | "optimized" | "confirmed" }) {
+}: { viewMode: "daily" | "monthly"; currentDate: Date; shiftStatus?: "preferred" | "optimized" | "confirmed" }) {
   const [sortField, setSortField] = useState<SortField>("start")
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc")
 
@@ -208,41 +208,6 @@ export function ShiftTimeline({
     return <ChevronsUpDownIcon className="w-4 h-4 ml-1 text-gray-400" />
   }
 
-  const generateWeeklyData = () => {
-    const startDate = startOfWeek(currentDate, { weekStartsOn: 1 })
-    return Array.from({ length: 7 }, (_, i) => {
-      const date = addDays(startDate, i)
-      return {
-        date: format(date, "MM/dd (E)", { locale: ja }),
-        shifts: staff.map((member) => ({
-          ...member,
-          shifts: member.shifts.map((shift) => ({
-            ...shift,
-            start: `${shift.start}`,
-            end: `${shift.end}`,
-          })),
-          // Randomly assign some off days
-          isOff: Math.random() < 0.2,
-        })),
-      }
-    })
-  }
-
-  const calculateTotalHours = (memberShifts: any[]) => {
-    return memberShifts.reduce((total, day) => {
-      if (day.isOff) return total
-      return (
-        total +
-        day.shifts.reduce((dayTotal: number, shift: any) => {
-          const [startHour, startMinute] = shift.start.split(":").map(Number)
-          const [endHour, endMinute] = shift.end.split(":").map(Number)
-          return dayTotal + (endHour - startHour) + (endMinute - startMinute) / 60
-        }, 0)
-      )
-    }, 0)
-  }
-
-  const weeklyData = useMemo(() => generateWeeklyData(), [currentDate])
 
   // 時間帯別人数表示コンポーネント
   const StaffCountHeader = ({ role }: { role: "ホール" | "キッチン" }) => {
@@ -448,216 +413,6 @@ export function ShiftTimeline({
     )
   }
 
-  const renderWeeklyView = () => {
-    // ホールスタッフとキッチンスタッフを分けて表示
-    const hallMembers = staff.filter((s) => s.shifts.some((shift) => shift.role === "ホール"))
-    const kitchenMembers = staff.filter((s) => s.shifts.some((shift) => shift.role === "キッチン"))
-
-    // 各日の指標を計算
-    const calculateDayMetrics = (dayIndex: number) => {
-      const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 })
-      const date = addDays(weekStart, dayIndex)
-      const allStaff = [...hallMembers, ...kitchenMembers]
-      let totalHours = 0
-
-      allStaff.forEach((member) => {
-        const memberDayData = weeklyData[dayIndex]?.shifts.find((s) => s.name === member.name)
-        if (memberDayData && !memberDayData.isOff) {
-          memberDayData.shifts.forEach((shift) => {
-            const [startHour, startMinute] = shift.start.split(":").map(Number)
-            const [endHour, endMinute] = shift.end.split(":").map(Number)
-            const hours = endHour - startHour + (endMinute - startMinute) / 60
-            totalHours += hours
-          })
-        }
-      })
-
-      const laborCost = totalHours * HOURLY_WAGE
-      const sales = generateMockSales(date)
-      const actualSales = Math.floor(sales * (0.85 + Math.random() * 0.15)) // 実績は予測の85-100%
-      const laborCostRatio = sales > 0 ? (laborCost / sales) * 100 : 0
-
-      return { totalHours, laborCost, laborCostRatio, sales, actualSales }
-    }
-
-    const renderWeeklyTable = (members: typeof staff, role: "ホール" | "キッチン", bgColor: string, textColor: string) => (
-      <div className="mb-6">
-        <div className={`flex items-center gap-2 mb-3 px-2 py-2 rounded-t-lg ${bgColor}`}>
-          <Badge variant="outline" className={`${textColor} border-current`}>
-            {role}
-          </Badge>
-          <span className={`text-sm font-medium ${textColor}`}>
-            {members.length}名
-          </span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr>
-                <th className="border p-3 bg-gray-50 text-left text-sm font-medium text-gray-600">スタッフ</th>
-                {weeklyData.map((day) => (
-                  <th key={day.date} className="border p-3 bg-gray-50 text-left text-sm font-medium text-gray-600">
-                    {day.date}
-                  </th>
-                ))}
-                <th className="border p-3 bg-gray-50 text-left text-sm font-medium text-gray-600">週合計</th>
-              </tr>
-            </thead>
-            <tbody>
-              {members.map((member) => {
-                const memberShifts = weeklyData.map((day) => day.shifts.find((s) => s.name === member.name))
-                const totalHours = calculateTotalHours(memberShifts)
-                return (
-                  <tr key={member.name} className="hover:bg-gray-50">
-                    <td className="border p-3 text-sm text-gray-900">{member.name}</td>
-                    {memberShifts.map((shift, index) => (
-                      <td key={`${member.name}-${weeklyData[index].date}`} className="border p-3">
-                        {shift?.isOff ? (
-                          <div className="text-xs text-gray-500">休み</div>
-                        ) : (
-                          shift?.shifts
-                            .filter((s) => s.role === role)
-                            .map((s, i) => (
-                              <div
-                                key={i}
-                                className={`mb-1 p-1 rounded text-xs ${
-                                  shiftStatus === "confirmed"
-                                    ? role === "ホール"
-                                      ? "bg-blue-200 text-blue-800 border-2 border-blue-500"
-                                      : "bg-emerald-200 text-emerald-800 border-2 border-emerald-500"
-                                    : shiftStatus === "optimized"
-                                      ? role === "ホール"
-                                        ? "bg-blue-100 text-blue-800 border-2 border-blue-400"
-                                        : "bg-emerald-100 text-emerald-800 border-2 border-emerald-400"
-                                      : role === "ホール"
-                                        ? "bg-blue-100 text-blue-800"
-                                        : "bg-emerald-100 text-emerald-800"
-                                }`}
-                              >
-                                <div className="font-medium">
-                                  {s.start} - {s.end}
-                                </div>
-                              </div>
-                            ))
-                        )}
-                      </td>
-                    ))}
-                    <td className="border p-3 text-center text-sm text-gray-900">{totalHours.toFixed(1)}h</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    )
-
-    return (
-      <div className="mt-6 space-y-6">
-        {/* 週間指標テーブル */}
-        <div className="rounded-lg bg-white p-4 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">日別指標</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr>
-                  <th className="border p-3 bg-gray-50 text-left text-sm font-medium text-gray-600 min-w-[120px] whitespace-nowrap">日付</th>
-                  {weeklyData.map((day, index) => (
-                    <th key={index} className="border p-3 bg-gray-50 text-center text-sm font-medium text-gray-600 min-w-[100px]">
-                      {day.date}
-                    </th>
-                  ))}
-                  <th className="border p-3 bg-gray-50 text-center text-sm font-medium text-gray-600 min-w-[120px]">週合計</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="border p-3 text-sm font-medium text-gray-700 whitespace-nowrap">売上予測</td>
-                  {weeklyData.map((_, index) => {
-                    const metrics = calculateDayMetrics(index)
-                    return (
-                      <td key={index} className="border p-3 text-center text-sm text-gray-900">
-                        {metrics.sales.toLocaleString()}円
-                      </td>
-                    )
-                  })}
-                  <td className="border p-3 text-center text-sm font-bold text-gray-900 bg-gray-50">
-                    {weeklyData.reduce((sum, _, index) => sum + calculateDayMetrics(index).sales, 0).toLocaleString()}円
-                  </td>
-                </tr>
-                <tr>
-                  <td className="border p-3 text-sm font-medium text-gray-700 whitespace-nowrap">売上実績</td>
-                  {weeklyData.map((_, index) => {
-                    const metrics = calculateDayMetrics(index)
-                    return (
-                      <td key={index} className="border p-3 text-center text-sm text-gray-900">
-                        {metrics.actualSales.toLocaleString()}円
-                      </td>
-                    )
-                  })}
-                  <td className="border p-3 text-center text-sm font-bold text-gray-900 bg-gray-50">
-                    {weeklyData.reduce((sum, _, index) => sum + calculateDayMetrics(index).actualSales, 0).toLocaleString()}円
-                  </td>
-                </tr>
-                <tr>
-                  <td className="border p-3 text-sm font-medium text-gray-700 whitespace-nowrap">投入労働時間</td>
-                  {weeklyData.map((_, index) => {
-                    const metrics = calculateDayMetrics(index)
-                    return (
-                      <td key={index} className="border p-3 text-center text-sm text-gray-900">
-                        {metrics.totalHours.toFixed(1)}h
-                      </td>
-                    )
-                  })}
-                  <td className="border p-3 text-center text-sm font-bold text-gray-900 bg-gray-50">
-                    {weeklyData.reduce((sum, _, index) => sum + calculateDayMetrics(index).totalHours, 0).toFixed(1)}h
-                  </td>
-                </tr>
-                <tr>
-                  <td className="border p-3 text-sm font-medium text-gray-700 whitespace-nowrap">人件費</td>
-                  {weeklyData.map((_, index) => {
-                    const metrics = calculateDayMetrics(index)
-                    return (
-                      <td key={index} className="border p-3 text-center text-sm text-gray-900">
-                        {metrics.laborCost.toLocaleString()}円
-                      </td>
-                    )
-                  })}
-                  <td className="border p-3 text-center text-sm font-bold text-gray-900 bg-gray-50">
-                    {weeklyData.reduce((sum, _, index) => sum + calculateDayMetrics(index).laborCost, 0).toLocaleString()}円
-                  </td>
-                </tr>
-                <tr>
-                  <td className="border p-3 text-sm font-medium text-gray-700 whitespace-nowrap">人件費率</td>
-                  {weeklyData.map((_, index) => {
-                    const metrics = calculateDayMetrics(index)
-                    return (
-                      <td key={index} className="border p-3 text-center text-sm text-gray-900">
-                        {metrics.laborCostRatio.toFixed(1)}%
-                      </td>
-                    )
-                  })}
-                  <td className="border p-3 text-center text-sm font-bold text-gray-900 bg-gray-50">
-                    {(() => {
-                      const totalLaborCost = weeklyData.reduce((sum, _, index) => sum + calculateDayMetrics(index).laborCost, 0)
-                      const totalSales = weeklyData.reduce((sum, _, index) => sum + calculateDayMetrics(index).sales, 0)
-                      return totalSales > 0 ? ((totalLaborCost / totalSales) * 100).toFixed(1) : "0.0"
-                    })()}%
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* シフトテーブル */}
-        <div className="rounded-lg bg-white p-4 shadow-sm">
-          {renderWeeklyTable(hallMembers, "ホール", "bg-blue-50", "text-blue-700")}
-          {renderWeeklyTable(kitchenMembers, "キッチン", "bg-emerald-50", "text-emerald-700")}
-        </div>
-      </div>
-    )
-  }
 
   // 日別の労働時間、人件費、人件費率を計算（全体）
   const calculateDailyMetrics = (date: Date) => {
@@ -775,8 +530,6 @@ export function ShiftTimeline({
         {renderRoleTable(kitchenStaff, "キッチン", "bg-emerald-50", "text-emerald-700")}
       </div>
     </div>
-  ) : viewMode === "weekly" ? (
-    renderWeeklyView()
   ) : (
     <MonthlyShiftTable />
   )

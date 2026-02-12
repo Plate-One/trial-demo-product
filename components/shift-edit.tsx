@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { format, addDays, startOfWeek } from "date-fns"
+import { format } from "date-fns"
 import { ja } from "date-fns/locale"
 import { MonthlyShiftTable } from "@/components/monthly-shift-table"
 
@@ -264,7 +264,7 @@ export function ShiftEdit({
   currentDate,
   shiftStatus = "preferred",
 }: {
-  viewMode: "daily" | "weekly" | "monthly"
+  viewMode: "daily" | "monthly"
   currentDate: Date
   shiftStatus?: "preferred" | "optimized" | "confirmed"
 }) {
@@ -322,52 +322,6 @@ export function ShiftEdit({
     )
   }, [])
 
-  const renderWeeklyView = () => {
-    const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 })
-    const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
-
-    return (
-      <div className="mt-6 rounded-lg bg-white p-6 shadow-sm overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr>
-              <th className="border p-2 bg-gray-50">スタッフ</th>
-              {weekDays.map((day) => (
-                <th key={format(day, "yyyy-MM-dd")} className="border p-2 bg-gray-50">
-                  {format(day, "M/d (E)", { locale: ja })}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {staff.map((member) => (
-              <tr key={member.id}>
-                <td className="border p-2">{member.name}</td>
-                {weekDays.map((day) => (
-                  <td key={`${member.id}-${format(day, "yyyy-MM-dd")}`} className="border p-2">
-                    <Button variant="outline" size="sm" onClick={() => handleAddShift(member.id, day)}>
-                      +
-                    </Button>
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    )
-  }
-
-  const handleAddShift = (staffId: string | Date, date?: Date) => {
-    if (typeof staffId === "string" && date) {
-      // 週表示用のシフト追加ロジック
-      console.log("Add shift for staff:", staffId, "on date:", date)
-    } else if (staffId instanceof Date) {
-      // 月表示用のシフト追加ロジック
-      console.log("Add shift for date:", format(staffId, "yyyy-MM-dd"))
-    }
-  }
-
   return viewMode === "daily" ? (
     <DndProvider backend={HTML5Backend}>
       <div className="mt-6 rounded-lg bg-white p-6 shadow-sm">
@@ -399,8 +353,6 @@ export function ShiftEdit({
         </div>
       </div>
     </DndProvider>
-  ) : viewMode === "weekly" ? (
-    renderWeeklyView()
   ) : (
     <MonthlyShiftTable />
   )
