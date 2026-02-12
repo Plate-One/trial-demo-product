@@ -16,7 +16,8 @@ import Link from "next/link"
 // ========== 型定義 ==========
 interface HelpSlot {
   dayIndex: number
-  hour: number
+  start: string // "11:00" 形式
+  end: string   // "13:00" 形式
   role: "ホール" | "キッチン"
   shortage: number
 }
@@ -36,7 +37,7 @@ interface AvailableHelper {
   name: string
   storeId: string
   storeName: string
-  position: "ホール" | "キッチン" | "両方"
+  position: "ホール" | "キッチン"
   availableSlots: { dayIndex: number; start: string; end: string }[]
   rating: number
 }
@@ -75,17 +76,15 @@ const storesData: StoreData[] = [
     bgColor: "bg-blue-50",
     borderColor: "border-blue-200",
     helpSlots: [
-      { dayIndex: 0, hour: 19, role: "ホール", shortage: 1 },
-      { dayIndex: 0, hour: 20, role: "キッチン", shortage: 1 },
-      { dayIndex: 2, hour: 19, role: "ホール", shortage: 1 },
-      { dayIndex: 4, hour: 19, role: "ホール", shortage: 1 },
-      { dayIndex: 4, hour: 20, role: "キッチン", shortage: 1 },
-      { dayIndex: 5, hour: 12, role: "ホール", shortage: 2 },
-      { dayIndex: 5, hour: 13, role: "ホール", shortage: 1 },
-      { dayIndex: 5, hour: 19, role: "キッチン", shortage: 1 },
-      { dayIndex: 6, hour: 12, role: "ホール", shortage: 1 },
-      { dayIndex: 6, hour: 13, role: "ホール", shortage: 1 },
-      { dayIndex: 6, hour: 18, role: "キッチン", shortage: 1 },
+      { dayIndex: 0, start: "19:00", end: "21:00", role: "ホール", shortage: 1 },
+      { dayIndex: 0, start: "19:00", end: "22:00", role: "キッチン", shortage: 1 },
+      { dayIndex: 2, start: "19:00", end: "21:00", role: "ホール", shortage: 1 },
+      { dayIndex: 4, start: "19:00", end: "21:00", role: "ホール", shortage: 1 },
+      { dayIndex: 4, start: "19:00", end: "22:00", role: "キッチン", shortage: 1 },
+      { dayIndex: 5, start: "11:00", end: "14:00", role: "ホール", shortage: 2 },
+      { dayIndex: 5, start: "19:00", end: "22:00", role: "キッチン", shortage: 1 },
+      { dayIndex: 6, start: "11:00", end: "14:00", role: "ホール", shortage: 1 },
+      { dayIndex: 6, start: "18:00", end: "21:00", role: "キッチン", shortage: 1 },
     ],
   },
   {
@@ -96,14 +95,11 @@ const storesData: StoreData[] = [
     bgColor: "bg-emerald-50",
     borderColor: "border-emerald-200",
     helpSlots: [
-      { dayIndex: 4, hour: 19, role: "ホール", shortage: 1 },
-      { dayIndex: 4, hour: 20, role: "ホール", shortage: 1 },
-      { dayIndex: 5, hour: 12, role: "キッチン", shortage: 1 },
-      { dayIndex: 5, hour: 19, role: "ホール", shortage: 2 },
-      { dayIndex: 5, hour: 20, role: "ホール", shortage: 1 },
-      { dayIndex: 6, hour: 12, role: "キッチン", shortage: 1 },
-      { dayIndex: 6, hour: 19, role: "ホール", shortage: 1 },
-      { dayIndex: 6, hour: 20, role: "ホール", shortage: 1 },
+      { dayIndex: 4, start: "19:00", end: "22:00", role: "ホール", shortage: 1 },
+      { dayIndex: 5, start: "11:00", end: "14:00", role: "キッチン", shortage: 1 },
+      { dayIndex: 5, start: "19:00", end: "22:00", role: "ホール", shortage: 2 },
+      { dayIndex: 6, start: "11:00", end: "14:00", role: "キッチン", shortage: 1 },
+      { dayIndex: 6, start: "19:00", end: "22:00", role: "ホール", shortage: 1 },
     ],
   },
   {
@@ -114,13 +110,12 @@ const storesData: StoreData[] = [
     bgColor: "bg-amber-50",
     borderColor: "border-amber-200",
     helpSlots: [
-      { dayIndex: 4, hour: 18, role: "キッチン", shortage: 1 },
-      { dayIndex: 4, hour: 19, role: "ホール", shortage: 1 },
-      { dayIndex: 5, hour: 12, role: "ホール", shortage: 1 },
-      { dayIndex: 5, hour: 18, role: "ホール", shortage: 2 },
-      { dayIndex: 5, hour: 19, role: "キッチン", shortage: 1 },
-      { dayIndex: 6, hour: 12, role: "ホール", shortage: 1 },
-      { dayIndex: 6, hour: 13, role: "ホール", shortage: 1 },
+      { dayIndex: 4, start: "18:00", end: "21:00", role: "キッチン", shortage: 1 },
+      { dayIndex: 4, start: "19:00", end: "21:00", role: "ホール", shortage: 1 },
+      { dayIndex: 5, start: "11:00", end: "14:00", role: "ホール", shortage: 1 },
+      { dayIndex: 5, start: "18:00", end: "21:00", role: "ホール", shortage: 2 },
+      { dayIndex: 5, start: "19:00", end: "22:00", role: "キッチン", shortage: 1 },
+      { dayIndex: 6, start: "11:00", end: "14:00", role: "ホール", shortage: 1 },
     ],
   },
   {
@@ -131,16 +126,15 @@ const storesData: StoreData[] = [
     bgColor: "bg-purple-50",
     borderColor: "border-purple-200",
     helpSlots: [
-      { dayIndex: 3, hour: 18, role: "ホール", shortage: 1 },
-      { dayIndex: 4, hour: 19, role: "ホール", shortage: 1 },
-      { dayIndex: 4, hour: 20, role: "キッチン", shortage: 1 },
-      { dayIndex: 5, hour: 12, role: "ホール", shortage: 2 },
-      { dayIndex: 5, hour: 13, role: "キッチン", shortage: 1 },
-      { dayIndex: 5, hour: 19, role: "ホール", shortage: 2 },
-      { dayIndex: 5, hour: 20, role: "ホール", shortage: 1 },
-      { dayIndex: 6, hour: 12, role: "ホール", shortage: 1 },
-      { dayIndex: 6, hour: 13, role: "キッチン", shortage: 1 },
-      { dayIndex: 6, hour: 19, role: "ホール", shortage: 1 },
+      { dayIndex: 3, start: "18:00", end: "21:00", role: "ホール", shortage: 1 },
+      { dayIndex: 4, start: "19:00", end: "21:00", role: "ホール", shortage: 1 },
+      { dayIndex: 4, start: "19:00", end: "22:00", role: "キッチン", shortage: 1 },
+      { dayIndex: 5, start: "11:00", end: "14:00", role: "ホール", shortage: 2 },
+      { dayIndex: 5, start: "13:00", end: "16:00", role: "キッチン", shortage: 1 },
+      { dayIndex: 5, start: "19:00", end: "22:00", role: "ホール", shortage: 2 },
+      { dayIndex: 6, start: "11:00", end: "14:00", role: "ホール", shortage: 1 },
+      { dayIndex: 6, start: "13:00", end: "16:00", role: "キッチン", shortage: 1 },
+      { dayIndex: 6, start: "19:00", end: "21:00", role: "ホール", shortage: 1 },
     ],
   },
   {
@@ -151,14 +145,14 @@ const storesData: StoreData[] = [
     bgColor: "bg-rose-50",
     borderColor: "border-rose-200",
     helpSlots: [
-      { dayIndex: 4, hour: 18, role: "ホール", shortage: 1 },
-      { dayIndex: 4, hour: 19, role: "キッチン", shortage: 1 },
-      { dayIndex: 5, hour: 12, role: "ホール", shortage: 1 },
-      { dayIndex: 5, hour: 18, role: "ホール", shortage: 1 },
-      { dayIndex: 5, hour: 19, role: "ホール", shortage: 2 },
-      { dayIndex: 5, hour: 20, role: "キッチン", shortage: 1 },
-      { dayIndex: 6, hour: 12, role: "ホール", shortage: 1 },
-      { dayIndex: 6, hour: 19, role: "キッチン", shortage: 1 },
+      { dayIndex: 4, start: "18:00", end: "21:00", role: "ホール", shortage: 1 },
+      { dayIndex: 4, start: "19:00", end: "22:00", role: "キッチン", shortage: 1 },
+      { dayIndex: 5, start: "11:00", end: "14:00", role: "ホール", shortage: 1 },
+      { dayIndex: 5, start: "18:00", end: "21:00", role: "ホール", shortage: 1 },
+      { dayIndex: 5, start: "19:00", end: "22:00", role: "ホール", shortage: 2 },
+      { dayIndex: 5, start: "19:00", end: "22:00", role: "キッチン", shortage: 1 },
+      { dayIndex: 6, start: "11:00", end: "14:00", role: "ホール", shortage: 1 },
+      { dayIndex: 6, start: "19:00", end: "22:00", role: "キッチン", shortage: 1 },
     ],
   },
 ]
@@ -167,7 +161,7 @@ const availableHelpers: AvailableHelper[] = [
   // ベイクォーター店のスタッフ
   {
     id: "h1", name: "中村 翔太", storeId: "bayquarter", storeName: "ベイクォーター店",
-    position: "両方", rating: 4,
+    position: "ホール", rating: 4,
     availableSlots: [
       { dayIndex: 5, start: "11:00", end: "16:00" },
       { dayIndex: 6, start: "11:00", end: "16:00" },
@@ -211,7 +205,7 @@ const availableHelpers: AvailableHelper[] = [
   },
   {
     id: "h6", name: "田村 恵美", storeId: "fti", storeName: "FTI横浜店",
-    position: "両方", rating: 4,
+    position: "ホール", rating: 4,
     availableSlots: [
       { dayIndex: 5, start: "11:00", end: "16:00" },
       { dayIndex: 6, start: "17:00", end: "22:00" },
@@ -237,7 +231,7 @@ const availableHelpers: AvailableHelper[] = [
   // 町田店のスタッフ
   {
     id: "h9", name: "森本 由美", storeId: "machida", storeName: "町田店",
-    position: "両方", rating: 4,
+    position: "ホール", rating: 4,
     availableSlots: [
       { dayIndex: 5, start: "10:00", end: "15:00" },
       { dayIndex: 6, start: "10:00", end: "15:00" },
@@ -512,10 +506,7 @@ export default function MultiStoreHelpOptimization() {
                 </Button>
               </Link>
               <div>
-                <h1 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-                  <Building2 className="h-6 w-6 text-blue-600" />
-                  複数店舗ヘルプ一括最適化（横浜・町田エリア）
-                </h1>
+                <h1 className="text-xl font-semibold text-gray-800">複数店舗ヘルプ一括最適化</h1>
                 <p className="text-sm text-gray-600 mt-1">
                   {format(weekStart, "yyyy年M月d日", { locale: ja })} 〜 {format(addDays(weekStart, 6), "M月d日", { locale: ja })}
                 </p>
@@ -535,118 +526,139 @@ export default function MultiStoreHelpOptimization() {
         {/* ===== 概要フェーズ ===== */}
         {phase === "overview" && (
           <>
-            {/* 全店舗サマリー */}
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              {storesData.map((store) => (
-                <div key={store.id} className={`${store.bgColor} border ${store.borderColor} rounded-lg p-4`}>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className={`font-semibold ${store.color} flex items-center gap-1 text-sm`}>
-                      <MapPin className="h-4 w-4 flex-shrink-0" />
-                      {store.shortName}
-                    </h3>
-                    <Badge variant="destructive" className="gap-1 text-xs">
-                      <AlertTriangle className="h-3 w-3" />
-                      {store.helpSlots.length}枠
-                    </Badge>
-                  </div>
+            {/* 店舗ごとのヘルプ時間枠と対応スタッフ */}
+            <div className="space-y-4">
+              {storesData.map((store) => {
+                // この店舗のヘルプ時間枠に対して入れることができるスタッフをマッチング
+                const getMatchingHelpers = (helpSlot: HelpSlot) => {
+                  return availableHelpers.filter((helper) => {
+                    // 同じ店舗のスタッフは除外
+                    if (helper.storeId === store.id) return false
+                    // ポジションが一致する必要がある
+                    if (helper.position !== helpSlot.role) return false
+                    // 同じ曜日で、時間が重なる必要がある
+                    const matchingSlot = helper.availableSlots.find((slot) => {
+                      if (slot.dayIndex !== helpSlot.dayIndex) return false
+                      // 時間範囲が重なるかチェック
+                      const helpStart = helpSlot.start
+                      const helpEnd = helpSlot.end
+                      const slotStart = slot.start
+                      const slotEnd = slot.end
+                      // 時間範囲が重なる条件: helpStart < slotEnd && helpEnd > slotStart
+                      return helpStart < slotEnd && helpEnd > slotStart
+                    })
+                    return !!matchingSlot
+                  })
+                }
 
-                  {/* 曜日別ヘルプ必要枠 */}
-                  <div className="space-y-1.5">
-                    {Array.from({ length: 7 }, (_, day) => {
-                      const daySlots = store.helpSlots.filter((s) => s.dayIndex === day)
-                      if (daySlots.length === 0) return null
-                      return (
-                        <div key={day} className="bg-white rounded p-1.5 border border-gray-200">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-medium text-gray-700">
-                              {format(weekDates[day], "M/d(E)", { locale: ja })}
-                            </span>
-                            <span className="text-[10px] text-red-600 font-medium">{daySlots.length}枠</span>
-                          </div>
-                          <div className="flex flex-wrap gap-0.5 mt-0.5">
-                            {daySlots.map((slot, idx) => (
-                              <Badge key={idx} variant="outline" className="text-[9px] py-0 h-4 bg-red-50 text-red-700 border-red-200">
-                                {slot.hour}時{slot.role.charAt(0)} -{slot.shortage}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
+                // ポジション別にグルーピング
+                const hallSlots = store.helpSlots.filter((slot) => slot.role === "ホール")
+                const kitchenSlots = store.helpSlots.filter((slot) => slot.role === "キッチン")
 
-            {/* ヘルプ可能スタッフ */}
-            <div className="rounded-lg border overflow-hidden">
-              <div className="bg-gray-50 px-4 py-3 border-b">
-                <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  ヘルプ可能なスタッフ一覧
-                </h3>
-                <p className="text-sm text-gray-600 mt-1">他店舗のヘルプに入れるスタッフです</p>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="bg-gray-50">
-                      <th className="border-b p-3 text-left text-sm font-medium text-gray-600">スタッフ</th>
-                      <th className="border-b p-3 text-center text-sm font-medium text-gray-600">所属</th>
-                      <th className="border-b p-3 text-center text-sm font-medium text-gray-600">ポジション</th>
-                      <th className="border-b p-3 text-center text-sm font-medium text-gray-600">スキル</th>
-                      <th className="border-b p-3 text-left text-sm font-medium text-gray-600">ヘルプ可能日時</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {availableHelpers.map((helper) => (
-                      <tr key={helper.id} className="hover:bg-gray-50">
-                        <td className="border-b p-3">
-                          <span className="font-medium text-gray-900 text-sm">{helper.name}</span>
-                        </td>
-                        <td className="border-b p-3 text-center">
-                          <Badge variant="outline" className={`text-xs ${getStoreStyle(helper.storeId).bgColor} ${getStoreStyle(helper.storeId).color} ${getStoreStyle(helper.storeId).borderColor}`}>
-                            {helper.storeName}
-                          </Badge>
-                        </td>
-                        <td className="border-b p-3 text-center">
-                          <Badge variant="outline" className={`text-xs ${
-                            helper.position === "ホール" ? "bg-blue-50 text-blue-700 border-blue-200" :
-                            helper.position === "キッチン" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                            "bg-purple-50 text-purple-700 border-purple-200"
-                          }`}>{helper.position}</Badge>
-                        </td>
-                        <td className="border-b p-3 text-center">
-                          <div className="flex items-center justify-center gap-0.5">
-                            {Array.from({ length: 5 }, (_, i) => (
-                              <Star key={i} className={`h-3 w-3 ${i < helper.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}`} />
-                            ))}
-                          </div>
-                        </td>
-                        <td className="border-b p-3">
-                          <div className="flex flex-wrap gap-1">
-                            {helper.availableSlots.map((slot, idx) => (
-                              <Badge key={idx} variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
-                                {DAY_LABELS[slot.dayIndex]} {slot.start}〜{slot.end}
-                              </Badge>
-                            ))}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                const renderSlotTable = (slots: HelpSlot[], position: "ホール" | "キッチン") => {
+                  if (slots.length === 0) return null
+
+                  return (
+                    <div className="mb-4">
+                      <div className={`px-4 py-2 border-b ${position === "ホール" ? "bg-blue-50" : "bg-emerald-50"}`}>
+                        <Badge variant="outline" className={`text-xs ${
+                          position === "ホール" ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        }`}>
+                          {position} ({slots.length}枠)
+                        </Badge>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                          <thead>
+                            <tr className="bg-gray-50 border-b">
+                              <th className="border-r p-3 text-left text-sm font-medium text-gray-600">日付</th>
+                              <th className="border-r p-3 text-left text-sm font-medium text-gray-600">時間枠</th>
+                              <th className="border-r p-3 text-center text-sm font-medium text-gray-600">不足人数</th>
+                              <th className="p-3 text-left text-sm font-medium text-gray-600">対応可能スタッフ</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {slots.map((helpSlot, slotIdx) => {
+                              const matchingHelpers = getMatchingHelpers(helpSlot)
+                              return (
+                                <tr key={slotIdx} className="border-b hover:bg-gray-50">
+                                  <td className="border-r p-3">
+                                    <span className="text-sm font-medium text-gray-900">
+                                      {format(weekDates[helpSlot.dayIndex], "M/d", { locale: ja })}
+                                    </span>
+                                  </td>
+                                  <td className="border-r p-3">
+                                    <span className="font-medium text-gray-900">{helpSlot.start}-{helpSlot.end}</span>
+                                  </td>
+                                  <td className="border-r p-3 text-center">
+                                    <span className="text-sm font-medium text-red-600">{helpSlot.shortage}名</span>
+                                  </td>
+                                  <td className="p-3">
+                                    {matchingHelpers.length > 0 ? (
+                                      <div className="flex flex-wrap gap-2">
+                                        {matchingHelpers.map((helper) => {
+                                          const matchingSlot = helper.availableSlots.find((slot) => {
+                                            if (slot.dayIndex !== helpSlot.dayIndex) return false
+                                            const helpStart = helpSlot.start
+                                            const helpEnd = helpSlot.end
+                                            const slotStart = slot.start
+                                            const slotEnd = slot.end
+                                            return helpStart < slotEnd && helpEnd > slotStart
+                                          })
+                                          return (
+                                            <div key={helper.id} className="flex items-center gap-2 border border-gray-200 rounded px-2 py-1 bg-white">
+                                              <span className="text-sm font-medium text-gray-900">{helper.name}</span>
+                                              <span className="text-xs text-gray-500">{helper.storeName}</span>
+                                              {matchingSlot && (
+                                                <span className="text-xs text-gray-500">
+                                                  {matchingSlot.start}〜{matchingSlot.end}
+                                                </span>
+                                              )}
+                                            </div>
+                                          )
+                                        })}
+                                      </div>
+                                    ) : (
+                                      <span className="text-sm text-gray-400">対応可能なスタッフなし</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )
+                }
+
+                return (
+                  <div key={store.id} className="bg-white rounded-lg shadow-sm border overflow-hidden">
+                    <div className="border-b bg-gray-50 px-4 py-3">
+                      <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-gray-600" />
+                        {store.name}
+                      </h3>
+                    </div>
+                    <div className="p-4">
+                      {/* ホールセクション */}
+                      {renderSlotTable(hallSlots, "ホール")}
+                      {/* キッチンセクション */}
+                      {renderSlotTable(kitchenSlots, "キッチン")}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
 
             {/* 最適化ボタン */}
-            <div className="bg-gradient-to-r from-blue-50 via-purple-50 to-emerald-50 border border-blue-200 rounded-lg p-6 text-center">
-              <Sparkles className="h-12 w-12 text-blue-600 mx-auto mb-3" />
+            <div className="bg-white rounded-lg shadow-sm border p-6 text-center">
+              <Sparkles className="h-8 w-8 text-blue-600 mx-auto mb-3" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
                 横浜・町田エリア 5店舗のヘルプ枠を一括で最適化
               </h3>
               <p className="text-sm text-gray-600 mb-4 max-w-lg mx-auto">
-                各店舗の不足枠と空きスタッフを照合し、移動コスト・スキル適合度を考慮した最適なヘルプ配置を自動で提案します。横浜駅周辺の3店舗は徒歩圏内で効率的にヘルプ可能です。
+                各店舗の不足枠と空きスタッフを照合し、移動コスト・スキル適合度を考慮した最適なヘルプ配置を自動で提案します。
               </p>
               <Button size="lg" onClick={handleOptimize} className="gap-2">
                 <Sparkles className="h-5 w-5" />
@@ -659,19 +671,19 @@ export default function MultiStoreHelpOptimization() {
         {/* ===== 最適化中フェーズ ===== */}
         {phase === "optimizing" && (
           <div className="max-w-2xl mx-auto space-y-6">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 space-y-4">
+            <div className="bg-white rounded-lg shadow-sm border p-6 space-y-4">
               <div className="flex items-center gap-3">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-                <h3 className="text-xl font-semibold text-blue-900">複数店舗ヘルプ最適化中...</h3>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600" />
+                <h3 className="text-xl font-semibold text-gray-900">複数店舗ヘルプ最適化中...</h3>
               </div>
               <Progress value={(currentStep / steps.length) * 100} className="h-3" />
-              <p className="text-sm text-blue-700">
+              <p className="text-sm text-gray-600">
                 ステップ {currentStep} / {steps.length}
               </p>
 
               <div className="space-y-3">
                 {steps.slice(0, currentStep).map((step, idx) => (
-                  <div key={idx} className="flex items-start gap-3 bg-white rounded-lg p-4 border border-blue-100">
+                  <div key={idx} className="flex items-start gap-3 bg-gray-50 rounded-lg p-4 border border-gray-200">
                     <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
                     <div>
                       <p className="font-medium text-gray-900">{step.title}</p>
@@ -689,27 +701,27 @@ export default function MultiStoreHelpOptimization() {
         {phase === "result" && (
           <>
             {/* 結果サマリー */}
-            <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-5">
+            <div className="bg-white rounded-lg shadow-sm border p-5">
               <div className="flex items-center gap-2 mb-4">
-                <CheckCircle2 className="h-6 w-6 text-green-600" />
-                <h2 className="text-lg font-semibold text-green-900">最適化完了</h2>
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <h2 className="text-lg font-semibold text-gray-900">最適化完了</h2>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-white rounded-lg p-4 border border-green-200">
+                <div className="border border-gray-200 rounded-lg p-4 bg-white">
                   <p className="text-sm text-gray-600">ヘルプ配置数</p>
-                  <p className="text-2xl font-bold text-green-900">{resolvedCount}件</p>
+                  <p className="text-2xl font-bold text-gray-900">{resolvedCount}件</p>
                 </div>
-                <div className="bg-white rounded-lg p-4 border border-blue-200">
+                <div className="border border-gray-200 rounded-lg p-4 bg-white">
                   <p className="text-sm text-gray-600">対象スタッフ</p>
-                  <p className="text-2xl font-bold text-blue-900">{new Set(assignments.map((a) => a.helperId)).size}名</p>
+                  <p className="text-2xl font-bold text-gray-900">{new Set(assignments.map((a) => a.helperId)).size}名</p>
                 </div>
-                <div className="bg-white rounded-lg p-4 border border-amber-200">
+                <div className="border border-gray-200 rounded-lg p-4 bg-white">
                   <p className="text-sm text-gray-600">交通費合計</p>
-                  <p className="text-2xl font-bold text-amber-900">¥{totalTransportCost.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-gray-900">¥{totalTransportCost.toLocaleString()}</p>
                 </div>
-                <div className="bg-white rounded-lg p-4 border border-purple-200">
+                <div className="border border-gray-200 rounded-lg p-4 bg-white">
                   <p className="text-sm text-gray-600">充足率</p>
-                  <p className="text-2xl font-bold text-purple-900">{((resolvedCount / totalSlots) * 100).toFixed(0)}%</p>
+                  <p className="text-2xl font-bold text-gray-900">{((resolvedCount / totalSlots) * 100).toFixed(0)}%</p>
                 </div>
               </div>
             </div>
@@ -719,14 +731,14 @@ export default function MultiStoreHelpOptimization() {
               const storeHelp = storeAssignments(store.id)
               if (storeHelp.length === 0) return null
               return (
-                <div key={store.id} className={`rounded-lg border ${store.borderColor} overflow-hidden`}>
-                  <div className={`${store.bgColor} px-5 py-3 border-b ${store.borderColor}`}>
+                <div key={store.id} className="bg-white rounded-lg shadow-sm border overflow-hidden">
+                  <div className="border-b bg-gray-50 px-4 py-3">
                     <div className="flex items-center justify-between">
-                      <h3 className={`font-semibold ${store.color} flex items-center gap-2`}>
-                        <MapPin className="h-5 w-5" />
+                      <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-gray-600" />
                         {store.name} へのヘルプ配置
                       </h3>
-                      <Badge className="bg-green-100 text-green-800 border-green-300">
+                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                         {storeHelp.length}件配置
                       </Badge>
                     </div>
@@ -757,13 +769,9 @@ export default function MultiStoreHelpOptimization() {
                           {/* 右: 移動情報 */}
                           <div className="text-right">
                             <div className="flex items-center gap-2 text-sm">
-                              <Badge variant="outline" className={`${getStoreStyle(assignment.fromStoreId).bgColor} ${getStoreStyle(assignment.fromStoreId).color} ${getStoreStyle(assignment.fromStoreId).borderColor}`}>
-                                {assignment.fromStoreName}
-                              </Badge>
+                              <span className="text-gray-700">{assignment.fromStoreName}</span>
                               <ArrowRight className="h-4 w-4 text-gray-400" />
-                              <Badge variant="outline" className={`${store.bgColor} ${store.color} ${store.borderColor}`}>
-                                {store.shortName}
-                              </Badge>
+                              <span className="text-gray-700">{store.shortName}</span>
                             </div>
                             <div className="flex items-center gap-3 text-xs text-gray-500 mt-2 justify-end">
                               <div className="flex items-center gap-1">
@@ -782,10 +790,10 @@ export default function MultiStoreHelpOptimization() {
             })}
 
             {/* 店舗間フロー図 */}
-            <div className="rounded-lg border overflow-hidden">
-              <div className="bg-gray-50 px-5 py-3 border-b">
+            <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+              <div className="border-b bg-gray-50 px-4 py-3">
                 <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                  <ArrowLeftRight className="h-5 w-5" />
+                  <ArrowLeftRight className="h-4 w-4 text-gray-600" />
                   店舗間ヘルプフロー
                 </h3>
               </div>
@@ -795,25 +803,25 @@ export default function MultiStoreHelpOptimization() {
                     const incoming = assignments.filter((a) => a.toStoreId === store.id)
                     const outgoing = assignments.filter((a) => a.fromStoreId === store.id)
                     return (
-                      <div key={store.id} className={`${store.bgColor} border-2 ${store.borderColor} rounded-xl p-3 text-center`}>
-                        <MapPin className={`h-6 w-6 ${store.color} mx-auto mb-1`} />
-                        <h4 className={`font-bold ${store.color} text-sm`}>{store.shortName}</h4>
+                      <div key={store.id} className="border border-gray-200 rounded-lg p-3 text-center bg-white">
+                        <MapPin className="h-5 w-5 text-gray-600 mx-auto mb-1" />
+                        <h4 className="font-semibold text-gray-800 text-sm">{store.shortName}</h4>
                         <div className="mt-2 space-y-1.5">
                           {incoming.length > 0 && (
-                            <div className="bg-white rounded-lg p-1.5 border border-green-200">
-                              <div className="text-[10px] text-green-700 font-medium">受入</div>
-                              <div className="text-base font-bold text-green-800">{incoming.length}名</div>
+                            <div className="border border-gray-200 rounded p-1.5 bg-white">
+                              <div className="text-[10px] text-gray-600 font-medium">受入</div>
+                              <div className="text-base font-bold text-gray-900">{incoming.length}名</div>
                             </div>
                           )}
                           {outgoing.length > 0 && (
-                            <div className="bg-white rounded-lg p-1.5 border border-blue-200">
-                              <div className="text-[10px] text-blue-700 font-medium">派遣</div>
-                              <div className="text-base font-bold text-blue-800">{outgoing.length}名</div>
+                            <div className="border border-gray-200 rounded p-1.5 bg-white">
+                              <div className="text-[10px] text-gray-600 font-medium">派遣</div>
+                              <div className="text-base font-bold text-gray-900">{outgoing.length}名</div>
                             </div>
                           )}
-                          <div className="bg-white rounded-lg p-1.5 border border-gray-200">
+                          <div className="border border-gray-200 rounded p-1.5 bg-white">
                             <div className="text-[10px] text-gray-600">元の不足</div>
-                            <div className="text-base font-bold text-red-700">{store.helpSlots.length}枠</div>
+                            <div className="text-base font-bold text-red-600">{store.helpSlots.length}枠</div>
                           </div>
                         </div>
                       </div>
@@ -824,14 +832,10 @@ export default function MultiStoreHelpOptimization() {
                 {/* フロー矢印 */}
                 <div className="mt-6 space-y-2">
                   {assignments.map((a, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-sm bg-gray-50 rounded-lg px-4 py-2 max-w-4xl mx-auto">
-                      <Badge variant="outline" className={`text-xs ${getStoreStyle(a.fromStoreId).bgColor} ${getStoreStyle(a.fromStoreId).color} ${getStoreStyle(a.fromStoreId).borderColor}`}>
-                        {a.fromStoreName}
-                      </Badge>
+                    <div key={idx} className="flex items-center gap-2 text-sm bg-gray-50 rounded-lg px-4 py-2 max-w-4xl mx-auto border border-gray-200">
+                      <span className="text-gray-700">{a.fromStoreName}</span>
                       <ArrowRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                      <Badge variant="outline" className={`text-xs ${getStoreStyle(a.toStoreId).bgColor} ${getStoreStyle(a.toStoreId).color} ${getStoreStyle(a.toStoreId).borderColor}`}>
-                        {storesData.find((s) => s.id === a.toStoreId)?.shortName}
-                      </Badge>
+                      <span className="text-gray-700">{storesData.find((s) => s.id === a.toStoreId)?.shortName}</span>
                       <span className="text-gray-700 font-medium">{a.helperName}</span>
                       <span className="text-gray-500 text-xs">
                         {DAY_LABELS[a.dayIndex]} {a.start}〜{a.end} ({a.role})

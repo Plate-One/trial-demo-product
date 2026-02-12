@@ -16,6 +16,7 @@ interface EmployeeShift {
   employeeId: string
   employeeName: string
   position: "ホール" | "キッチン"
+  type: "社員" | "アルバイト"
   shifts: Record<string, ShiftTime[]> // key is date in format "YYYY-MM-DD"
   totalHours: number
 }
@@ -25,125 +26,416 @@ function generateMockShifts(month: Date): EmployeeShift[] {
   const daysInMonth = getDaysInMonth(month)
   const startDay = startOfMonth(month)
 
-  return [
+  // ヘルパー関数：シフトデータを生成し、合計時間も計算
+  const generateShifts = (pattern: (day: Date, dayIndex: number) => ShiftTime[]) => {
+    let totalHours = 0
+    const shifts = Array.from({ length: daysInMonth }, (_, i) => {
+      const day = addDays(startDay, i)
+      const dayShifts = pattern(day, i)
+      // 合計時間を計算
+      dayShifts.forEach((shift) => {
+        const [startHour, startMinute] = shift.start.split(":").map(Number)
+        const [endHour, endMinute] = shift.end.split(":").map(Number)
+        const hours = endHour - startHour + (endMinute - startMinute) / 60
+        totalHours += hours
+      })
+      return dayShifts
+    }).reduce(
+      (acc, shifts, idx) => {
+        const dateKey = format(addDays(startDay, idx), "yyyy-MM-dd")
+        acc[dateKey] = shifts
+        return acc
+      },
+      {} as Record<string, ShiftTime[]>,
+    )
+    return { shifts, totalHours }
+  }
+
+  // ホール - 社員5名
+  const h1Data = generateShifts((day, i) => {
+    const isWeekend = getDay(day) === 0 || getDay(day) === 6
+    return isWeekend ? [] : [{ start: "10:00", end: "19:00" }]
+  })
+  const hallEmployees = [
     {
-      employeeId: "1",
-      employeeName: "田中 花子",
-      position: "ホール",
-      shifts: Array.from({ length: daysInMonth }, (_, i) => {
-        const day = addDays(startDay, i)
+      employeeId: "h1",
+      employeeName: "鈴木一郎",
+      position: "ホール" as const,
+      type: "社員" as const,
+      shifts: h1Data.shifts,
+      totalHours: h1Data.totalHours,
+    },
+    (() => {
+      const h2Data = generateShifts((day, i) => {
         const isWeekend = getDay(day) === 0 || getDay(day) === 6
-        return isWeekend ? [] : [{ start: "09:00", end: "17:00" }]
-      }).reduce(
-        (acc, shifts, idx) => {
-          const dateKey = format(addDays(startDay, idx), "yyyy-MM-dd")
-          acc[dateKey] = shifts
-          return acc
-        },
-        {} as Record<string, ShiftTime[]>,
-      ),
-      totalHours: daysInMonth * 8,
+        return isWeekend ? [] : [{ start: "10:00", end: "22:00" }]
+      })
+      return {
+        employeeId: "h2",
+        employeeName: "山田三郎",
+        position: "ホール" as const,
+        type: "社員" as const,
+        shifts: h2Data.shifts,
+        totalHours: h2Data.totalHours,
+      }
+    })(),
+    (() => {
+      const h3Data = generateShifts((day, i) => {
+        const isWeekend = getDay(day) === 0 || getDay(day) === 6
+        return isWeekend ? [] : [{ start: "10:00", end: "16:00" }]
+      })
+      return {
+        employeeId: "h3",
+        employeeName: "佐藤四郎",
+        position: "ホール" as const,
+        type: "社員" as const,
+        shifts: h3Data.shifts,
+        totalHours: h3Data.totalHours,
+      }
+    })(),
+    (() => {
+      const h4Data = generateShifts((day, i) => {
+        const isWeekend = getDay(day) === 0 || getDay(day) === 6
+        return isWeekend ? [] : [{ start: "10:00", end: "16:00" }]
+      })
+      return {
+        employeeId: "h4",
+        employeeName: "大倉栄一",
+        position: "ホール" as const,
+        type: "社員" as const,
+        shifts: h4Data.shifts,
+        totalHours: h4Data.totalHours,
+      }
+    })(),
+    (() => {
+      const h5Data = generateShifts((day, i) => {
+        const isWeekend = getDay(day) === 0 || getDay(day) === 6
+        return isWeekend ? [] : [{ start: "09:00", end: "13:00" }]
+      })
+      return {
+        employeeId: "h5",
+        employeeName: "中村翔太",
+        position: "ホール" as const,
+        type: "社員" as const,
+        shifts: h5Data.shifts,
+        totalHours: h5Data.totalHours,
+      }
+    })(),
+  ]
+
+  // ホール - アルバイト10名
+  const h6Data = generateShifts((day, i) => {
+    const isWeekend = getDay(day) === 0 || getDay(day) === 6
+    return isWeekend ? [{ start: "17:00", end: "23:00" }] : []
+  })
+  const h7Data = generateShifts((day, i) => {
+    const isWeekend = getDay(day) === 0 || getDay(day) === 6
+    return isWeekend ? [] : [{ start: "10:00", end: "15:00" }]
+  })
+  const h8Data = generateShifts((day, i) => {
+    const isWeekend = getDay(day) === 0 || getDay(day) === 6
+    return isWeekend ? [] : [{ start: "15:00", end: "20:00" }]
+  })
+  const h9Data = generateShifts((day, i) => {
+    const isWeekend = getDay(day) === 0 || getDay(day) === 6
+    return isWeekend ? [] : [{ start: "11:00", end: "19:00" }]
+  })
+  const h10Data = generateShifts((day, i) => {
+    const isWeekend = getDay(day) === 0 || getDay(day) === 6
+    return isWeekend ? [{ start: "14:00", end: "23:00" }] : []
+  })
+  const h11Data = generateShifts((day, i) => {
+    const isWeekend = getDay(day) === 0 || getDay(day) === 6
+    return isWeekend ? [{ start: "18:00", end: "23:00" }] : []
+  })
+  const h12Data = generateShifts((day, i) => {
+    const isWeekend = getDay(day) === 0 || getDay(day) === 6
+    return isWeekend ? [] : [{ start: "12:00", end: "18:00" }]
+  })
+  const h13Data = generateShifts((day, i) => {
+    const isWeekend = getDay(day) === 0 || getDay(day) === 6
+    return isWeekend ? [{ start: "16:00", end: "22:00" }] : []
+  })
+  const h14Data = generateShifts((day, i) => {
+    const isWeekend = getDay(day) === 0 || getDay(day) === 6
+    return isWeekend ? [] : [{ start: "11:00", end: "17:00" }]
+  })
+  const h15Data = generateShifts((day, i) => {
+    const isWeekend = getDay(day) === 0 || getDay(day) === 6
+    return isWeekend ? [] : [{ start: "13:00", end: "20:00" }]
+  })
+  const hallPartTimers = [
+    {
+      employeeId: "h6",
+      employeeName: "小林陽子",
+      position: "ホール" as const,
+      type: "アルバイト" as const,
+      shifts: h6Data.shifts,
+      totalHours: h6Data.totalHours,
     },
     {
-      employeeId: "2",
-      employeeName: "佐藤 一郎",
-      position: "キッチン",
-      shifts: Array.from({ length: daysInMonth }, (_, i) => {
-        const day = addDays(startDay, i)
-        const isWeekend = getDay(day) === 0 || getDay(day) === 6
-        return isWeekend ? [] : [{ start: "13:00", end: "21:00" }]
-      }).reduce(
-        (acc, shifts, idx) => {
-          const dateKey = format(addDays(startDay, idx), "yyyy-MM-dd")
-          acc[dateKey] = shifts
-          return acc
-        },
-        {} as Record<string, ShiftTime[]>,
-      ),
-      totalHours: daysInMonth * 8,
+      employeeId: "h7",
+      employeeName: "伊藤真理",
+      position: "ホール" as const,
+      type: "アルバイト" as const,
+      shifts: h7Data.shifts,
+      totalHours: h7Data.totalHours,
     },
     {
-      employeeId: "3",
-      employeeName: "山田 太郎",
-      position: "ホール",
-      shifts: Array.from({ length: daysInMonth }, (_, i) => {
-        const day = addDays(startDay, i)
-        const isWeekend = getDay(day) === 0 || getDay(day) === 6
-        return isWeekend ? [{ start: "18:00", end: "23:00" }] : [{ start: "10:00", end: "18:00" }]
-      }).reduce(
-        (acc, shifts, idx) => {
-          const dateKey = format(addDays(startDay, idx), "yyyy-MM-dd")
-          acc[dateKey] = shifts
-          return acc
-        },
-        {} as Record<string, ShiftTime[]>,
-      ),
-      totalHours: daysInMonth * 8,
+      employeeId: "h8",
+      employeeName: "木村達也",
+      position: "ホール" as const,
+      type: "アルバイト" as const,
+      shifts: h8Data.shifts,
+      totalHours: h8Data.totalHours,
     },
     {
-      employeeId: "4",
-      employeeName: "鈴木 美咲",
-      position: "キッチン",
-      shifts: Array.from({ length: daysInMonth }, (_, i) => {
-        const day = addDays(startDay, i)
-        const isWeekend = getDay(day) === 0 || getDay(day) === 6
-        const dayOfMonth = i + 1
-        // 週3日勤務パターン
-        if (dayOfMonth % 3 === 0) return []
-        return isWeekend ? [{ start: "17:00", end: "22:00" }] : [{ start: "11:00", end: "16:00" }]
-      }).reduce(
-        (acc, shifts, idx) => {
-          const dateKey = format(addDays(startDay, idx), "yyyy-MM-dd")
-          acc[dateKey] = shifts
-          return acc
-        },
-        {} as Record<string, ShiftTime[]>,
-      ),
-      totalHours: Math.floor(daysInMonth * 5.5),
+      employeeId: "h9",
+      employeeName: "山本浩二",
+      position: "ホール" as const,
+      type: "アルバイト" as const,
+      shifts: h9Data.shifts,
+      totalHours: h9Data.totalHours,
     },
     {
-      employeeId: "5",
-      employeeName: "高橋 健太",
-      position: "ホール",
-      shifts: Array.from({ length: daysInMonth }, (_, i) => {
-        const day = addDays(startDay, i)
-        const isWeekend = getDay(day) === 0 || getDay(day) === 6
-        const dayOfMonth = i + 1
-        // 週4日勤務パターン
-        if (dayOfMonth % 4 === 0) return []
-        return isWeekend ? [{ start: "16:00", end: "23:00" }] : [{ start: "14:00", end: "22:00" }]
-      }).reduce(
-        (acc, shifts, idx) => {
-          const dateKey = format(addDays(startDay, idx), "yyyy-MM-dd")
-          acc[dateKey] = shifts
-          return acc
-        },
-        {} as Record<string, ShiftTime[]>,
-      ),
-      totalHours: Math.floor(daysInMonth * 7),
+      employeeId: "h10",
+      employeeName: "佐々木健太",
+      position: "ホール" as const,
+      type: "アルバイト" as const,
+      shifts: h10Data.shifts,
+      totalHours: h10Data.totalHours,
     },
     {
-      employeeId: "6",
-      employeeName: "伊藤 真理",
-      position: "キッチン",
-      shifts: Array.from({ length: daysInMonth }, (_, i) => {
-        const day = addDays(startDay, i)
-        const isWeekend = getDay(day) === 0 || getDay(day) === 6
-        const dayOfMonth = i + 1
-        // 平日のみ勤務
-        if (isWeekend) return []
-        return [{ start: "08:00", end: "16:00" }]
-      }).reduce(
-        (acc, shifts, idx) => {
-          const dateKey = format(addDays(startDay, idx), "yyyy-MM-dd")
-          acc[dateKey] = shifts
-          return acc
-        },
-        {} as Record<string, ShiftTime[]>,
-      ),
-      totalHours: Math.floor(daysInMonth * 5.7), // 平日のみなので少し少なめ
+      employeeId: "h11",
+      employeeName: "中島龍太",
+      position: "ホール" as const,
+      type: "アルバイト" as const,
+      shifts: h11Data.shifts,
+      totalHours: h11Data.totalHours,
+    },
+    {
+      employeeId: "h12",
+      employeeName: "田中美咲",
+      position: "ホール" as const,
+      type: "アルバイト" as const,
+      shifts: h12Data.shifts,
+      totalHours: h12Data.totalHours,
+    },
+    {
+      employeeId: "h13",
+      employeeName: "佐藤花子",
+      position: "ホール" as const,
+      type: "アルバイト" as const,
+      shifts: h13Data.shifts,
+      totalHours: h13Data.totalHours,
+    },
+    {
+      employeeId: "h14",
+      employeeName: "高橋太郎",
+      position: "ホール" as const,
+      type: "アルバイト" as const,
+      shifts: h14Data.shifts,
+      totalHours: h14Data.totalHours,
+    },
+    {
+      employeeId: "h15",
+      employeeName: "鈴木次郎",
+      position: "ホール" as const,
+      type: "アルバイト" as const,
+      shifts: h15Data.shifts,
+      totalHours: h15Data.totalHours,
     },
   ]
+
+  // キッチン - 社員5名
+  const k1Data = generateShifts((day, i) => {
+    const isWeekend = getDay(day) === 0 || getDay(day) === 6
+    return isWeekend ? [] : [{ start: "10:00", end: "23:00" }]
+  })
+  const k2Data = generateShifts((day, i) => {
+    const isWeekend = getDay(day) === 0 || getDay(day) === 6
+    return isWeekend ? [] : [{ start: "12:00", end: "16:00" }]
+  })
+  const k3Data = generateShifts((day, i) => {
+    const isWeekend = getDay(day) === 0 || getDay(day) === 6
+    return isWeekend ? [] : [{ start: "11:00", end: "20:00" }]
+  })
+  const k4Data = generateShifts((day, i) => {
+    const isWeekend = getDay(day) === 0 || getDay(day) === 6
+    return isWeekend ? [] : [{ start: "13:00", end: "22:00" }]
+  })
+  const k5Data = generateShifts((day, i) => {
+    const isWeekend = getDay(day) === 0 || getDay(day) === 6
+    return isWeekend ? [] : [{ start: "14:00", end: "18:00" }]
+  })
+  const kitchenEmployees = [
+    {
+      employeeId: "k1",
+      employeeName: "田中二郎",
+      position: "キッチン" as const,
+      type: "社員" as const,
+      shifts: k1Data.shifts,
+      totalHours: k1Data.totalHours,
+    },
+    {
+      employeeId: "k2",
+      employeeName: "渡辺直子",
+      position: "キッチン" as const,
+      type: "社員" as const,
+      shifts: k2Data.shifts,
+      totalHours: k2Data.totalHours,
+    },
+    {
+      employeeId: "k3",
+      employeeName: "高橋美咲",
+      position: "キッチン" as const,
+      type: "社員" as const,
+      shifts: k3Data.shifts,
+      totalHours: k3Data.totalHours,
+    },
+    {
+      employeeId: "k4",
+      employeeName: "加藤健一",
+      position: "キッチン" as const,
+      type: "社員" as const,
+      shifts: k4Data.shifts,
+      totalHours: k4Data.totalHours,
+    },
+    {
+      employeeId: "k5",
+      employeeName: "中村翔太",
+      position: "キッチン" as const,
+      type: "社員" as const,
+      shifts: k5Data.shifts,
+      totalHours: k5Data.totalHours,
+    },
+  ]
+
+  // キッチン - アルバイト10名
+  const k6Data = generateShifts((day, i) => {
+    const isWeekend = getDay(day) === 0 || getDay(day) === 6
+    return isWeekend ? [] : [{ start: "09:00", end: "14:00" }]
+  })
+  const k7Data = generateShifts((day, i) => {
+    const isWeekend = getDay(day) === 0 || getDay(day) === 6
+    return isWeekend ? [{ start: "16:00", end: "23:00" }] : []
+  })
+  const k8Data = generateShifts((day, i) => {
+    const isWeekend = getDay(day) === 0 || getDay(day) === 6
+    return isWeekend ? [] : [{ start: "12:00", end: "21:00" }]
+  })
+  const k9Data = generateShifts((day, i) => {
+    const isWeekend = getDay(day) === 0 || getDay(day) === 6
+    return isWeekend ? [{ start: "16:00", end: "23:00" }] : []
+  })
+  const k10Data = generateShifts((day, i) => {
+    const isWeekend = getDay(day) === 0 || getDay(day) === 6
+    return isWeekend ? [] : [{ start: "10:00", end: "17:00" }]
+  })
+  const k11Data = generateShifts((day, i) => {
+    const isWeekend = getDay(day) === 0 || getDay(day) === 6
+    return isWeekend ? [] : [{ start: "14:00", end: "21:00" }]
+  })
+  const k12Data = generateShifts((day, i) => {
+    const isWeekend = getDay(day) === 0 || getDay(day) === 6
+    return isWeekend ? [] : [{ start: "11:00", end: "19:00" }]
+  })
+  const k13Data = generateShifts((day, i) => {
+    const isWeekend = getDay(day) === 0 || getDay(day) === 6
+    return isWeekend ? [] : [{ start: "13:00", end: "20:00" }]
+  })
+  const k14Data = generateShifts((day, i) => {
+    const isWeekend = getDay(day) === 0 || getDay(day) === 6
+    return isWeekend ? [{ start: "15:00", end: "22:00" }] : []
+  })
+  const k15Data = generateShifts((day, i) => {
+    const isWeekend = getDay(day) === 0 || getDay(day) === 6
+    return isWeekend ? [] : [{ start: "12:00", end: "18:00" }]
+  })
+  const kitchenPartTimers = [
+    {
+      employeeId: "k6",
+      employeeName: "木村達也",
+      position: "キッチン" as const,
+      type: "アルバイト" as const,
+      shifts: k6Data.shifts,
+      totalHours: k6Data.totalHours,
+    },
+    {
+      employeeId: "k7",
+      employeeName: "斎藤美穂",
+      position: "キッチン" as const,
+      type: "アルバイト" as const,
+      shifts: k7Data.shifts,
+      totalHours: k7Data.totalHours,
+    },
+    {
+      employeeId: "k8",
+      employeeName: "松田聡子",
+      position: "キッチン" as const,
+      type: "アルバイト" as const,
+      shifts: k8Data.shifts,
+      totalHours: k8Data.totalHours,
+    },
+    {
+      employeeId: "k9",
+      employeeName: "吉田美香",
+      position: "キッチン" as const,
+      type: "アルバイト" as const,
+      shifts: k9Data.shifts,
+      totalHours: k9Data.totalHours,
+    },
+    {
+      employeeId: "k10",
+      employeeName: "山田花子",
+      position: "キッチン" as const,
+      type: "アルバイト" as const,
+      shifts: k10Data.shifts,
+      totalHours: k10Data.totalHours,
+    },
+    {
+      employeeId: "k11",
+      employeeName: "佐々木健",
+      position: "キッチン" as const,
+      type: "アルバイト" as const,
+      shifts: k11Data.shifts,
+      totalHours: k11Data.totalHours,
+    },
+    {
+      employeeId: "k12",
+      employeeName: "鈴木三郎",
+      position: "キッチン" as const,
+      type: "アルバイト" as const,
+      shifts: k12Data.shifts,
+      totalHours: k12Data.totalHours,
+    },
+    {
+      employeeId: "k13",
+      employeeName: "高橋四郎",
+      position: "キッチン" as const,
+      type: "アルバイト" as const,
+      shifts: k13Data.shifts,
+      totalHours: k13Data.totalHours,
+    },
+    {
+      employeeId: "k14",
+      employeeName: "田中五郎",
+      position: "キッチン" as const,
+      type: "アルバイト" as const,
+      shifts: k14Data.shifts,
+      totalHours: k14Data.totalHours,
+    },
+    {
+      employeeId: "k15",
+      employeeName: "佐藤六郎",
+      position: "キッチン" as const,
+      type: "アルバイト" as const,
+      shifts: k15Data.shifts,
+      totalHours: k15Data.totalHours,
+    },
+  ]
+
+  return [...hallEmployees, ...hallPartTimers, ...kitchenEmployees, ...kitchenPartTimers]
 }
 
 // Add a new function to generate mock metrics data
@@ -219,10 +511,13 @@ export function MonthlyShiftTable() {
     setCurrentMonth(nextMonth)
   }
 
-  const hallEmployees = employeeShifts.filter((emp) => emp.position === "ホール")
-  const kitchenEmployees = employeeShifts.filter((emp) => emp.position === "キッチン")
-  const hallHours = hallEmployees.reduce((sum, emp) => sum + emp.totalHours, 0)
-  const kitchenHours = kitchenEmployees.reduce((sum, emp) => sum + emp.totalHours, 0)
+  const hallEmployees = employeeShifts.filter((emp) => emp.position === "ホール" && emp.type === "社員")
+  const hallPartTimers = employeeShifts.filter((emp) => emp.position === "ホール" && emp.type === "アルバイト")
+  const kitchenEmployees = employeeShifts.filter((emp) => emp.position === "キッチン" && emp.type === "社員")
+  const kitchenPartTimers = employeeShifts.filter((emp) => emp.position === "キッチン" && emp.type === "アルバイト")
+  
+  const hallHours = [...hallEmployees, ...hallPartTimers].reduce((sum, emp) => sum + emp.totalHours, 0)
+  const kitchenHours = [...kitchenEmployees, ...kitchenPartTimers].reduce((sum, emp) => sum + emp.totalHours, 0)
 
   // Helper function to render shift cells
   const renderShiftCell = (employee: EmployeeShift, day: { date: Date; dayOfWeek: string; isWeekend: boolean }) => {
@@ -446,75 +741,154 @@ export function MonthlyShiftTable() {
       {/* ポジション別表示（ホール／キッチン） */}
       <div className="flex flex-wrap gap-3">
         <Badge variant="secondary" className="text-sm">
-          ホール {hallEmployees.length}名 / {hallHours}h
+          ホール 社員{hallEmployees.length}名 / アルバイト{hallPartTimers.length}名 / {hallHours}h
         </Badge>
         <Badge variant="secondary" className="text-sm">
-          キッチン {kitchenEmployees.length}名 / {kitchenHours}h
+          キッチン 社員{kitchenEmployees.length}名 / アルバイト{kitchenPartTimers.length}名 / {kitchenHours}h
         </Badge>
       </div>
 
       <div className="space-y-6">
         {[
-          { title: "ホール", employees: hallEmployees, totalHours: hallHours },
-          { title: "キッチン", employees: kitchenEmployees, totalHours: kitchenHours },
+          { 
+            title: "ホール", 
+            employees: hallEmployees, 
+            partTimers: hallPartTimers,
+            totalHours: hallHours 
+          },
+          { 
+            title: "キッチン", 
+            employees: kitchenEmployees, 
+            partTimers: kitchenPartTimers,
+            totalHours: kitchenHours 
+          },
         ].map((section) => (
           <div key={section.title} className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
             <div className="flex items-center justify-between px-4 py-3 border-b bg-gray-50">
               <div className="flex items-center gap-2">
                 <h3 className="text-lg font-semibold text-gray-800">{section.title}</h3>
-                <Badge variant="secondary">{section.employees.length}名 / {section.totalHours}h</Badge>
+                <Badge variant="secondary">
+                  社員{section.employees.length}名 / アルバイト{section.partTimers.length}名 / {section.totalHours}h
+                </Badge>
               </div>
             </div>
-            <div className="overflow-x-auto print:overflow-visible">
-              <table className="w-full print-table">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    <th
-                      className="sticky left-0 z-10 text-left p-3 font-medium text-gray-700 min-w-[120px] text-sm bg-gray-50"
-                      rowSpan={2}
-                    >
-                      項目
-                    </th>
-                    {days.map((day) => (
+            
+            {/* 社員セクション */}
+            <div className="border-b border-gray-200">
+              <div className="px-4 py-2 bg-blue-50 border-b border-gray-200">
+                <Badge variant="outline" className="text-blue-700 border-blue-300 text-xs">
+                  社員 {section.employees.length}名
+                </Badge>
+              </div>
+              <div className="overflow-x-auto print:overflow-visible">
+                <table className="w-full print-table">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
                       <th
-                        key={format(day.date, "d")}
-                        className={`p-3 text-center font-medium min-w-[60px] text-sm ${
-                          day.isWeekend ? "text-red-600 bg-red-50" : "text-gray-700"
-                        }`}
+                        className="sticky left-0 z-10 text-left p-3 font-medium text-gray-700 min-w-[120px] text-sm bg-gray-50"
+                        rowSpan={2}
                       >
-                        {format(day.date, "d")}日
+                        スタッフ
                       </th>
-                    ))}
-                    <th className="text-center p-3 font-medium text-gray-700 text-sm" rowSpan={2}>
-                      合計
-                    </th>
-                  </tr>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    {days.map((day) => (
-                      <th
-                        key={`dow-${format(day.date, "d")}`}
-                        className={`p-3 text-center text-xs font-medium ${
-                          day.isWeekend ? "text-red-600 bg-red-50" : "text-gray-600"
-                        }`}
-                      >
-                        {day.dayOfWeek}
+                      {days.map((day) => (
+                        <th
+                          key={format(day.date, "d")}
+                          className={`p-3 text-center font-medium min-w-[60px] text-sm ${
+                            day.isWeekend ? "text-red-600 bg-red-50" : "text-gray-700"
+                          }`}
+                        >
+                          {format(day.date, "d")}日
+                        </th>
+                      ))}
+                      <th className="text-center p-3 font-medium text-gray-700 text-sm" rowSpan={2}>
+                        合計
                       </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {/* Employee shift rows */}
-                  {section.employees.map((employee) => (
-                    <tr key={employee.employeeId} className="border-b border-gray-200 hover:bg-gray-50 avoid-break">
-                      <td className="sticky left-0 z-10 p-3 font-medium text-gray-700 bg-gray-50 text-sm print:bg-white">
-                        {employee.employeeName}
-                      </td>
-                      {days.map((day) => renderShiftCell(employee, day))}
-                      <td className="p-3 font-medium text-center bg-gray-50 text-sm">{employee.totalHours}h</td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      {days.map((day) => (
+                        <th
+                          key={`dow-${format(day.date, "d")}`}
+                          className={`p-3 text-center text-xs font-medium ${
+                            day.isWeekend ? "text-red-600 bg-red-50" : "text-gray-600"
+                          }`}
+                        >
+                          {day.dayOfWeek}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {section.employees.map((employee) => (
+                      <tr key={employee.employeeId} className="border-b border-gray-200 hover:bg-gray-50 avoid-break">
+                        <td className="sticky left-0 z-10 p-3 font-medium text-gray-700 bg-white text-sm print:bg-white">
+                          {employee.employeeName}
+                        </td>
+                        {days.map((day) => renderShiftCell(employee, day))}
+                        <td className="p-3 font-medium text-center bg-gray-50 text-sm">{Math.round(employee.totalHours)}h</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* アルバイトセクション */}
+            <div>
+              <div className="px-4 py-2 bg-purple-50 border-b border-gray-200">
+                <Badge variant="outline" className="text-purple-700 border-purple-300 text-xs">
+                  アルバイト {section.partTimers.length}名
+                </Badge>
+              </div>
+              <div className="overflow-x-auto print:overflow-visible">
+                <table className="w-full print-table">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th
+                        className="sticky left-0 z-10 text-left p-3 font-medium text-gray-700 min-w-[120px] text-sm bg-gray-50"
+                        rowSpan={2}
+                      >
+                        スタッフ
+                      </th>
+                      {days.map((day) => (
+                        <th
+                          key={format(day.date, "d")}
+                          className={`p-3 text-center font-medium min-w-[60px] text-sm ${
+                            day.isWeekend ? "text-red-600 bg-red-50" : "text-gray-700"
+                          }`}
+                        >
+                          {format(day.date, "d")}日
+                        </th>
+                      ))}
+                      <th className="text-center p-3 font-medium text-gray-700 text-sm" rowSpan={2}>
+                        合計
+                      </th>
+                    </tr>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      {days.map((day) => (
+                        <th
+                          key={`dow-${format(day.date, "d")}`}
+                          className={`p-3 text-center text-xs font-medium ${
+                            day.isWeekend ? "text-red-600 bg-red-50" : "text-gray-600"
+                          }`}
+                        >
+                          {day.dayOfWeek}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {section.partTimers.map((employee) => (
+                      <tr key={employee.employeeId} className="border-b border-gray-200 hover:bg-gray-50 avoid-break">
+                        <td className="sticky left-0 z-10 p-3 font-medium text-gray-700 bg-white text-sm print:bg-white">
+                          {employee.employeeName}
+                        </td>
+                        {days.map((day) => renderShiftCell(employee, day))}
+                        <td className="p-3 font-medium text-center bg-gray-50 text-sm">{Math.round(employee.totalHours)}h</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         ))}
