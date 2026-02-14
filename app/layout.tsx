@@ -43,7 +43,7 @@ export default function RootLayout({
                       <SelectValue placeholder="店舗を選択" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="bayquarter">キリンシティ 横浜ベイクォーター店</SelectItem>
+                      <SelectItem value="bayquarter">キリンシティプラス横浜ベイクォーター店</SelectItem>
                       <SelectItem value="mores">キリンシティ 横浜モアーズ店</SelectItem>
                       <SelectItem value="fti">キリンシティ FOOD＆TIME ISETAN YOKOHAMA店</SelectItem>
                       <SelectItem value="cial">キリンシティ CIAL桜木町店</SelectItem>

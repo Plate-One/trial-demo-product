@@ -139,31 +139,6 @@ export default function DemandForecastDashboard() {
           </div>
 
           <div className="bg-gray-50 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">人気メニュー予測</h3>
-            <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm">ステーキセット</span>
-              <Badge variant="default">42注文</Badge>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm">パスタランチ</span>
-              <Badge variant="secondary">38注文</Badge>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm">シーザーサラダ</span>
-              <Badge variant="outline">35注文</Badge>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm">デザートプレート</span>
-              <Badge variant="outline">28注文</Badge>
-            </div>
-            <div className="pt-2 border-t">
-              <p className="text-xs text-gray-500">※ランチタイム終了までの予測</p>
-            </div>
-            </div>
-          </div>
-
-          <div className="bg-gray-50 rounded-lg p-4">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">天気・イベント情報</h3>
             <div className="space-y-4">
             <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg">
@@ -196,10 +171,6 @@ export default function DemandForecastDashboard() {
               <Button variant="outline" className="h-16 flex flex-col gap-1">
                 <Phone className="w-5 h-5" />
                 <span className="text-xs">緊急スタッフ呼び出し</span>
-              </Button>
-              <Button variant="outline" className="h-16 flex flex-col gap-1">
-                <Settings className="w-5 h-5" />
-                <span className="text-xs">メニュー変更</span>
               </Button>
               <Button variant="outline" className="h-16 flex flex-col gap-1">
                 <AlertCircle className="w-5 h-5" />

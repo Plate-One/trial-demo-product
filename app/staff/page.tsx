@@ -47,7 +47,7 @@ const initialStaffData: StaffMember[] = [
     name: "佐藤 一郎",
     nameKana: "さとう いちろう",
     avatar: "/placeholder.svg?height=40&width=40",
-    store: "キリンシティ 横浜ベイクォーター店",
+    store: "キリンシティプラス横浜ベイクォーター店",
     position: "両方",
     role: "店長",
     employmentType: "正社員",
@@ -62,7 +62,7 @@ const initialStaffData: StaffMember[] = [
     name: "田中 花子",
     nameKana: "たなか はなこ",
     avatar: "/placeholder.svg?height=40&width=40",
-    store: "キリンシティ 横浜ベイクォーター店",
+    store: "キリンシティプラス横浜ベイクォーター店",
     position: "ホール",
     role: "スタッフ",
     employmentType: "パート",
@@ -78,7 +78,7 @@ const initialStaffData: StaffMember[] = [
     name: "鈴木 健太",
     nameKana: "すずき けんた",
     avatar: "/placeholder.svg?height=40&width=40",
-    store: "キリンシティ 横浜ベイクォーター店",
+    store: "キリンシティプラス横浜ベイクォーター店",
     position: "キッチン",
     role: "スタッフ",
     employmentType: "アルバイト",
@@ -94,7 +94,7 @@ const initialStaffData: StaffMember[] = [
     name: "山田 太郎",
     nameKana: "やまだ たろう",
     avatar: "/placeholder.svg?height=40&width=40",
-    store: "キリンシティ 横浜ベイクォーター店",
+    store: "キリンシティプラス横浜ベイクォーター店",
     position: "ホール",
     role: "マネージャー",
     employmentType: "正社員",
@@ -109,7 +109,7 @@ const initialStaffData: StaffMember[] = [
     name: "伊藤 美咲",
     nameKana: "いとう みさき",
     avatar: "/placeholder.svg?height=40&width=40",
-    store: "キリンシティ 横浜ベイクォーター店",
+    store: "キリンシティプラス横浜ベイクォーター店",
     position: "ホール",
     role: "スタッフ",
     employmentType: "アルバイト",
@@ -125,7 +125,7 @@ const initialStaffData: StaffMember[] = [
     name: "渡辺 直樹",
     nameKana: "わたなべ なおき",
     avatar: "/placeholder.svg?height=40&width=40",
-    store: "キリンシティ 横浜ベイクォーター店",
+    store: "キリンシティプラス横浜ベイクォーター店",
     position: "キッチン",
     role: "チーフ",
     employmentType: "正社員",
@@ -249,7 +249,7 @@ export default function StaffManagement() {
   const [newStaff, setNewStaff] = useState<Partial<StaffMember>>({
     name: "",
     nameKana: "",
-    store: "キリンシティ 横浜ベイクォーター店",
+    store: "キリンシティプラス横浜ベイクォーター店",
     position: "ホール",
     role: "スタッフ",
     employmentType: "アルバイト",
@@ -285,7 +285,7 @@ export default function StaffManagement() {
     setNewStaff({
       name: "",
       nameKana: "",
-      store: "キリンシティ 横浜ベイクォーター店",
+      store: "キリンシティプラス横浜ベイクォーター店",
       position: "ホール",
       role: "スタッフ",
       employmentType: "アルバイト",
@@ -394,7 +394,7 @@ export default function StaffManagement() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">すべての店舗</SelectItem>
-                  <SelectItem value="キリンシティ 横浜ベイクォーター店">横浜ベイクォーター店</SelectItem>
+                  <SelectItem value="キリンシティプラス横浜ベイクォーター店">横浜ベイクォーター店</SelectItem>
                   <SelectItem value="キリンシティ 横浜モアーズ店">横浜モアーズ店</SelectItem>
                   <SelectItem value="キリンシティ CIAL桜木町店">CIAL桜木町店</SelectItem>
                   <SelectItem value="キリンシティ FOOD＆TIME ISETAN YOKOHAMA店">FTI横浜店</SelectItem>
@@ -563,7 +563,7 @@ export default function StaffManagement() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="キリンシティ 横浜ベイクォーター店">キリンシティ 横浜ベイクォーター店</SelectItem>
+                      <SelectItem value="キリンシティプラス横浜ベイクォーター店">キリンシティプラス横浜ベイクォーター店</SelectItem>
                       <SelectItem value="キリンシティ 横浜モアーズ店">キリンシティ 横浜モアーズ店</SelectItem>
                       <SelectItem value="キリンシティ FOOD＆TIME ISETAN YOKOHAMA店">キリンシティ FTI横浜店</SelectItem>
                       <SelectItem value="キリンシティ CIAL桜木町店">キリンシティ CIAL桜木町店</SelectItem>
@@ -730,7 +730,7 @@ export default function StaffManagement() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="キリンシティ 横浜ベイクォーター店">キリンシティ 横浜ベイクォーター店</SelectItem>
+                        <SelectItem value="キリンシティプラス横浜ベイクォーター店">キリンシティプラス横浜ベイクォーター店</SelectItem>
                         <SelectItem value="キリンシティ 横浜モアーズ店">キリンシティ 横浜モアーズ店</SelectItem>
                         <SelectItem value="キリンシティ FOOD＆TIME ISETAN YOKOHAMA店">キリンシティ FTI横浜店</SelectItem>
                         <SelectItem value="キリンシティ CIAL桜木町店">キリンシティ CIAL桜木町店</SelectItem>

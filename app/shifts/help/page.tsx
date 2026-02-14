@@ -70,7 +70,7 @@ const DAY_LABELS = ["月", "火", "水", "木", "金", "土", "日"]
 const storesData: StoreData[] = [
   {
     id: "bayquarter",
-    name: "キリンシティ 横浜ベイクォーター店",
+    name: "キリンシティプラス横浜ベイクォーター店",
     shortName: "ベイクォーター",
     color: "text-blue-700",
     bgColor: "bg-blue-50",

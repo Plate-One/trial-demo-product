@@ -23,7 +23,7 @@ export function ShiftMetrics({
           date: format(date, "MM/dd (E)", { locale: ja }),
           sales: Math.floor(Math.random() * 1000000) + 500000,
           staffCost: Math.floor(Math.random() * 100000) + 50000,
-          staffRatio: (Math.random() * 10 + 25).toFixed(1),
+          staffRatio: (Math.random() * 10 + 20).toFixed(1),
         }
       })
       setWeeklyData(weekData)
@@ -40,7 +40,7 @@ export function ShiftMetrics({
         date: format(date, "MM/dd (E)", { locale: ja }),
         sales: Math.floor(Math.random() * 1000000) + 500000,
         staffCost: Math.floor(Math.random() * 100000) + 50000,
-        staffRatio: (Math.random() * 10 + 25).toFixed(1),
+        staffRatio: (Math.random() * 10 + 20).toFixed(1),
       }))
       setMonthlyData(monthData)
     }

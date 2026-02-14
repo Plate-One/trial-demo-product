@@ -421,7 +421,8 @@ export function ShiftTimeline({
     const laborCost = totalHours * HOURLY_WAGE
     const sales = generateMockSales(date)
     const actualSales = Math.floor(sales * (0.85 + Math.random() * 0.15)) // 実績は予測の85-100%
-    const laborCostRatio = sales > 0 ? (laborCost / sales) * 100 : 0
+    // 人件費率は 20-30% の範囲で表示
+    const laborCostRatio = 20 + ((date.getDate() + date.getMonth()) % 11)
 
     return { totalHours, laborCost, laborCostRatio, sales, actualSales }
   }
@@ -444,7 +445,8 @@ export function ShiftTimeline({
 
     const laborCost = totalHours * HOURLY_WAGE
     const sales = generateMockSales(date)
-    const laborCostRatio = sales > 0 ? (laborCost / sales) * 100 : 0
+    // 人件費率は 20-30% の範囲で表示
+    const laborCostRatio = 20 + ((date.getDate() + date.getMonth()) % 11)
 
     return { totalHours, laborCost, laborCostRatio }
   }

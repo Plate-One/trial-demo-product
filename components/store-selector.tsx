@@ -17,7 +17,7 @@ export interface Store {
 }
 
 const STORES: Store[] = [
-  { id: "bayquarter", name: "キリンシティ 横浜ベイクォーター店" },
+  { id: "bayquarter", name: "キリンシティプラス横浜ベイクォーター店" },
   { id: "mores", name: "キリンシティ 横浜モアーズ店" },
   { id: "fti", name: "キリンシティ FOOD＆TIME ISETAN YOKOHAMA店" },
   { id: "cial", name: "キリンシティ CIAL桜木町店" },

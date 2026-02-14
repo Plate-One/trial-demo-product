@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowLeft, ArrowRight, Sun, Cloud, CloudRain, Calendar } from "lucide-react"
+import { ArrowLeft, ArrowRight, Sun, Cloud, CloudRain, Calendar, ChevronDown, ChevronRight } from "lucide-react"
 import { format, addDays, subDays, startOfWeek, endOfWeek } from "date-fns"
 import { ja } from "date-fns/locale"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts"
@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge"
 
 // 店舗データ（実際のアプリケーションではAPIから取得）
 const storeData = {
-  name: "キリンシティ 横浜ベイクォーター店",
+  name: "キリンシティプラス横浜ベイクォーター店",
   period: "2025年2月21日〜27日",
   totals: {
     predictedCustomers: 574,
@@ -130,9 +130,45 @@ const WeatherIcon = ({ type }: { type: string }) => {
   }
 }
 
+// 時間帯別の配分パターン（ランチ・ディナー中心）
+const HOURLY_WEIGHTS = [
+  { hour: "9:00", label: "9-10時", weight: 0.02 },
+  { hour: "10:00", label: "10-11時", weight: 0.03 },
+  { hour: "11:00", label: "11-12時", weight: 0.08 },
+  { hour: "12:00", label: "12-13時", weight: 0.15 },
+  { hour: "13:00", label: "13-14時", weight: 0.14 },
+  { hour: "14:00", label: "14-15時", weight: 0.08 },
+  { hour: "15:00", label: "15-16時", weight: 0.04 },
+  { hour: "16:00", label: "16-17時", weight: 0.03 },
+  { hour: "17:00", label: "17-18時", weight: 0.06 },
+  { hour: "18:00", label: "18-19時", weight: 0.12 },
+  { hour: "19:00", label: "19-20時", weight: 0.13 },
+  { hour: "20:00", label: "20-21時", weight: 0.08 },
+  { hour: "21:00", label: "21-22時", weight: 0.04 },
+]
+
+function getHourlyBreakdown(totalCustomers: number, totalSales: number) {
+  const sumWeight = HOURLY_WEIGHTS.reduce((s, w) => s + w.weight, 0)
+  return HOURLY_WEIGHTS.map(({ hour, label, weight }) => {
+    const ratio = weight / sumWeight
+    const customers = Math.round(totalCustomers * ratio)
+    const sales = Math.round(totalSales * ratio)
+    return { hour, label, customers, sales }
+  })
+}
+
 export default function DemandForecastPage() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [viewMode, setViewMode] = useState<"daily" | "weekly">("daily")
+  const [expandedDayIndex, setExpandedDayIndex] = useState<Set<number>>(new Set())
+  const toggleDayTimeSlots = (i: number) => {
+    setExpandedDayIndex((prev) => {
+      const next = new Set(prev)
+      if (next.has(i)) next.delete(i)
+      else next.add(i)
+      return next
+    })
+  }
 
   const handlePrevPeriod = () => {
     setCurrentDate((prevDate) => subDays(prevDate, viewMode === "daily" ? 1 : 7))
@@ -306,6 +342,8 @@ export default function DemandForecastPage() {
             const multiplier = isWeekend ? 1.3 : 1.0
             const baseCustomers = 150 + Math.sin(i / 7) * 30
             const baseSales = baseCustomers * (3000 + Math.random() * 1000)
+            const dayCustomers = Math.round(baseCustomers * multiplier)
+            const daySales = Math.round(baseSales * multiplier)
             const weatherTypes = ["sunny", "cloudy", "rainy"]
             const weather = weatherTypes[Math.floor(Math.random() * weatherTypes.length)]
             const tempHigh = 20 + Math.random() * 10
@@ -314,6 +352,7 @@ export default function DemandForecastPage() {
 
             // イベント情報（ランダムに生成）
             const events = i % 7 === 0 ? ["地域祭り", "コンサート"] : i % 5 === 0 ? ["商店街セール"] : []
+            const hourlyBreakdown = getHourlyBreakdown(dayCustomers, daySales)
 
             return (
               <div key={i} className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors">
@@ -342,13 +381,13 @@ export default function DemandForecastPage() {
 
                     <div className="md:col-span-1">
                       <div className="text-sm text-gray-600">予測客数</div>
-                      <div className="font-bold text-lg">{Math.round(baseCustomers * multiplier)}人</div>
+                      <div className="font-bold text-lg">{dayCustomers}人</div>
                     </div>
 
                     <div className="md:col-span-1">
                       <div className="text-sm text-gray-600">予測売上</div>
                       <div className="font-bold text-lg">
-                        {Math.round(baseSales * multiplier).toLocaleString()}円
+                        {daySales.toLocaleString()}円
                       </div>
                     </div>
 
@@ -372,6 +411,44 @@ export default function DemandForecastPage() {
                         編集
                       </Button>
                     </div>
+                  </div>
+
+                  {/* 時間帯別 売上・客数（トグル） */}
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <button
+                      type="button"
+                      onClick={() => toggleDayTimeSlots(i)}
+                      className="flex items-center gap-2 w-full text-left text-sm font-semibold text-gray-700 hover:text-gray-900"
+                    >
+                      {expandedDayIndex.has(i) ? (
+                        <ChevronDown className="h-4 w-4 shrink-0" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 shrink-0" />
+                      )}
+                      <span>時間帯別 売上・客数</span>
+                    </button>
+                    {expandedDayIndex.has(i) && (
+                      <div className="mt-3 overflow-x-auto">
+                        <table className="w-full text-sm border-collapse">
+                          <thead>
+                            <tr className="bg-gray-100/80">
+                              <th className="border border-gray-200 px-2 py-1.5 text-left font-medium text-gray-600">時間帯</th>
+                              <th className="border border-gray-200 px-2 py-1.5 text-right font-medium text-gray-600">予測客数</th>
+                              <th className="border border-gray-200 px-2 py-1.5 text-right font-medium text-gray-600">予測売上</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {hourlyBreakdown.map((row, idx) => (
+                              <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50/50"}>
+                                <td className="border border-gray-200 px-2 py-1.5 text-gray-800">{row.label}</td>
+                                <td className="border border-gray-200 px-2 py-1.5 text-right">{row.customers}人</td>
+                                <td className="border border-gray-200 px-2 py-1.5 text-right">{row.sales.toLocaleString()}円</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
