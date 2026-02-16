@@ -53,7 +53,7 @@ export function StoreSelector({ selectedStores, onStoresChange }: StoreSelectorP
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="w-[320px] justify-between">
+        <Button variant="outline" className="w-full min-w-0 sm:w-[280px] md:w-[320px] max-w-full justify-between">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <Store className="h-4 w-4 shrink-0" />
             <span className="truncate">

@@ -31,14 +31,14 @@ export function ShiftHeader({
   }
 
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex flex-wrap items-center gap-3 min-w-0">
       <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as "daily" | "monthly")}>
-        <TabsList>
+        <TabsList className="shrink-0">
           <TabsTrigger value="daily">日別</TabsTrigger>
           <TabsTrigger value="monthly">月別</TabsTrigger>
         </TabsList>
       </Tabs>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 shrink-0">
         <Button
           variant="outline"
           size="icon"
@@ -55,7 +55,7 @@ export function ShiftHeader({
         <Button variant="outline" size="sm" onClick={handleToday}>
           今日
         </Button>
-        <div className="w-[240px] text-center font-medium">
+        <div className="w-[200px] sm:w-[240px] text-center font-medium text-sm sm:text-base min-w-0">
           {viewMode === "daily"
             ? format(currentDate, "yyyy年MM月dd日", { locale: ja })
             : format(currentDate, "yyyy年MM月", { locale: ja })}
@@ -74,11 +74,11 @@ export function ShiftHeader({
           <ChevronRightIcon className="h-4 w-4" />
         </Button>
       </div>
-      <div className="flex items-center gap-3">
-        <Button variant="outline" className="h-10">
+      <div className="flex flex-wrap items-center gap-2 shrink-0">
+        <Button variant="outline" size="sm" className="h-9 text-xs sm:text-sm">
           スタッフ管理
         </Button>
-        <Button className="h-10" variant="outline">
+        <Button size="sm" variant="outline" className="h-9 text-xs sm:text-sm whitespace-nowrap">
           シフトを公開する
         </Button>
       </div>

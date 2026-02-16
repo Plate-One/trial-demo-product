@@ -65,20 +65,20 @@ export default function ShiftManagement() {
     <div className="space-y-4">
       {/* 店舗選択とヘッダー（メインアクション: シフトを作成） */}
       <div className="bg-white rounded-lg shadow-sm p-6">
-        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
-          <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4 min-w-0 flex-1">
             <StoreSelector selectedStores={selectedStores} onStoresChange={setSelectedStores} />
             <ShiftHeader
-            viewMode={viewMode}
-            setViewMode={setViewMode}
-            currentDate={currentDate}
-            setCurrentDate={setCurrentDate}
-          />
+              viewMode={viewMode}
+              setViewMode={setViewMode}
+              currentDate={currentDate}
+              setCurrentDate={setCurrentDate}
+            />
           </div>
-          <Button asChild className="gap-2 shrink-0">
-            <Link href="/shifts/create">
-              <PenLine className="h-4 w-4" />
-              今週のシフトを作成する
+          <Button asChild className="shrink-0 w-full sm:w-auto">
+            <Link href="/shifts/create" className="inline-flex items-center gap-2 justify-center sm:justify-center min-w-0">
+              <PenLine className="h-4 w-4 shrink-0" />
+              <span className="truncate">今週のシフトを作成する</span>
             </Link>
           </Button>
         </div>
