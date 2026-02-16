@@ -12,6 +12,7 @@ import {
   TrendingUp, Star, Send,
 } from "lucide-react"
 import Link from "next/link"
+import { HELP_ASSIGNMENTS } from "@/lib/help-assignments"
 
 // ========== 型定義 ==========
 interface HelpSlot {
@@ -288,7 +289,12 @@ function runHelpOptimization(): {
   resolvedCount: number
   totalSlots: number
 } {
-  const assignments: HelpAssignment[] = []
+  // シフト一覧と同一のアサインデータを参照（lib/help-assignments.ts）
+  const assignments: HelpAssignment[] = HELP_ASSIGNMENTS.map((a) => ({
+    ...a,
+    travelMinutes: a.travelMinutes ?? 0,
+    transportCost: a.transportCost ?? 0,
+  }))
   const steps: OptimizationStep[] = []
   const totalSlots = storesData.reduce((sum, store) => sum + store.helpSlots.length, 0)
 
@@ -302,141 +308,6 @@ function runHelpOptimization(): {
     title: "他店舗の空きスタッフを検索",
     description: `${availableHelpers.length}名のヘルプ可能スタッフを検出`,
     detail: storesData.map((s) => `${s.shortName}: ${availableHelpers.filter((h) => h.storeId === s.id).length}名`).join(" / "),
-  })
-
-  // ベイクォーター店 月曜 ホール不足 → CIAL桜木町の佐々木
-  assignments.push({
-    helperId: "h7", helperName: "佐々木 健太",
-    fromStoreId: "cial", fromStoreName: "CIAL桜木町店",
-    toStoreId: "bayquarter", toStoreName: "ベイクォーター店",
-    dayIndex: 0, start: "18:00", end: "21:00", role: "ホール",
-    travelMinutes: 15, transportCost: 200,
-  })
-
-  // ベイクォーター店 月曜 キッチン不足 → モアーズの松田
-  assignments.push({
-    helperId: "h3", helperName: "松田 聡子",
-    fromStoreId: "mores", fromStoreName: "モアーズ店",
-    toStoreId: "bayquarter", toStoreName: "ベイクォーター店",
-    dayIndex: 0, start: "19:00", end: "22:00", role: "キッチン",
-    travelMinutes: 10, transportCost: 180,
-  })
-
-  // ベイクォーター店 水曜 ホール不足 → モアーズの吉田
-  assignments.push({
-    helperId: "h4", helperName: "吉田 美香",
-    fromStoreId: "mores", fromStoreName: "モアーズ店",
-    toStoreId: "bayquarter", toStoreName: "ベイクォーター店",
-    dayIndex: 2, start: "18:00", end: "21:00", role: "ホール",
-    travelMinutes: 10, transportCost: 180,
-  })
-
-  // ベイクォーター店 金曜夜ホール → FTIの大西
-  assignments.push({
-    helperId: "h5", helperName: "大西 翔平",
-    fromStoreId: "fti", fromStoreName: "FTI横浜店",
-    toStoreId: "bayquarter", toStoreName: "ベイクォーター店",
-    dayIndex: 4, start: "18:00", end: "21:00", role: "ホール",
-    travelMinutes: 12, transportCost: 180,
-  })
-
-  // ベイクォーター店 土曜ランチ ホール → 町田の森本
-  assignments.push({
-    helperId: "h9", helperName: "森本 由美",
-    fromStoreId: "machida", fromStoreName: "町田店",
-    toStoreId: "bayquarter", toStoreName: "ベイクォーター店",
-    dayIndex: 5, start: "11:00", end: "14:00", role: "ホール",
-    travelMinutes: 40, transportCost: 570,
-  })
-
-  // ベイクォーター店 土曜ディナー キッチン → CIAL桜木町の中島
-  assignments.push({
-    helperId: "h8", helperName: "中島 龍太",
-    fromStoreId: "cial", fromStoreName: "CIAL桜木町店",
-    toStoreId: "bayquarter", toStoreName: "ベイクォーター店",
-    dayIndex: 5, start: "18:00", end: "21:00", role: "キッチン",
-    travelMinutes: 15, transportCost: 200,
-  })
-
-  // ベイクォーター店 日曜ランチ ホール → FTIの大西
-  assignments.push({
-    helperId: "h5", helperName: "大西 翔平",
-    fromStoreId: "fti", fromStoreName: "FTI横浜店",
-    toStoreId: "bayquarter", toStoreName: "ベイクォーター店",
-    dayIndex: 6, start: "11:00", end: "14:00", role: "ホール",
-    travelMinutes: 12, transportCost: 180,
-  })
-
-  // モアーズ店 金曜夜 ホール → ベイクォーターの加藤（キッチン→ホール兼務不可、佐々木を代用）
-  assignments.push({
-    helperId: "h7", helperName: "佐々木 健太",
-    fromStoreId: "cial", fromStoreName: "CIAL桜木町店",
-    toStoreId: "mores", toStoreName: "モアーズ店",
-    dayIndex: 4, start: "18:00", end: "21:00", role: "ホール",
-    travelMinutes: 12, transportCost: 200,
-  })
-
-  // モアーズ店 土曜 キッチン不足 → ベイクォーターの中村（両方対応可）
-  assignments.push({
-    helperId: "h1", helperName: "中村 翔太",
-    fromStoreId: "bayquarter", fromStoreName: "ベイクォーター店",
-    toStoreId: "mores", toStoreName: "モアーズ店",
-    dayIndex: 5, start: "11:00", end: "14:00", role: "キッチン",
-    travelMinutes: 10, transportCost: 180,
-  })
-
-  // モアーズ店 土曜夜 ホール → モアーズの吉田（自店補完で別曜日空き活用）→ CIAL桜木町の中島は不可。町田の森本午後
-  assignments.push({
-    helperId: "h4", helperName: "吉田 美香",
-    fromStoreId: "mores", fromStoreName: "モアーズ店",
-    toStoreId: "cial", toStoreName: "CIAL桜木町店",
-    dayIndex: 5, start: "18:00", end: "21:00", role: "ホール",
-    travelMinutes: 12, transportCost: 200,
-  })
-
-  // FTI横浜 金曜 キッチン → ベイクォーターの加藤
-  assignments.push({
-    helperId: "h2", helperName: "加藤 健一",
-    fromStoreId: "bayquarter", fromStoreName: "ベイクォーター店",
-    toStoreId: "fti", toStoreName: "FTI横浜店",
-    dayIndex: 4, start: "17:00", end: "20:00", role: "キッチン",
-    travelMinutes: 12, transportCost: 180,
-  })
-
-  // FTI横浜 土曜ランチ ホール → FTIの田村（自店舗シフト外の時間帯）
-  assignments.push({
-    helperId: "h6", helperName: "田村 恵美",
-    fromStoreId: "fti", fromStoreName: "FTI横浜店",
-    toStoreId: "cial", toStoreName: "CIAL桜木町店",
-    dayIndex: 5, start: "11:00", end: "15:00", role: "ホール",
-    travelMinutes: 10, transportCost: 200,
-  })
-
-  // CIAL桜木町 日曜 ホール → 町田の森本
-  assignments.push({
-    helperId: "h9", helperName: "森本 由美",
-    fromStoreId: "machida", fromStoreName: "町田店",
-    toStoreId: "cial", toStoreName: "CIAL桜木町店",
-    dayIndex: 6, start: "11:00", end: "14:00", role: "ホール",
-    travelMinutes: 42, transportCost: 640,
-  })
-
-  // CIAL桜木町 日曜 キッチン → CIAL桜木町の中島（日曜午前空き）
-  assignments.push({
-    helperId: "h8", helperName: "中島 龍太",
-    fromStoreId: "cial", fromStoreName: "CIAL桜木町店",
-    toStoreId: "bayquarter", toStoreName: "ベイクォーター店",
-    dayIndex: 6, start: "17:00", end: "20:00", role: "キッチン",
-    travelMinutes: 15, transportCost: 200,
-  })
-
-  // 町田店 金曜夜 → 町田の岡田（キッチン）
-  assignments.push({
-    helperId: "h10", helperName: "岡田 拓也",
-    fromStoreId: "machida", fromStoreName: "町田店",
-    toStoreId: "mores", toStoreName: "モアーズ店",
-    dayIndex: 6, start: "18:00", end: "21:00", role: "キッチン",
-    travelMinutes: 35, transportCost: 570,
   })
 
   steps.push({
@@ -494,22 +365,29 @@ export default function MultiStoreHelpOptimization() {
 
   return (
     <div className="bg-white rounded-lg shadow-sm">
-      {/* ヘッダー */}
+      {/* ヘッダー（シフト作成のステップ4として表示） */}
       <div className="border-b">
         <div className="p-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="flex items-center gap-3">
-              <Link href="/shifts">
-                <Button variant="ghost" size="sm" className="gap-1">
-                  <ChevronLeft className="h-4 w-4" />
-                  戻る
-                </Button>
-              </Link>
-              <div>
-                <h1 className="text-xl font-semibold text-gray-800">ヘルプ一括作成</h1>
-                <p className="text-sm text-gray-600 mt-1">
-                  {format(weekStart, "yyyy年M月d日", { locale: ja })} 〜 {format(addDays(weekStart, 6), "M月d日", { locale: ja })}
-                </p>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <Link href="/shifts/create" className="hover:text-gray-700">シフト作成</Link>
+                <span>/</span>
+                <span className="text-indigo-600 font-medium">ステップ4: ヘルプ枠の最適化とシフト確定</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Link href="/shifts/create">
+                  <Button variant="ghost" size="sm" className="gap-1">
+                    <ChevronLeft className="h-4 w-4" />
+                    シフト作成へ戻る
+                  </Button>
+                </Link>
+                <div>
+                  <h1 className="text-xl font-semibold text-gray-800">ヘルプ枠の最適化とシフト確定</h1>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {format(weekStart, "yyyy年M月d日", { locale: ja })} 〜 {format(addDays(weekStart, 6), "M月d日", { locale: ja })}
+                  </p>
+                </div>
               </div>
             </div>
             {phase === "result" && (
@@ -723,6 +601,16 @@ export default function MultiStoreHelpOptimization() {
                   <p className="text-sm text-gray-600">充足率</p>
                   <p className="text-2xl font-bold text-gray-900">{((resolvedCount / totalSlots) * 100).toFixed(0)}%</p>
                 </div>
+              </div>
+              <div className="mt-5 pt-5 border-t border-gray-200 flex flex-wrap items-center justify-between gap-4">
+                <p className="text-base font-semibold text-gray-900">シフトを確定しました</p>
+                <Button asChild className="gap-2">
+                  <Link href="/shifts">
+                    <CalendarDays className="h-4 w-4" />
+                    シフト一覧で確認
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
               </div>
             </div>
 

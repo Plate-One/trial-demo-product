@@ -263,10 +263,12 @@ export function ShiftEdit({
   viewMode,
   currentDate,
   shiftStatus = "preferred",
+  storeId: _storeId,
 }: {
   viewMode: "daily" | "monthly"
   currentDate: Date
   shiftStatus?: "preferred" | "optimized" | "confirmed"
+  storeId?: string
 }) {
   const [staff, setStaff] = useState<StaffMember[]>([
     {

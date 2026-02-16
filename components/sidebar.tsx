@@ -29,9 +29,8 @@ export function Sidebar() {
       icon: CalendarDays,
       href: "/shifts",
       subItems: [
-        { title: "シフト管理", href: "/shifts" },
+        { title: "シフト一覧", href: "/shifts" },
         { title: "シフト作成", href: "/shifts/create" },
-        { title: "ヘルプ最適化", href: "/shifts/help" },
       ],
     },
     {

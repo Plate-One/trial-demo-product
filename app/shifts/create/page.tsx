@@ -4,13 +4,15 @@ import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { format, addDays, startOfWeek, endOfWeek, addWeeks, subWeeks } from "date-fns"
+import { format, addDays, startOfMonth, endOfMonth, subMonths, addMonths, isWithinInterval } from "date-fns"
 import { ja } from "date-fns/locale"
 import {
   Send, Save, Plus, Minus, ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
   Sparkles, X, Cloud, Sun, CloudRain, CloudSun, Umbrella,
-  Users, TrendingUp, DollarSign, BarChart3, Utensils, Info,
+  Users, TrendingUp, DollarSign, BarChart3, Utensils, ArrowRight, CheckCircle2, HandHelping,
 } from "lucide-react"
+import Link from "next/link"
+import { cn } from "@/lib/utils"
 
 // ========== 型定義 ==========
 interface HourlyStaffing {
@@ -179,10 +181,20 @@ const generateHourlyForecast = (date: Date, weatherImpact: number): HourlyForeca
   return hourlyForecast
 }
 
-const generateWeekData = (weekStart: Date): DayStaffing[] => {
+// 月の前半（1〜15日）または後半（16日〜末日）の日付範囲を取得
+const getPeriodRange = (month: Date, half: "first" | "second") => {
+  const start = startOfMonth(month)
+  if (half === "first") {
+    return { start, end: addDays(start, 14) } // 1日〜15日
+  }
+  return { start: addDays(start, 15), end: endOfMonth(month) } // 16日〜末日
+}
+
+const generatePeriodData = (periodStart: Date, periodEnd: Date): DayStaffing[] => {
   const days: DayStaffing[] = []
-  for (let i = 0; i < 7; i++) {
-    const date = addDays(weekStart, i)
+  let date = periodStart
+  let i = 0
+  while (date <= periodEnd) {
     const holidayInfo = isHolidayCheck(date)
     const weather = WEATHER_PATTERNS[i % WEATHER_PATTERNS.length]
 
@@ -223,6 +235,8 @@ const generateWeekData = (weekStart: Date): DayStaffing[] => {
       isHoliday: holidayInfo.isHoliday,
       holidayName: holidayInfo.holidayName,
     })
+    date = addDays(date, 1)
+    i++
   }
   return days
 }
@@ -253,54 +267,73 @@ const WeatherIcon = ({ icon, className = "h-4 w-4" }: { icon: string; className?
 
 // ========== メインコンポーネント ==========
 export default function ShiftCreation() {
-  const [currentWeekStart, setCurrentWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
-  const [weeklyData, setWeeklyData] = useState<DayStaffing[]>([])
+  const today = new Date()
+  const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(today))
+  const [periodHalf, setPeriodHalf] = useState<"first" | "second">(() => (today.getDate() <= 15 ? "first" : "second"))
+  const [periodData, setPeriodData] = useState<DayStaffing[]>([])
   const [expandedHours, setExpandedHours] = useState<Set<number>>(new Set(OPERATING_HOURS))
   const [showProblemsOnly, setShowProblemsOnly] = useState(false)
   const [showAIProposal, setShowAIProposal] = useState(false)
   const [aiProposalData, setAIProposalData] = useState<DayStaffing[]>([])
-  const [showForecastDetail, setShowForecastDetail] = useState(false)
+
+  const { start: periodStart, end: periodEnd } = useMemo(() => getPeriodRange(currentMonth, periodHalf), [currentMonth, periodHalf])
 
   useEffect(() => {
-    const data = generateWeekData(currentWeekStart)
-    setWeeklyData(data)
+    const data = generatePeriodData(periodStart, periodEnd)
+    setPeriodData(data)
     setAIProposalData(generateAIProposal(data))
-  }, [currentWeekStart])
+  }, [periodStart, periodEnd])
 
   // KPI計算
   const kpis = useMemo(() => {
-    if (weeklyData.length === 0) return { hallTotal: 0, kitchenTotal: 0, totalHours: 0, laborCost: 0, totalSales: 0, laborCostRatio: 0, totalCustomers: 0, avgCustomersPerDay: 0 }
-    const hallTotal = weeklyData.reduce((sum, day) =>
+    if (periodData.length === 0) return { hallTotal: 0, kitchenTotal: 0, totalHours: 0, laborCost: 0, totalSales: 0, laborCostRatio: 0, totalCustomers: 0, avgCustomersPerDay: 0 }
+    const hallTotal = periodData.reduce((sum, day) =>
       sum + Object.values(day.hallStaffing).reduce((s, v) => s + v, 0), 0)
-    const kitchenTotal = weeklyData.reduce((sum, day) =>
+    const kitchenTotal = periodData.reduce((sum, day) =>
       sum + Object.values(day.kitchenStaffing).reduce((s, v) => s + v, 0), 0)
     const totalHours = hallTotal + kitchenTotal
     const laborCost = hallTotal * HOURLY_WAGE_HALL + kitchenTotal * HOURLY_WAGE_KITCHEN
-    const totalSales = weeklyData.reduce((sum, day) => sum + day.forecastSales, 0)
-    // 人件費率は 20-30% の範囲で表示（適当な値）
+    const totalSales = periodData.reduce((sum, day) => sum + day.forecastSales, 0)
     const rawRatio = totalSales > 0 ? (laborCost / totalSales) * 100 : 0
     const laborCostRatio = Math.min(30, Math.max(20, rawRatio === 0 ? 25 : rawRatio))
-    const totalCustomers = weeklyData.reduce((sum, day) => sum + day.forecastCustomers, 0)
-    const avgCustomersPerDay = Math.round(totalCustomers / 7)
+    const totalCustomers = periodData.reduce((sum, day) => sum + day.forecastCustomers, 0)
+    const avgCustomersPerDay = periodData.length > 0 ? Math.round(totalCustomers / periodData.length) : 0
 
     return { hallTotal, kitchenTotal, totalHours, laborCost, totalSales, laborCostRatio, totalCustomers, avgCustomersPerDay }
-  }, [weeklyData])
+  }, [periodData])
 
   const hasProblem = (dayIndex: number, hour: number, position: "hall" | "kitchen") => {
-    if (!weeklyData[dayIndex]) return false
-    const day = weeklyData[dayIndex]
+    if (!periodData[dayIndex]) return false
+    const day = periodData[dayIndex]
     const staffing = position === "hall" ? day.hallStaffing : day.kitchenStaffing
     const currentCount = staffing[hour] || 0
     const suggested = position === "hall" ? day.hourlyForecast[hour].suggestedHall : day.hourlyForecast[hour].suggestedKitchen
     return currentCount !== suggested
   }
 
-  const handlePrevWeek = () => setCurrentWeekStart(subWeeks(currentWeekStart, 1))
-  const handleNextWeek = () => setCurrentWeekStart(addWeeks(currentWeekStart, 1))
-  const handleThisWeek = () => setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))
+  const handlePrevPeriod = () => {
+    if (periodHalf === "first") {
+      setCurrentMonth(subMonths(currentMonth, 1))
+      setPeriodHalf("second")
+    } else {
+      setPeriodHalf("first")
+    }
+  }
+  const handleNextPeriod = () => {
+    if (periodHalf === "second") {
+      setCurrentMonth(addMonths(currentMonth, 1))
+      setPeriodHalf("first")
+    } else {
+      setPeriodHalf("second")
+    }
+  }
+  const handleThisPeriod = () => {
+    setCurrentMonth(startOfMonth(today))
+    setPeriodHalf(today.getDate() <= 15 ? "first" : "second")
+  }
 
   const handleStaffCountChange = (dayIndex: number, hour: number, position: "hall" | "kitchen", change: number) => {
-    setWeeklyData((prev) => {
+    setPeriodData((prev) => {
       const newData = [...prev]
       const staffingKey = position === "hall" ? "hallStaffing" : "kitchenStaffing"
       const currentCount = newData[dayIndex][staffingKey][hour] || 0
@@ -314,7 +347,7 @@ export default function ShiftCreation() {
 
   const handleDirectInput = (dayIndex: number, hour: number, position: "hall" | "kitchen", value: string) => {
     const count = Number.parseInt(value) || 0
-    setWeeklyData((prev) => {
+    setPeriodData((prev) => {
       const newData = [...prev]
       const staffingKey = position === "hall" ? "hallStaffing" : "kitchenStaffing"
       newData[dayIndex] = {
@@ -335,140 +368,15 @@ export default function ShiftCreation() {
   }
 
   const applyAIProposal = () => {
-    setWeeklyData(aiProposalData)
+    setPeriodData(aiProposalData)
     setShowAIProposal(false)
   }
 
-  const weekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 })
-
-  if (weeklyData.length === 0) return null
-
-  // ========== 予測詳細テーブル ==========
-  const renderForecastDetail = () => (
-    <div className="rounded-lg border overflow-hidden bg-white">
-      <div
-        className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-indigo-50 to-blue-50 cursor-pointer"
-        onClick={() => setShowForecastDetail(!showForecastDetail)}
-      >
-        <div className="flex items-center gap-2">
-          <BarChart3 className="h-5 w-5 text-indigo-600" />
-          <h3 className="text-base font-semibold text-gray-800">時間帯別 売上予測詳細</h3>
-          <Badge variant="secondary" className="text-xs">需要予測モデル v2.1</Badge>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">席数 {SEAT_COUNT}席</span>
-          {showForecastDetail ? <ChevronUp className="h-4 w-4 text-gray-500" /> : <ChevronDown className="h-4 w-4 text-gray-500" />}
-        </div>
-      </div>
-      {showForecastDetail && (
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse min-w-[1100px]">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="sticky left-0 z-10 bg-gray-50 border-b border-r p-2 text-center text-xs font-medium text-gray-600 w-20">時間</th>
-                <th className="border-b border-r p-2 text-center text-xs font-medium text-gray-600 w-12">指標</th>
-                {weeklyData.map((day, i) => {
-                  const isWeekend = day.date.getDay() === 0 || day.date.getDay() === 6
-                  const isSpecial = isWeekend || day.isHoliday
-                  return (
-                    <th key={i} className={`border-b border-r p-2 text-center min-w-[110px] ${isSpecial ? "bg-red-50" : "bg-gray-50"}`}>
-                      <div className="flex flex-col items-center gap-0.5">
-                        <span className={`text-xs font-medium ${isSpecial ? "text-red-600" : "text-gray-700"}`}>
-                          {format(day.date, "M/d (E)", { locale: ja })}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <WeatherIcon icon={day.weather.icon} className="h-3.5 w-3.5" />
-                          <span className="text-[10px] text-gray-500">{day.weather.tempHigh}°/{day.weather.tempLow}°</span>
-                        </div>
-                        {day.event && <Badge variant="outline" className="text-[9px] py-0 h-4 border-purple-200 text-purple-600">{day.event}</Badge>}
-                        {day.isHoliday && <Badge variant="outline" className="text-[9px] py-0 h-4 border-red-200 text-red-600">{day.holidayName}</Badge>}
-                      </div>
-                    </th>
-                  )
-                })}
-              </tr>
-            </thead>
-            <tbody>
-              {OPERATING_HOURS.map((hour) => {
-                const peak = isPeakHour(hour)
-                return (
-                  <tr key={hour} className={peak ? "bg-amber-50/40" : ""}>
-                    <td rowSpan={1} className={`sticky left-0 z-10 border-b border-r p-1.5 text-center text-xs font-medium ${peak ? "bg-amber-50 text-amber-800" : "bg-white text-gray-600"}`}>
-                      <div>{hour}:00</div>
-                      {peak && <Badge variant="outline" className="text-[8px] py-0 h-3.5 border-amber-300 text-amber-700 mt-0.5">ピーク</Badge>}
-                    </td>
-                    <td className="border-b border-r p-0 text-[10px]">
-                      <div className="flex flex-col divide-y">
-                        <div className="px-1.5 py-0.5 text-gray-500 flex items-center gap-1"><Users className="h-2.5 w-2.5" />客数</div>
-                        <div className="px-1.5 py-0.5 text-gray-500 flex items-center gap-1"><Utensils className="h-2.5 w-2.5" />客単価</div>
-                        <div className="px-1.5 py-0.5 text-gray-500 flex items-center gap-1"><DollarSign className="h-2.5 w-2.5" />売上</div>
-                      </div>
-                    </td>
-                    {weeklyData.map((day, dayIndex) => {
-                      const f = day.hourlyForecast[hour]
-                      const isWeekend = day.date.getDay() === 0 || day.date.getDay() === 6
-                      return (
-                        <td key={dayIndex} className={`border-b border-r p-0 text-[10px] ${isWeekend || day.isHoliday ? "bg-red-50/30" : ""}`}>
-                          <div className="flex flex-col divide-y">
-                            <div className="px-1.5 py-0.5 text-center font-semibold text-gray-900">{f.customers}人</div>
-                            <div className="px-1.5 py-0.5 text-center text-gray-600">¥{f.avgSpend.toLocaleString()}</div>
-                            <div className="px-1.5 py-0.5 text-center font-medium text-gray-800">¥{f.sales.toLocaleString()}</div>
-                          </div>
-                        </td>
-                      )
-                    })}
-                  </tr>
-                )
-              })}
-              {/* 日計 */}
-              <tr className="bg-gray-100 font-semibold">
-                <td className="sticky left-0 z-10 bg-gray-100 border-t p-2 text-center text-xs">日計</td>
-                <td className="border-t border-r p-0 text-[10px]">
-                  <div className="flex flex-col divide-y">
-                    <div className="px-1.5 py-0.5 text-gray-600">客数</div>
-                    <div className="px-1.5 py-0.5 text-gray-600">売上</div>
-                  </div>
-                </td>
-                {weeklyData.map((day, i) => (
-                  <td key={i} className="border-t border-r p-0 text-[10px]">
-                    <div className="flex flex-col divide-y">
-                      <div className="px-1.5 py-1 text-center font-bold text-gray-900">{day.forecastCustomers}人</div>
-                      <div className="px-1.5 py-1 text-center font-bold text-gray-900">¥{day.forecastSales.toLocaleString()}</div>
-                    </div>
-                  </td>
-                ))}
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  )
-
-  // ========== 推奨ロジック説明 ==========
-  const renderStaffingLogic = () => (
-    <div className="bg-blue-50/50 border border-blue-200 rounded-lg p-4 text-sm">
-      <div className="flex items-start gap-2">
-        <Info className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-        <div>
-          <p className="font-medium text-blue-900 mb-1">推奨人員の算出ロジック</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-blue-800">
-            <div className="bg-white rounded p-2 border border-blue-100">
-              <span className="font-semibold">ホール:</span> ピーク時（12〜13時, 18〜20時）= 同時滞在客8名あたり1名 / 通常時 = 客12名あたり1名（営業中は最低2名）
-            </div>
-            <div className="bg-white rounded p-2 border border-blue-100">
-              <span className="font-semibold">キッチン:</span> ピーク時 = オーダー9件あたり1名 / 通常時 = 客14名あたり1名（営業中は最低2名）
-            </div>
-          </div>
-          <p className="text-xs text-blue-600 mt-1">※ 客数予測は過去実績・曜日・天候・イベントをもとにAIモデルが算出</p>
-        </div>
-      </div>
-    </div>
-  )
+  if (periodData.length === 0) return null
 
   // ========== シフトテーブル ==========
   const renderShiftTable = (position: "hall" | "kitchen", title: string, hours: number, bg: string) => {
-    const dataToShow = showAIProposal ? aiProposalData : weeklyData
+    const dataToShow = showAIProposal ? aiProposalData : periodData
     const wage = position === "hall" ? HOURLY_WAGE_HALL : HOURLY_WAGE_KITCHEN
 
     return (
@@ -503,7 +411,7 @@ export default function ShiftCreation() {
                 <th className="sticky left-0 z-20 bg-gray-50 border-b border-r p-2 text-center font-medium text-gray-600 w-24">
                   <div className="text-xs">時間</div>
                 </th>
-                {weeklyData.map((day, dayIndex) => {
+                {periodData.map((day, dayIndex) => {
                   const isWeekend = day.date.getDay() === 0 || day.date.getDay() === 6
                   const isSpecialDay = isWeekend || day.isHoliday
                   return (
@@ -530,11 +438,11 @@ export default function ShiftCreation() {
             </thead>
             <tbody>
               {OPERATING_HOURS.map((hour) => {
-                const hourTotal = weeklyData.reduce((sum, day) => {
+                const hourTotal = periodData.reduce((sum, day) => {
                   const staffing = position === "hall" ? day.hallStaffing : day.kitchenStaffing
                   return sum + (staffing[hour] || 0)
                 }, 0)
-                const hasProblemInHour = weeklyData.some((_, dayIndex) => hasProblem(dayIndex, hour, position))
+                const hasProblemInHour = periodData.some((_, dayIndex) => hasProblem(dayIndex, hour, position))
                 const isExpanded = expandedHours.has(hour)
                 const shouldShow = !showProblemsOnly || hasProblemInHour
                 if (!shouldShow && !isExpanded) return null
@@ -623,7 +531,7 @@ export default function ShiftCreation() {
             <tfoot>
               <tr className="bg-gray-100">
                 <td className="sticky left-0 z-10 bg-gray-100 border-t p-2 text-center font-semibold text-sm">日計</td>
-                {weeklyData.map((day, dayIndex) => {
+                {periodData.map((day, dayIndex) => {
                   const staffing = position === "hall" ? day.hallStaffing : day.kitchenStaffing
                   const total = Object.values(staffing).reduce((s, v) => s + v, 0)
                   return (
@@ -635,7 +543,7 @@ export default function ShiftCreation() {
                 })}
                 <td className="border-t p-2 text-center bg-gray-200">
                   <div className="font-bold text-sm">
-                    {weeklyData.reduce((sum, day) => {
+                    {periodData.reduce((sum, day) => {
                       const staffing = position === "hall" ? day.hallStaffing : day.kitchenStaffing
                       return sum + Object.values(staffing).reduce((s, v) => s + v, 0)
                     }, 0)}h
@@ -653,63 +561,100 @@ export default function ShiftCreation() {
   return (
     <div className="bg-white rounded-lg shadow-sm">
       {/* ヘッダー */}
-      <div className="border-b">
+      <div className="border-b bg-white">
         <div className="p-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h1 className="text-xl font-semibold text-gray-800">シフト作成</h1>
-              <p className="text-sm text-gray-600 mt-1">売上予測に基づく週間シフトの作成・編集</p>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm">
-                <Save className="mr-2 h-4 w-4" />
-                保存
-              </Button>
-              <Button size="sm" variant="outline">
-                <Send className="mr-2 h-4 w-4" />
-                従業員に通知
-              </Button>
-            </div>
+          <h1 className="text-xl font-semibold text-gray-800">シフト作成</h1>
+          <p className="text-sm text-gray-600 mt-1">売上予測に基づき、人員調整から提出・ヘルプ最適化まで一連の流れで行います</p>
+          {/* 4ステップのプログレス（このページは 1〜3、4はヘルプページ） */}
+          <div className="mt-5 flex items-center gap-1 sm:gap-3">
+            {[
+              { step: 1, label: "売上・最適人員", done: true },
+              { step: 2, label: "人員調整", done: true },
+              { step: 3, label: "提出", done: true },
+              { step: 4, label: "ヘルプで確定", done: false, next: true },
+            ].map((item, i) => (
+              <div key={item.step} className="flex items-center gap-1 sm:gap-2">
+                <span
+                  className={cn(
+                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold",
+                    item.next ? "bg-gray-100 text-gray-400 border-2 border-dashed border-gray-300" : "bg-indigo-600 text-white"
+                  )}
+                >
+                  {item.step}
+                </span>
+                <span className={cn("hidden sm:inline text-sm", item.next ? "text-gray-400" : "text-gray-700")}>
+                  {item.label}
+                </span>
+                {i < 3 && <ArrowRight className="h-4 w-4 text-gray-300 shrink-0" />}
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      <div className="p-6 space-y-5">
-        {/* 週選択 */}
+      <div className="p-6 space-y-6">
+        {/* 月の前半・後半選択 */}
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handlePrevWeek}>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handlePrevPeriod}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" onClick={handleThisWeek}>今週</Button>
+            <Button variant="outline" size="sm" onClick={handleThisPeriod}>
+              {periodHalf === "first" ? "今月の前半" : "今月の後半"}
+            </Button>
             <span className="text-sm font-medium px-3 py-1.5 bg-gray-100 rounded">
-              {format(currentWeekStart, "yyyy年M月d日", { locale: ja })} 〜 {format(weekEnd, "M月d日", { locale: ja })}
+              {format(currentMonth, "yyyy年M月", { locale: ja })} {periodHalf === "first" ? "前半（1〜15日）" : "後半（16日〜末日）"}
             </span>
-            <Button variant="outline" size="sm" onClick={handleNextWeek}>
+            <div className="flex rounded-lg border border-gray-200 p-0.5 bg-gray-50">
+              <button
+                type="button"
+                onClick={() => setPeriodHalf("first")}
+                className={cn("px-3 py-1.5 text-sm font-medium rounded-md", periodHalf === "first" ? "bg-white shadow text-gray-900" : "text-gray-600")}
+              >
+                前半
+              </button>
+              <button
+                type="button"
+                onClick={() => setPeriodHalf("second")}
+                className={cn("px-3 py-1.5 text-sm font-medium rounded-md", periodHalf === "second" ? "bg-white shadow text-gray-900" : "text-gray-600")}
+              >
+                後半
+              </button>
+            </div>
+            <span className="text-sm text-gray-600">
+              {format(periodStart, "M/d", { locale: ja })} 〜 {format(periodEnd, "M/d", { locale: ja })}（{periodData.length}日間）
+            </span>
+            <Button variant="outline" size="sm" onClick={handleNextPeriod}>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
           {!showAIProposal && (
             <Button variant="outline" size="sm" onClick={() => setShowAIProposal(true)} className="gap-2">
               <Sparkles className="h-4 w-4" />
-              AI提案を表示
+              推奨人員を一括適用
             </Button>
           )}
         </div>
 
+        {/* ① 売上予測と最適人員数 */}
+        <section className="space-y-4" aria-label="ステップ1: 売上予測と最適人員数">
+          <div className="flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-sm font-bold">1</span>
+            <h2 className="text-lg font-semibold text-gray-800">売上予測と最適人員数</h2>
+          </div>
         {/* KPIサマリー */}
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
           <div className="bg-indigo-50 rounded-lg p-3 border border-indigo-100">
             <div className="flex items-center gap-1.5 text-indigo-600 mb-1">
               <TrendingUp className="h-4 w-4" />
-              <p className="text-xs font-medium">週間予測売上</p>
+              <p className="text-xs font-medium">期間予測売上</p>
             </div>
             <p className="text-xl font-bold text-indigo-900">¥{kpis.totalSales.toLocaleString()}</p>
           </div>
           <div className="bg-cyan-50 rounded-lg p-3 border border-cyan-100">
             <div className="flex items-center gap-1.5 text-cyan-600 mb-1">
               <Users className="h-4 w-4" />
-              <p className="text-xs font-medium">週間予測客数</p>
+              <p className="text-xs font-medium">期間予測客数</p>
             </div>
             <p className="text-xl font-bold text-cyan-900">{kpis.totalCustomers.toLocaleString()}人</p>
             <p className="text-[10px] text-cyan-600">平均 {kpis.avgCustomersPerDay}人/日</p>
@@ -742,12 +687,14 @@ export default function ShiftCreation() {
           </div>
         </div>
 
-        {/* 予測詳細 */}
-        {renderForecastDetail()}
+        </section>
 
-        {/* 推奨ロジック */}
-        {renderStaffingLogic()}
-
+        {/* ② 人員数の調整 */}
+        <section className="space-y-4" aria-label="ステップ2: 人員数の調整">
+          <div className="flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-sm font-bold">2</span>
+            <h2 className="text-lg font-semibold text-gray-800">人員数の調整</h2>
+          </div>
         {/* AI提案表示 */}
         {showAIProposal && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -772,7 +719,31 @@ export default function ShiftCreation() {
         {([
           { key: "hall" as const, title: "ホール", hours: kpis.hallTotal, bg: "bg-slate-50" },
           { key: "kitchen" as const, title: "キッチン", hours: kpis.kitchenTotal, bg: "bg-blue-50/40" },
-        ]).map((section) => renderShiftTable(section.key, section.title, section.hours, section.bg))}
+        ]).map((s) => renderShiftTable(s.key, s.title, s.hours, s.bg))}
+        </section>
+
+        {/* ③ 提出 → 次はステップ4（ヘルプ） */}
+        <section className="rounded-lg border-2 border-indigo-200 bg-indigo-50/30 p-5" aria-label="ステップ3: 提出">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600 text-white text-sm font-bold">3</span>
+              <h2 className="text-lg font-semibold text-gray-800">シフトを提出</h2>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button variant="outline" size="sm" className="gap-2">
+                <Save className="h-4 w-4" />
+                下書き保存
+              </Button>
+              <Button asChild size="sm" className="gap-2 bg-indigo-600 hover:bg-indigo-700">
+                <Link href="/shifts/help">
+                  <Send className="h-4 w-4" />
+                  提出して、ステップ4（ヘルプ最適化）へ進む
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   )

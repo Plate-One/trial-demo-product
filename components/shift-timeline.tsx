@@ -7,6 +7,7 @@ import { ja } from "date-fns/locale"
 import { MonthlyShiftTable } from "@/components/monthly-shift-table"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
+import { getHelpAssignmentsForStoreAndDay } from "@/lib/help-assignments"
 
 type SortField = "start" | "end"
 type SortOrder = "asc" | "desc"
@@ -41,50 +42,79 @@ const recommendedStaffing: Record<number, { hall: number; kitchen: number }> = {
   23: { hall: 2, kitchen: 2 },
 }
 
+type StaffMember = {
+  name: string
+  type: "社員" | "アルバイト"
+  shifts: { start: string; end: string; role: "ホール" | "キッチン" }[]
+  helpFromStore?: string
+}
+
 export function ShiftTimeline({
   viewMode,
   currentDate,
   shiftStatus = "preferred",
-}: { viewMode: "daily" | "monthly"; currentDate: Date; shiftStatus?: "preferred" | "optimized" | "confirmed" }) {
+  storeId,
+}: { viewMode: "daily" | "monthly"; currentDate: Date; shiftStatus?: "preferred" | "optimized" | "confirmed"; storeId?: string }) {
   const [sortField, setSortField] = useState<SortField>("start")
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc")
 
-  const staff = [
+  // 自店スタッフ（ヘルプは storeId・日付に応じて getHelpAssignmentsForStoreAndDay で追加）
+  const baseStaff: StaffMember[] = [
     // ホール - 社員5名
-    { name: "鈴木一郎", type: "社員" as const, shifts: [{ start: "10:00", end: "19:00", role: "ホール" }] },
-    { name: "山田三郎", type: "社員" as const, shifts: [{ start: "10:00", end: "11:00", role: "ホール" }, { start: "14:00", end: "22:00", role: "ホール" }] },
-    { name: "佐藤四郎", type: "社員" as const, shifts: [{ start: "10:00", end: "16:00", role: "ホール" }] },
-    { name: "大倉栄一", type: "社員" as const, shifts: [{ start: "10:00", end: "16:00", role: "ホール" }] },
-    { name: "中村翔太", type: "社員" as const, shifts: [{ start: "9:00", end: "13:00", role: "ホール" }] },
-    // ホール - アルバイト10名
-    { name: "小林陽子", type: "アルバイト" as const, shifts: [{ start: "17:00", end: "23:00", role: "ホール" }] },
-    { name: "伊藤真理", type: "アルバイト" as const, shifts: [{ start: "10:00", end: "15:00", role: "ホール" }] },
-    { name: "木村達也", type: "アルバイト" as const, shifts: [{ start: "15:00", end: "20:00", role: "ホール" }] },
-    { name: "山本浩二", type: "アルバイト" as const, shifts: [{ start: "11:00", end: "19:00", role: "ホール" }] },
-    { name: "佐々木健太", type: "アルバイト" as const, shifts: [{ start: "14:00", end: "23:00", role: "ホール" }] },
-    { name: "中島龍太", type: "アルバイト" as const, shifts: [{ start: "18:00", end: "23:00", role: "ホール" }] },
-    { name: "田中美咲", type: "アルバイト" as const, shifts: [{ start: "12:00", end: "18:00", role: "ホール" }] },
-    { name: "佐藤花子", type: "アルバイト" as const, shifts: [{ start: "16:00", end: "22:00", role: "ホール" }] },
-    { name: "高橋太郎", type: "アルバイト" as const, shifts: [{ start: "11:00", end: "17:00", role: "ホール" }] },
-    { name: "鈴木次郎", type: "アルバイト" as const, shifts: [{ start: "13:00", end: "20:00", role: "ホール" }] },
+    { name: "鈴木一郎", type: "社員", shifts: [{ start: "10:00", end: "19:00", role: "ホール" }] },
+    { name: "山田三郎", type: "社員", shifts: [{ start: "10:00", end: "11:00", role: "ホール" }, { start: "14:00", end: "22:00", role: "ホール" }] },
+    { name: "佐藤四郎", type: "社員", shifts: [{ start: "10:00", end: "16:00", role: "ホール" }] },
+    { name: "大倉栄一", type: "社員", shifts: [{ start: "10:00", end: "16:00", role: "ホール" }] },
+    { name: "中村翔太", type: "社員", shifts: [{ start: "9:00", end: "13:00", role: "ホール" }] },
+    // ホール - アルバイト
+    { name: "小林陽子", type: "アルバイト", shifts: [{ start: "17:00", end: "23:00", role: "ホール" }] },
+    { name: "伊藤真理", type: "アルバイト", shifts: [{ start: "10:00", end: "15:00", role: "ホール" }] },
+    { name: "木村達也", type: "アルバイト", shifts: [{ start: "15:00", end: "20:00", role: "ホール" }] },
+    { name: "山本浩二", type: "アルバイト", shifts: [{ start: "11:00", end: "19:00", role: "ホール" }] },
+    { name: "佐々木健太", type: "アルバイト", shifts: [{ start: "14:00", end: "23:00", role: "ホール" }] },
+    { name: "中島龍太", type: "アルバイト", shifts: [{ start: "18:00", end: "23:00", role: "ホール" }] },
+    { name: "田中美咲", type: "アルバイト", shifts: [{ start: "12:00", end: "18:00", role: "ホール" }] },
+    { name: "佐藤花子", type: "アルバイト", shifts: [{ start: "16:00", end: "22:00", role: "ホール" }] },
+    { name: "高橋太郎", type: "アルバイト", shifts: [{ start: "11:00", end: "17:00", role: "ホール" }] },
+    { name: "鈴木次郎", type: "アルバイト", shifts: [{ start: "13:00", end: "20:00", role: "ホール" }] },
     // キッチン - 社員5名
-    { name: "田中二郎", type: "社員" as const, shifts: [{ start: "10:00", end: "23:00", role: "キッチン" }] },
-    { name: "渡辺直子", type: "社員" as const, shifts: [{ start: "12:00", end: "16:00", role: "キッチン" }] },
-    { name: "高橋美咲", type: "社員" as const, shifts: [{ start: "11:00", end: "20:00", role: "キッチン" }] },
-    { name: "加藤健一", type: "社員" as const, shifts: [{ start: "13:00", end: "22:00", role: "キッチン" }] },
-    { name: "中村翔太", type: "社員" as const, shifts: [{ start: "14:00", end: "18:00", role: "キッチン" }] },
-    // キッチン - アルバイト10名
-    { name: "木村達也", type: "アルバイト" as const, shifts: [{ start: "9:00", end: "14:00", role: "キッチン" }] },
-    { name: "斎藤美穂", type: "アルバイト" as const, shifts: [{ start: "16:00", end: "23:00", role: "キッチン" }] },
-    { name: "松田聡子", type: "アルバイト" as const, shifts: [{ start: "12:00", end: "21:00", role: "キッチン" }] },
-    { name: "吉田美香", type: "アルバイト" as const, shifts: [{ start: "16:00", end: "23:00", role: "キッチン" }] },
-    { name: "山田花子", type: "アルバイト" as const, shifts: [{ start: "10:00", end: "17:00", role: "キッチン" }] },
-    { name: "佐々木健", type: "アルバイト" as const, shifts: [{ start: "14:00", end: "21:00", role: "キッチン" }] },
-    { name: "鈴木三郎", type: "アルバイト" as const, shifts: [{ start: "11:00", end: "19:00", role: "キッチン" }] },
-    { name: "高橋四郎", type: "アルバイト" as const, shifts: [{ start: "13:00", end: "20:00", role: "キッチン" }] },
-    { name: "田中五郎", type: "アルバイト" as const, shifts: [{ start: "15:00", end: "22:00", role: "キッチン" }] },
-    { name: "佐藤六郎", type: "アルバイト" as const, shifts: [{ start: "12:00", end: "18:00", role: "キッチン" }] },
+    { name: "田中二郎", type: "社員", shifts: [{ start: "10:00", end: "23:00", role: "キッチン" }] },
+    { name: "渡辺直子", type: "社員", shifts: [{ start: "12:00", end: "16:00", role: "キッチン" }] },
+    { name: "高橋美咲", type: "社員", shifts: [{ start: "11:00", end: "20:00", role: "キッチン" }] },
+    { name: "加藤健一", type: "社員", shifts: [{ start: "13:00", end: "22:00", role: "キッチン" }] },
+    { name: "中村翔太", type: "社員", shifts: [{ start: "14:00", end: "18:00", role: "キッチン" }] },
+    // キッチン - アルバイト
+    { name: "木村達也", type: "アルバイト", shifts: [{ start: "9:00", end: "14:00", role: "キッチン" }] },
+    { name: "斎藤美穂", type: "アルバイト", shifts: [{ start: "16:00", end: "23:00", role: "キッチン" }] },
+    { name: "松田聡子", type: "アルバイト", shifts: [{ start: "12:00", end: "21:00", role: "キッチン" }] },
+    { name: "吉田美香", type: "アルバイト", shifts: [{ start: "16:00", end: "23:00", role: "キッチン" }] },
+    { name: "山田花子", type: "アルバイト", shifts: [{ start: "10:00", end: "17:00", role: "キッチン" }] },
+    { name: "佐々木健", type: "アルバイト", shifts: [{ start: "14:00", end: "21:00", role: "キッチン" }] },
+    { name: "鈴木三郎", type: "アルバイト", shifts: [{ start: "11:00", end: "19:00", role: "キッチン" }] },
+    { name: "高橋四郎", type: "アルバイト", shifts: [{ start: "13:00", end: "20:00", role: "キッチン" }] },
+    { name: "田中五郎", type: "アルバイト", shifts: [{ start: "15:00", end: "22:00", role: "キッチン" }] },
+    { name: "佐藤六郎", type: "アルバイト", shifts: [{ start: "12:00", end: "18:00", role: "キッチン" }] },
   ]
+
+  // この店・この日にアサインされたヘルプ（ヘルプ一括作成の結果と同一データ）
+  const helpAssignmentsForDay = useMemo(
+    () => (storeId ? getHelpAssignmentsForStoreAndDay(storeId, currentDate) : []),
+    [storeId, currentDate]
+  )
+  const helpStaffEntries: StaffMember[] = useMemo(
+    () =>
+      helpAssignmentsForDay.map((a) => ({
+        name: a.helperName,
+        type: "アルバイト" as const,
+        shifts: [{ start: a.start, end: a.end, role: a.role }],
+        helpFromStore: a.fromStoreName,
+      })),
+    [helpAssignmentsForDay]
+  )
+  const staff: StaffMember[] = useMemo(
+    () => [...baseStaff, ...helpStaffEntries],
+    [helpStaffEntries]
+  )
 
   // ホールとキッチンのスタッフを分離
   const hallStaff = useMemo(() => {
@@ -93,7 +123,7 @@ export function ShiftTimeline({
         ...member,
         shifts: member.shifts.filter((s) => s.role === "ホール"),
       }))
-  }, [])
+  }, [staff])
 
   const kitchenStaff = useMemo(() => {
     return staff.filter((member) => member.shifts.some((s) => s.role === "キッチン"))
@@ -101,7 +131,7 @@ export function ShiftTimeline({
         ...member,
         shifts: member.shifts.filter((s) => s.role === "キッチン"),
       }))
-  }, [])
+  }, [staff])
 
   // 社員とアルバイトを分離
   const separateByType = (staffList: typeof staff) => {
@@ -220,6 +250,11 @@ export function ShiftTimeline({
     const sortedEmployees = sortStaff(employees)
     const sortedPartTimers = sortStaff(partTimers)
     
+    const HOUR_WIDTH = 80
+    const COLS_LEFT = 3
+    const stickyClass = (col: 0 | 1 | 2, bg: string) =>
+      `sticky z-10 ${bg} ${col === 0 ? "left-0" : col === 1 ? "left-[120px]" : "left-[190px]"} shadow-[2px_0_4px_rgba(0,0,0,0.06)]`
+
     const renderStaffTable = (staffList: typeof staff, title: string, isEmployee: boolean) => {
       return (
         <div className="mb-4">
@@ -231,153 +266,143 @@ export function ShiftTimeline({
               {staffList.length}名
             </span>
           </div>
-          <div className="overflow-x-auto">
-            <div className="overflow-hidden rounded-lg border border-gray-200">
-              <div className="flex">
-                <div className="sticky left-0 z-10 bg-white">
-                  <table className="border-collapse">
-                    <thead>
-                      <tr>
-                        <th className="h-12 border-b border-r bg-gray-50 p-2 text-left text-sm font-medium text-gray-600 min-w-[120px]">
-                          スタッフ
-                        </th>
-                        <th
-                          className="h-12 border-b border-r bg-gray-50 p-2 text-center text-sm font-medium text-gray-600 min-w-[70px] cursor-pointer hover:bg-gray-100"
-                          onClick={() => handleSort("start")}
-                        >
-                          <div className="flex items-center justify-center">
-                            始業
-                            <SortIcon field="start" />
-                          </div>
-                        </th>
-                        <th
-                          className="h-12 border-b border-r bg-gray-50 p-2 text-center text-sm font-medium text-gray-600 min-w-[70px] cursor-pointer hover:bg-gray-100"
-                          onClick={() => handleSort("end")}
-                        >
-                          <div className="flex items-center justify-center">
-                            終業
-                            <SortIcon field="end" />
-                          </div>
-                        </th>
-                      </tr>
-                      {/* 推奨人数行（左側固定部分） */}
-                      <tr className="bg-gray-100">
-                        <td colSpan={3} className="h-10 border-b border-r bg-gray-100 p-2 text-xs font-medium text-gray-600">
-                          <div className="flex items-center gap-1">
-                            <Users className="w-3 h-3" />
-                            推奨/実際
-                          </div>
-                        </td>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {staffList.map((member) => (
-                        <tr key={member.name} className="border-b hover:bg-gray-50">
-                          <td className="h-12 border-r bg-white p-2 text-sm font-medium text-gray-900 min-w-[120px]">
-                            {member.name}
-                          </td>
-                          <td className="h-12 border-r bg-white p-2 text-sm text-center text-gray-900 min-w-[70px]">
-                            {member.shifts[0]?.start || "-"}
-                          </td>
-                          <td className="h-12 border-r bg-white p-2 text-sm text-center text-gray-900 min-w-[70px]">
-                            {member.shifts[member.shifts.length - 1]?.end || "-"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="border-collapse">
-                    <thead>
-                      <tr>
-                        {Array.from({ length: 16 }, (_, i) => i + 8).map((hour) => (
-                          <th
-                            key={hour}
-                            className="h-12 border-b border-r bg-gray-50 p-2 text-center text-sm font-medium text-gray-600 min-w-[80px]"
-                          >
-                            {hour}時
-                          </th>
-                        ))}
-                      </tr>
-                      {/* 推奨人数行 */}
-                      <tr className="bg-gray-100">
-                        {Array.from({ length: 16 }, (_, i) => i + 8).map((hour) => {
-                          const recommended = recommendedStaffing[hour]?.[role === "ホール" ? "hall" : "kitchen"] || 0
-                          const totalActual = calculateTotalActualStaff(hour, role)
-                          const sectionActual = calculateActualStaff(staffList, hour, role)
-                          const isShort = totalActual < recommended
-                          const isOver = totalActual > recommended
-                          
+          <div className="overflow-x-auto overflow-y-visible rounded-lg border border-gray-200">
+            <table className="border-collapse table-fixed" style={{ minWidth: 120 + 70 + 70 + 16 * HOUR_WIDTH }}>
+              <colgroup>
+                <col style={{ width: 120, minWidth: 120 }} />
+                <col style={{ width: 70, minWidth: 70 }} />
+                <col style={{ width: 70, minWidth: 70 }} />
+                {Array.from({ length: 16 }, (_, i) => (
+                  <col key={i} style={{ width: HOUR_WIDTH, minWidth: HOUR_WIDTH }} />
+                ))}
+              </colgroup>
+              <thead>
+                <tr>
+                  <th className={`h-12 border-b border-r bg-gray-50 p-2 text-left text-sm font-medium text-gray-600 ${stickyClass(0, "bg-gray-50")}`}>
+                    スタッフ
+                  </th>
+                  <th
+                    className={`h-12 border-b border-r bg-gray-50 p-2 text-center text-sm font-medium text-gray-600 cursor-pointer hover:bg-gray-100 ${stickyClass(1, "bg-gray-50")}`}
+                    onClick={() => handleSort("start")}
+                  >
+                    <div className="flex items-center justify-center">
+                      始業
+                      <SortIcon field="start" />
+                    </div>
+                  </th>
+                  <th
+                    className={`h-12 border-b border-r bg-gray-50 p-2 text-center text-sm font-medium text-gray-600 cursor-pointer hover:bg-gray-100 ${stickyClass(2, "bg-gray-50")}`}
+                    onClick={() => handleSort("end")}
+                  >
+                    <div className="flex items-center justify-center">
+                      終業
+                      <SortIcon field="end" />
+                    </div>
+                  </th>
+                  {Array.from({ length: 16 }, (_, i) => i + 8).map((hour) => (
+                    <th
+                      key={hour}
+                      className="h-12 border-b border-r bg-gray-50 p-2 text-center text-sm font-medium text-gray-600"
+                    >
+                      {hour}時
+                    </th>
+                  ))}
+                </tr>
+                <tr className="bg-gray-100">
+                  <td className={`h-12 border-b border-r bg-gray-100 p-2 text-xs font-medium text-gray-600 align-middle ${stickyClass(0, "bg-gray-100")}`}>
+                    <div className="flex items-center gap-1">
+                      <Users className="w-3 h-3" />
+                      推奨/実際
+                    </div>
+                  </td>
+                  <td className={`h-12 border-b border-r bg-gray-100 p-2 align-middle ${stickyClass(1, "bg-gray-100")}`}>&#8203;</td>
+                  <td className={`h-12 border-b border-r bg-gray-100 p-2 align-middle ${stickyClass(2, "bg-gray-100")}`}>&#8203;</td>
+                  {Array.from({ length: 16 }, (_, i) => i + 8).map((hour) => {
+                    const recommended = recommendedStaffing[hour]?.[role === "ホール" ? "hall" : "kitchen"] || 0
+                    const totalActual = calculateTotalActualStaff(hour, role)
+                    const sectionActual = calculateActualStaff(staffList, hour, role)
+                    const isShort = totalActual < recommended
+                    const isOver = totalActual > recommended
+                    return (
+                      <td
+                        key={hour}
+                        className={`h-12 border-b border-r p-2 text-center text-xs align-middle ${
+                          isShort ? "bg-red-100 text-red-700" : isOver ? "bg-yellow-100 text-yellow-700" : "bg-green-100 text-green-700"
+                        }`}
+                      >
+                        <div className="font-bold">{sectionActual}名</div>
+                        <div className="text-[10px] text-gray-600">全体:{totalActual}/{recommended}</div>
+                        {isShort && <div className="text-red-600 text-[10px]">-{recommended - totalActual}</div>}
+                        {isOver && <div className="text-yellow-600 text-[10px]">+{totalActual - recommended}</div>}
+                      </td>
+                    )
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {staffList.map((member) => (
+                  <tr key={`${role}-${member.name}-${member.helpFromStore ?? "own"}`} className={`border-b hover:bg-gray-50 ${member.helpFromStore ? "bg-amber-50/50" : ""}`}>
+                    <td className={`h-12 border-r p-2 text-sm font-medium text-gray-900 ${stickyClass(0, member.helpFromStore ? "bg-amber-50/50" : "bg-white")}`}>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span>{member.name}</span>
+                        {member.helpFromStore && (
+                          <Badge variant="outline" className="text-xs font-normal bg-amber-100 text-amber-800 border-amber-300 whitespace-nowrap">
+                            ヘルプ（{member.helpFromStore}）
+                          </Badge>
+                        )}
+                      </div>
+                    </td>
+                    <td className={`h-12 border-r p-2 text-sm text-center text-gray-900 ${stickyClass(1, member.helpFromStore ? "bg-amber-50/50" : "bg-white")}`}>
+                      {member.shifts[0]?.start || "-"}
+                    </td>
+                    <td className={`h-12 border-r p-2 text-sm text-center text-gray-900 ${stickyClass(2, member.helpFromStore ? "bg-amber-50/50" : "bg-white")}`}>
+                      {member.shifts[member.shifts.length - 1]?.end || "-"}
+                    </td>
+                    <td colSpan={16} className="h-12 p-0 relative align-top">
+                      <div className="relative w-full" style={{ width: 16 * HOUR_WIDTH, height: "3rem" }}>
+                        {member.shifts.map((shift, shiftIndex) => {
+                          const startHour = Number.parseInt(shift.start.split(":")[0])
+                          const endHour = Number.parseInt(shift.end.split(":")[0])
+                          const startPercent = ((startHour - 8) / 16) * 100
+                          const width = ((endHour - startHour) / 16) * 100
+                          const getShiftColor = () => {
+                            if (shiftStatus === "confirmed") {
+                              return role === "ホール"
+                                ? "bg-blue-200 text-blue-800 border-2 border-blue-500"
+                                : "bg-emerald-200 text-emerald-800 border-2 border-emerald-500"
+                            } else if (shiftStatus === "optimized") {
+                              return role === "ホール"
+                                ? "bg-blue-100 text-blue-800 border-2 border-blue-400"
+                                : "bg-emerald-100 text-emerald-800 border-2 border-emerald-400"
+                            } else {
+                              return role === "ホール"
+                                ? "bg-blue-100 text-blue-700 border border-blue-300"
+                                : "bg-emerald-100 text-emerald-700 border border-emerald-300"
+                            }
+                          }
                           return (
-                            <td
-                              key={hour}
-                              className={`h-10 border-b border-r p-1 text-center text-xs min-w-[80px] ${
-                                isShort ? "bg-red-100 text-red-700" : isOver ? "bg-yellow-100 text-yellow-700" : "bg-green-100 text-green-700"
-                              }`}
+                            <div
+                              key={shiftIndex}
+                              className={`absolute flex flex-col items-center justify-center rounded px-1 text-center ${getShiftColor()}`}
+                              style={{
+                                left: `${startPercent}%`,
+                                width: `${width}%`,
+                                top: "2px",
+                                bottom: "2px",
+                              }}
                             >
-                              <div className="font-bold">{sectionActual}名</div>
-                              <div className="text-[10px] text-gray-600">全体:{totalActual}/{recommended}</div>
-                              {isShort && <div className="text-red-600 text-[10px]">-{recommended - totalActual}</div>}
-                              {isOver && <div className="text-yellow-600 text-[10px]">+{totalActual - recommended}</div>}
-                            </td>
+                              <div className="text-xs font-medium truncate">
+                                {shift.start} - {shift.end}
+                              </div>
+                            </div>
                           )
                         })}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {staffList.map((member) => (
-                        <tr key={member.name} className="border-b hover:bg-gray-50">
-                          <td colSpan={16} className="h-12 p-0 relative">
-                            <div className="relative h-full" style={{ width: `${16 * 80}px` }}>
-                              {member.shifts.map((shift, shiftIndex) => {
-                                const startHour = Number.parseInt(shift.start.split(":")[0])
-                                const endHour = Number.parseInt(shift.end.split(":")[0])
-                                const startPercent = ((startHour - 8) / 16) * 100
-                                const width = ((endHour - startHour) / 16) * 100
-
-                                const getShiftColor = () => {
-                                  if (shiftStatus === "confirmed") {
-                                    return role === "ホール"
-                                      ? "bg-blue-200 text-blue-800 border-2 border-blue-500"
-                                      : "bg-emerald-200 text-emerald-800 border-2 border-emerald-500"
-                                  } else if (shiftStatus === "optimized") {
-                                    return role === "ホール"
-                                      ? "bg-blue-100 text-blue-800 border-2 border-blue-400"
-                                      : "bg-emerald-100 text-emerald-800 border-2 border-emerald-400"
-                                  } else {
-                                    return role === "ホール"
-                                      ? "bg-blue-100 text-blue-700 border border-blue-300"
-                                      : "bg-emerald-100 text-emerald-700 border border-emerald-300"
-                                  }
-                                }
-
-                                return (
-                                  <div
-                                    key={shiftIndex}
-                                    className={`absolute flex flex-col items-center justify-center rounded px-1 text-center ${getShiftColor()}`}
-                                    style={{
-                                      left: `${startPercent}%`,
-                                      width: `${width}%`,
-                                      top: "2px",
-                                      bottom: "2px",
-                                    }}
-                                  >
-                                    <div className="text-xs font-medium truncate">
-                                      {shift.start} - {shift.end}
-                                    </div>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )

@@ -4,11 +4,11 @@ import { useState } from "react"
 import { ShiftHeader } from "@/components/shift-header"
 import { ShiftTimeline } from "@/components/shift-timeline"
 import { ShiftEdit } from "@/components/shift-edit"
-import { ShiftOptimization } from "@/components/shift-optimization"
 import { StoreSelector, STORES } from "@/components/store-selector"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { PencilIcon, SaveIcon, Sparkles, CheckCircle2, Clock, FileText } from "lucide-react"
+import { PencilIcon, SaveIcon, CheckCircle2, Clock, FileText, Sparkles, PenLine } from "lucide-react"
+import Link from "next/link"
 
 export type ShiftStatus = "preferred" | "optimized" | "confirmed"
 
@@ -16,29 +16,10 @@ export default function ShiftManagement() {
   const [isEditing, setIsEditing] = useState(false)
   const [viewMode, setViewMode] = useState<"daily" | "monthly">("daily")
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [showOptimization, setShowOptimization] = useState(false)
   const [shiftStatus, setShiftStatus] = useState<ShiftStatus>("preferred")
-  const [selectedStores, setSelectedStores] = useState<string[]>(["mores"]) // デフォルトで1店舗選択
+  const [selectedStores, setSelectedStores] = useState<string[]>(["mores"])
 
-  const handleToggleEdit = () => {
-    setIsEditing((prev) => !prev)
-    setShowOptimization(false)
-  }
-
-  const handleShowOptimization = () => {
-    setShowOptimization(true)
-    setIsEditing(false)
-  }
-
-  const handleApplyOptimization = () => {
-    setShiftStatus("optimized")
-    setShowOptimization(false)
-  }
-
-  const handleConfirmShift = () => {
-    setShiftStatus("confirmed")
-    setIsEditing(false)
-  }
+  const handleToggleEdit = () => setIsEditing((prev) => !prev)
 
   const getStatusBadge = () => {
     switch (shiftStatus) {
@@ -82,16 +63,24 @@ export default function ShiftManagement() {
 
   return (
     <div className="space-y-4">
-      {/* 店舗選択とヘッダー */}
+      {/* 店舗選択とヘッダー（メインアクション: シフトを作成） */}
       <div className="bg-white rounded-lg shadow-sm p-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <StoreSelector selectedStores={selectedStores} onStoresChange={setSelectedStores} />
-          <ShiftHeader
+        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <StoreSelector selectedStores={selectedStores} onStoresChange={setSelectedStores} />
+            <ShiftHeader
             viewMode={viewMode}
             setViewMode={setViewMode}
             currentDate={currentDate}
             setCurrentDate={setCurrentDate}
           />
+          </div>
+          <Button asChild className="gap-2 shrink-0">
+            <Link href="/shifts/create">
+              <PenLine className="h-4 w-4" />
+              今週のシフトを作成する
+            </Link>
+          </Button>
         </div>
       </div>
 
@@ -108,33 +97,19 @@ export default function ShiftManagement() {
                   <h2 className="text-xl font-semibold text-gray-800">{store.name}</h2>
                   {getStatusBadge()}
                 </div>
-                <div className="flex gap-2">
-                  {!isEditing && !showOptimization && shiftStatus !== "confirmed" && (
-                    <Button variant="outline" size="sm" className="gap-2" onClick={handleShowOptimization}>
-                      <Sparkles className="h-4 w-4" />
-                      シフト最適化
-                    </Button>
+                <Button variant={isEditing ? "default" : "outline"} size="sm" className="gap-2" onClick={handleToggleEdit}>
+                  {isEditing ? (
+                    <>
+                      <SaveIcon className="h-4 w-4" />
+                      保存する
+                    </>
+                  ) : (
+                    <>
+                      <PencilIcon className="h-4 w-4" />
+                      編集する
+                    </>
                   )}
-                  {shiftStatus === "optimized" && !isEditing && (
-                    <Button variant="default" size="sm" className="gap-2" onClick={handleConfirmShift}>
-                      <CheckCircle2 className="h-4 w-4" />
-                      シフトを確定
-                    </Button>
-                  )}
-                  <Button variant={isEditing ? "default" : "outline"} size="sm" className="gap-2" onClick={handleToggleEdit}>
-                    {isEditing ? (
-                      <>
-                        <SaveIcon className="h-4 w-4" />
-                        保存する
-                      </>
-                    ) : (
-                      <>
-                        <PencilIcon className="h-4 w-4" />
-                        編集する
-                      </>
-                    )}
-                  </Button>
-                </div>
+                </Button>
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-600 mt-2">
                 <FileText className="h-4 w-4" />
@@ -142,27 +117,11 @@ export default function ShiftManagement() {
               </div>
             </div>
             <div className="p-6">
-              {/* Integrated single table view */}
-              <div className="integrated-shift-view">
-                {/* 最適化UI（既存のシフト表示の上に表示） */}
-                {showOptimization && (
-                  <div className="mb-6">
-                    <ShiftOptimization
-                      viewMode={viewMode}
-                      currentDate={currentDate}
-                      onClose={() => setShowOptimization(false)}
-                      onApply={handleApplyOptimization}
-                    />
-                  </div>
-                )}
-                
-                {/* 既存のシフト表示（最適化UIがあっても表示し続ける） */}
-                {isEditing ? (
-                  <ShiftEdit viewMode={viewMode} currentDate={currentDate} shiftStatus={shiftStatus} />
-                ) : (
-                  <ShiftTimeline viewMode={viewMode} currentDate={currentDate} shiftStatus={shiftStatus} />
-                )}
-              </div>
+              {isEditing ? (
+                <ShiftEdit viewMode={viewMode} currentDate={currentDate} shiftStatus={shiftStatus} storeId={storeId} />
+              ) : (
+                <ShiftTimeline viewMode={viewMode} currentDate={currentDate} shiftStatus={shiftStatus} storeId={storeId} />
+              )}
             </div>
           </div>
         )
