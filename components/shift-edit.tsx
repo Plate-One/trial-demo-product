@@ -263,7 +263,7 @@ export function ShiftEdit({
   viewMode,
   currentDate,
   shiftStatus = "preferred",
-  storeId: _storeId,
+  storeId,
 }: {
   viewMode: "daily" | "monthly"
   currentDate: Date
@@ -356,6 +356,6 @@ export function ShiftEdit({
       </div>
     </DndProvider>
   ) : (
-    <MonthlyShiftTable />
+    <MonthlyShiftTable storeId={storeId} />
   )
 }

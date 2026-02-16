@@ -546,6 +546,6 @@ export function ShiftTimeline({
       </div>
     </div>
   ) : (
-    <MonthlyShiftTable />
+    <MonthlyShiftTable storeId={storeId} />
   )
 }

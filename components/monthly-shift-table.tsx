@@ -1,11 +1,12 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useMemo } from "react"
 import { format, addDays, getDaysInMonth, startOfMonth, getDay } from "date-fns"
 import { ja } from "date-fns/locale"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ChevronLeft, ChevronRight, Printer } from "lucide-react"
+import { getHelpAssignmentsForStoreAndDay } from "@/lib/help-assignments"
 
 interface ShiftTime {
   start: string
@@ -19,6 +20,7 @@ interface EmployeeShift {
   type: "社員" | "アルバイト"
   shifts: Record<string, ShiftTime[]> // key is date in format "YYYY-MM-DD"
   totalHours: number
+  helpFromStore?: string
 }
 
 // Add a new function to generate mock shifts data
@@ -470,8 +472,45 @@ function generateMockMetrics(month: Date) {
   })
 }
 
+/** 指定店舗・月のヘルプアサインを EmployeeShift 形式に集約（日別と同じデータソース） */
+function buildHelpShiftsForMonth(storeId: string, month: Date): EmployeeShift[] {
+  const daysInMonth = getDaysInMonth(month)
+  const startDay = startOfMonth(month)
+  const map = new Map<string, { helperName: string; fromStoreName: string; role: "ホール" | "キッチン"; shifts: Record<string, ShiftTime[]>; totalHours: number }>()
+
+  for (let i = 0; i < daysInMonth; i++) {
+    const day = addDays(startDay, i)
+    const dateKey = format(day, "yyyy-MM-dd")
+    const assignments = getHelpAssignmentsForStoreAndDay(storeId, day)
+    for (const a of assignments) {
+      const key = `${a.helperName}-${a.fromStoreName}-${a.role}`
+      const shift: ShiftTime = { start: a.start, end: a.end }
+      const [startH, startM] = a.start.split(":").map(Number)
+      const [endH, endM] = a.end.split(":").map(Number)
+      const hours = endH - startH + (endM - startM) / 60
+
+      if (!map.has(key)) {
+        map.set(key, { helperName: a.helperName, fromStoreName: a.fromStoreName, role: a.role, shifts: {}, totalHours: 0 })
+      }
+      const entry = map.get(key)!
+      entry.shifts[dateKey] = [shift]
+      entry.totalHours += hours
+    }
+  }
+
+  return Array.from(map.entries()).map(([key, v]) => ({
+    employeeId: `help-${key.replace(/\s/g, "_")}`,
+    employeeName: v.helperName,
+    position: v.role,
+    type: "アルバイト" as const,
+    shifts: v.shifts,
+    totalHours: v.totalHours,
+    helpFromStore: v.fromStoreName,
+  }))
+}
+
 // Modify the MonthlyShiftTable function to include the metrics section
-export function MonthlyShiftTable() {
+export function MonthlyShiftTable({ storeId }: { storeId?: string } = {}) {
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const printRef = useRef<HTMLDivElement>(null)
 
@@ -481,6 +520,10 @@ export function MonthlyShiftTable() {
 
   // Generate mock data for the current month
   const employeeShifts = generateMockShifts(currentMonth)
+  const helpShifts = useMemo(
+    () => (storeId ? buildHelpShiftsForMonth(storeId, currentMonth) : []),
+    [storeId, currentMonth]
+  )
   const metricsData = generateMockMetrics(currentMonth)
 
   const daysInMonth = getDaysInMonth(currentMonth)
@@ -513,9 +556,15 @@ export function MonthlyShiftTable() {
   }
 
   const hallEmployees = employeeShifts.filter((emp) => emp.position === "ホール" && emp.type === "社員")
-  const hallPartTimers = employeeShifts.filter((emp) => emp.position === "ホール" && emp.type === "アルバイト")
+  const hallPartTimers = [
+    ...employeeShifts.filter((emp) => emp.position === "ホール" && emp.type === "アルバイト"),
+    ...helpShifts.filter((emp) => emp.position === "ホール"),
+  ]
   const kitchenEmployees = employeeShifts.filter((emp) => emp.position === "キッチン" && emp.type === "社員")
-  const kitchenPartTimers = employeeShifts.filter((emp) => emp.position === "キッチン" && emp.type === "アルバイト")
+  const kitchenPartTimers = [
+    ...employeeShifts.filter((emp) => emp.position === "キッチン" && emp.type === "アルバイト"),
+    ...helpShifts.filter((emp) => emp.position === "キッチン"),
+  ]
   
   const hallHours = [...hallEmployees, ...hallPartTimers].reduce((sum, emp) => sum + emp.totalHours, 0)
   const kitchenHours = [...kitchenEmployees, ...kitchenPartTimers].reduce((sum, emp) => sum + emp.totalHours, 0)
@@ -824,9 +873,16 @@ export function MonthlyShiftTable() {
                   </thead>
                   <tbody>
                     {section.employees.map((employee) => (
-                      <tr key={employee.employeeId} className="border-b border-gray-200 hover:bg-gray-50 avoid-break">
-                        <td className="sticky left-0 z-10 p-3 font-medium text-gray-700 bg-white text-sm print:bg-white">
-                          {employee.employeeName}
+                      <tr key={employee.employeeId} className={`border-b border-gray-200 hover:bg-gray-50 avoid-break ${employee.helpFromStore ? "bg-amber-50/50" : ""}`}>
+                        <td className={`sticky left-0 z-10 p-3 font-medium text-gray-700 text-sm print:bg-white ${employee.helpFromStore ? "bg-amber-50/50" : "bg-white"}`}>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span>{employee.employeeName}</span>
+                            {employee.helpFromStore && (
+                              <Badge variant="outline" className="text-xs font-normal bg-amber-100 text-amber-800 border-amber-300 whitespace-nowrap">
+                                ヘルプ（{employee.helpFromStore}）
+                              </Badge>
+                            )}
+                          </div>
                         </td>
                         {days.map((day) => renderShiftCell(employee, day))}
                         <td className="p-3 font-medium text-center bg-gray-50 text-sm">{Math.round(employee.totalHours)}h</td>
@@ -883,9 +939,16 @@ export function MonthlyShiftTable() {
                   </thead>
                   <tbody>
                     {section.partTimers.map((employee) => (
-                      <tr key={employee.employeeId} className="border-b border-gray-200 hover:bg-gray-50 avoid-break">
-                        <td className="sticky left-0 z-10 p-3 font-medium text-gray-700 bg-white text-sm print:bg-white">
-                          {employee.employeeName}
+                      <tr key={employee.employeeId} className={`border-b border-gray-200 hover:bg-gray-50 avoid-break ${employee.helpFromStore ? "bg-amber-50/50" : ""}`}>
+                        <td className={`sticky left-0 z-10 p-3 font-medium text-gray-700 text-sm print:bg-white ${employee.helpFromStore ? "bg-amber-50/50" : "bg-white"}`}>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span>{employee.employeeName}</span>
+                            {employee.helpFromStore && (
+                              <Badge variant="outline" className="text-xs font-normal bg-amber-100 text-amber-800 border-amber-300 whitespace-nowrap">
+                                ヘルプ（{employee.helpFromStore}）
+                              </Badge>
+                            )}
+                          </div>
                         </td>
                         {days.map((day) => renderShiftCell(employee, day))}
                         <td className="p-3 font-medium text-center bg-gray-50 text-sm">{Math.round(employee.totalHours)}h</td>
