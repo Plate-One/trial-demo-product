@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react"
 import { format, addDays, startOfWeek, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns"
 import { ja } from "date-fns/locale"
+import { StatCard } from "@/components/stat-card"
 
 export function ShiftMetrics({
   viewMode,
@@ -109,29 +110,20 @@ export function ShiftMetrics({
   const renderMonthlyView = () => (
     <div className="mt-6 space-y-6 rounded-lg bg-white p-6 shadow-sm">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="rounded-lg border bg-gray-50 p-4 border-gray-200">
-          <div className="text-sm font-medium text-gray-600">月間売上予測</div>
-          <div className="mt-1 text-2xl font-bold text-gray-900">
-            ¥{monthlyData.reduce((sum, day) => sum + day.sales, 0).toLocaleString()}
-          </div>
-        </div>
-        <div className="rounded-lg border bg-gray-50 p-4 border-gray-200">
-          <div className="text-sm font-medium text-gray-600">月間人件費</div>
-          <div className="mt-1 text-2xl font-bold text-gray-900">
-            ¥{monthlyData.reduce((sum, day) => sum + day.staffCost, 0).toLocaleString()}
-          </div>
-        </div>
-        <div className="rounded-lg border bg-gray-50 p-4 border-gray-200">
-          <div className="text-sm font-medium text-gray-600">平均人件費率</div>
-          <div className="mt-1 text-2xl font-bold text-gray-900">
-            {monthlyData.length > 0
-              ? (
-                  monthlyData.reduce((sum, day) => sum + Number.parseFloat(day.staffRatio), 0) / monthlyData.length
-                ).toFixed(1)
-              : 0}
-            %
-          </div>
-        </div>
+        <StatCard
+          label="月間売上予測"
+          value={`¥${monthlyData.reduce((sum, day) => sum + day.sales, 0).toLocaleString()}`}
+        />
+        <StatCard
+          label="月間人件費"
+          value={`¥${monthlyData.reduce((sum, day) => sum + day.staffCost, 0).toLocaleString()}`}
+        />
+        <StatCard
+          label="平均人件費率"
+          value={`${monthlyData.length > 0
+            ? (monthlyData.reduce((sum, day) => sum + Number.parseFloat(day.staffRatio), 0) / monthlyData.length).toFixed(1)
+            : 0}%`}
+        />
       </div>
 
       <div className="overflow-x-auto">
@@ -161,7 +153,7 @@ export function ShiftMetrics({
 
   return viewMode === "daily" ? (
     <div className="mt-6 space-y-6 rounded-lg bg-white p-6 shadow-sm">
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {[
           { label: "売り上げ予測", value: "¥1,200,000" },
           { label: "人時売上高", value: "¥3,500" },
@@ -170,13 +162,7 @@ export function ShiftMetrics({
           { label: "人件費(時給)", value: "¥120,000" },
           { label: "人件費(月給)", value: "¥3,600,000" },
         ].map((item) => (
-          <div
-            key={item.label}
-            className="rounded-lg border bg-gray-50 p-4 transition-colors hover:bg-gray-100 border-gray-200"
-          >
-            <div className="text-sm font-medium text-gray-600">{item.label}</div>
-            <div className="mt-1 text-2xl font-bold text-gray-900">{item.value}</div>
-          </div>
+          <StatCard key={item.label} label={item.label} value={item.value} />
         ))}
       </div>
       <div className="overflow-hidden rounded-lg border border-gray-200">

@@ -28,6 +28,7 @@ export function Sidebar() {
       title: "シフト",
       icon: CalendarDays,
       href: "/shifts",
+      badge: 3,
       subItems: [
         { title: "シフト一覧", href: "/shifts" },
         { title: "シフト作成", href: "/shifts/create" },
@@ -42,6 +43,7 @@ export function Sidebar() {
       title: "スタッフ管理",
       icon: Users,
       href: "/staff",
+      badge: 1,
     },
     {
       title: "設定",
@@ -83,8 +85,24 @@ export function Sidebar() {
                   <div
                     className={cn("flex items-center", collapsed ? "justify-center w-full" : "justify-start w-full")}
                   >
-                    <item.icon className="h-5 w-5 flex-shrink-0" />
-                    {!collapsed && <span className="ml-2 text-sm truncate">{item.title}</span>}
+                    <div className="relative flex-shrink-0">
+                      <item.icon className="h-5 w-5" />
+                      {item.badge && collapsed && (
+                        <span className="absolute -top-1.5 -right-1.5 h-3.5 w-3.5 rounded-full bg-red-500 text-[9px] font-bold text-white flex items-center justify-center">
+                          {item.badge}
+                        </span>
+                      )}
+                    </div>
+                    {!collapsed && (
+                      <>
+                        <span className="ml-2 text-sm truncate">{item.title}</span>
+                        {item.badge && (
+                          <span className="ml-auto mr-1 h-5 min-w-[20px] rounded-full bg-red-500 text-[10px] font-bold text-white flex items-center justify-center px-1.5">
+                            {item.badge}
+                          </span>
+                        )}
+                      </>
+                    )}
                   </div>
                 </Button>
               </Link>

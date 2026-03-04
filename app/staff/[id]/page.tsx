@@ -28,160 +28,10 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 
-// スタッフデータの型定義
-interface StaffMember {
-  id: string
-  name: string
-  nameKana: string
-  avatar?: string
-  role: string
-  store: string
-  employmentType: "正社員" | "パート" | "アルバイト"
-  skills: Array<{
-    name: string
-    level: number
-    certifications?: string[]
-    experience?: string
-  }>
-  schedule: "早番" | "遅番" | "通し" | "シフト制"
-  phone: string
-  email: string
-  joinDate: string
-  hourlyRate?: number
-  address?: string
-  birthday?: string
-  notes?: string
-  emergencyContact?: {
-    name: string
-    relation: string
-    phone: string
-  }
-  availability?: {
-    mon: boolean[]
-    tue: boolean[]
-    wed: boolean[]
-    thu: boolean[]
-    fri: boolean[]
-    sat: boolean[]
-    sun: boolean[]
-  }
-  certifications?: Array<{
-    name: string
-    date: string
-    expires?: string
-  }>
-}
+import { getStaffById, type StaffDetailMember } from "@/lib/mock-data"
 
-// サンプルデータ
-const staffData: Record<string, StaffMember> = {
-  "1": {
-    id: "1",
-    name: "佐藤 一郎",
-    nameKana: "さとう いちろう",
-    avatar: "/placeholder.svg?height=120&width=120",
-    role: "店長",
-    store: "キリンシティプラス横浜ベイクォーター店",
-    employmentType: "正社員",
-    skills: [
-      {
-        name: "調理",
-        level: 90,
-        certifications: ["調理師免許", "食品衛生責任者"],
-        experience: "10年以上の調理経験。フレンチ、イタリアン、和食の専門技術あり。",
-      },
-      {
-        name: "接客",
-        level: 85,
-        experience: "高級レストランでの接客経験。VIP対応の実績あり。",
-      },
-      {
-        name: "マネジメント",
-        level: 95,
-        certifications: ["店舗管理責任者資格"],
-        experience: "5年間の店舗管理経験。前職では20名のスタッフをマネジメント。",
-      },
-    ],
-    schedule: "通し",
-    phone: "090-1234-5678",
-    email: "i.sato@example.com",
-    joinDate: "2020-01-15",
-    address: "東京都新宿区西新宿1-1-1",
-    birthday: "1985-05-15",
-    notes: "社内MVPを2回受賞。研修講師も担当。",
-    emergencyContact: {
-      name: "佐藤 花子",
-      relation: "配偶者",
-      phone: "090-8765-4321",
-    },
-    availability: {
-      mon: [true, true, true],
-      tue: [true, true, true],
-      wed: [true, true, true],
-      thu: [true, true, false],
-      fri: [true, true, false],
-      sat: [false, false, true],
-      sun: [false, false, false],
-    },
-    certifications: [
-      {
-        name: "調理師免許",
-        date: "2015-03-20",
-      },
-      {
-        name: "食品衛生責任者",
-        date: "2018-05-10",
-      },
-      {
-        name: "防火管理者",
-        date: "2020-10-15",
-        expires: "2025-10-14",
-      },
-    ],
-  },
-  "2": {
-    id: "2",
-    name: "田中 花子",
-    nameKana: "たなか はなこ",
-    avatar: "/placeholder.svg?height=120&width=120",
-    role: "ホールスタッフ",
-    store: "キリンシティプラス横浜ベイクォーター店",
-    employmentType: "パート",
-    skills: [
-      {
-        name: "接客",
-        level: 80,
-        experience: "4年間の接客経験。お客様からの評価が高い。",
-      },
-      {
-        name: "レジ",
-        level: 95,
-        experience: "POSシステムの操作に熟練。レジ締め作業も担当。",
-      },
-      {
-        name: "ドリンク作成",
-        level: 75,
-        experience: "基本的なカクテル、コーヒーの作成が可能。",
-      },
-    ],
-    schedule: "早番",
-    phone: "090-2345-6789",
-    email: "h.tanaka@example.com",
-    joinDate: "2021-04-10",
-    hourlyRate: 1200,
-    address: "東京都渋谷区渋谷2-2-2",
-    birthday: "1992-10-08",
-    notes: "フレンドリーな接客で常連客から人気。英語対応可能。",
-    availability: {
-      mon: [true, false, false],
-      tue: [true, false, false],
-      wed: [true, false, false],
-      thu: [true, false, false],
-      fri: [false, true, false],
-      sat: [false, true, true],
-      sun: [false, true, true],
-    },
-  },
-}
+// Use unified type from mock-data module
+type StaffMember = StaffDetailMember
 
 // スキルに応じたバッジの色を返す関数
 const getSkillBadgeVariant = (skill: string) => {
@@ -278,13 +128,12 @@ export default function StaffDetail() {
   const [editedStaff, setEditedStaff] = useState<StaffMember | null>(null)
 
   useEffect(() => {
-    // 実際のアプリケーションではAPIから取得するが、ここではモックデータを使用
     const id = params.id as string
-    const staffMember = staffData[id]
+    const staffMember = getStaffById(id)
 
     if (staffMember) {
-      setStaff(staffMember)
-      setEditedStaff(staffMember)
+      setStaff({ ...staffMember, role: staffMember.detailRole })
+      setEditedStaff({ ...staffMember, role: staffMember.detailRole })
     }
 
     setLoading(false)

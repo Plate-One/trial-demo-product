@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { HELP_ASSIGNMENTS } from "@/lib/help-assignments"
+import { useToast } from "@/components/toast"
 
 // ========== 型定義 ==========
 interface HelpSlot {
@@ -334,6 +335,7 @@ function runHelpOptimization(): {
 
 // ========== メインコンポーネント ==========
 export default function MultiStoreHelpOptimization() {
+  const { showToast } = useToast()
   const [phase, setPhase] = useState<"overview" | "optimizing" | "result">("overview")
   const [currentStep, setCurrentStep] = useState(0)
 
@@ -391,7 +393,7 @@ export default function MultiStoreHelpOptimization() {
               </div>
             </div>
             {phase === "result" && (
-              <Button variant="outline" size="sm" className="gap-2">
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => showToast("ヘルプスタッフに通知を送信しました")}>
                 <Send className="h-4 w-4" />
                 ヘルプスタッフに通知
               </Button>
@@ -744,11 +746,11 @@ export default function MultiStoreHelpOptimization() {
                 概要に戻る
               </Button>
               <div className="flex gap-3">
-                <Button variant="outline" className="gap-2">
+                <Button variant="outline" className="gap-2" onClick={() => showToast("レポートを出力しました")}>
                   <TrendingUp className="h-4 w-4" />
                   レポート出力
                 </Button>
-                <Button className="gap-2">
+                <Button className="gap-2" onClick={() => showToast("ヘルプ配置を確定しました")}>
                   <CheckCircle2 className="h-4 w-4" />
                   ヘルプ配置を確定
                 </Button>

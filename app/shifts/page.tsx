@@ -62,7 +62,7 @@ export default function ShiftManagement() {
   const displayStores = selectedStores.length > 0 ? selectedStores : ["mores"]
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* 店舗選択とヘッダー（メインアクション: シフトを作成） */}
       <div className="bg-white rounded-lg shadow-sm p-6">
         <div className="flex flex-wrap items-center gap-4">

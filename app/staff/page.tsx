@@ -21,6 +21,9 @@ import {
   Upload
 } from "lucide-react"
 import Link from "next/link"
+import { ALL_STAFF, getSkillColor, getPositionColor, getRoleColor, getEmploymentColor } from "@/lib/mock-data"
+import { useToast } from "@/components/toast"
+import { StatCard } from "@/components/stat-card"
 
 // スタッフデータの型定義
 interface StaffMember {
@@ -40,203 +43,26 @@ interface StaffMember {
   status: "在籍" | "休職" | "退職"
 }
 
-// 初期スタッフデータ
-const initialStaffData: StaffMember[] = [
-  {
-    id: "1",
-    name: "佐藤 一郎",
-    nameKana: "さとう いちろう",
-    avatar: "/placeholder.svg?height=40&width=40",
-    store: "キリンシティプラス横浜ベイクォーター店",
-    position: "両方",
-    role: "店長",
-    employmentType: "正社員",
-    skills: ["調理", "接客", "マネジメント", "発注管理"],
-    phone: "090-1234-5678",
-    email: "i.sato@example.com",
-    joinDate: "2020-01-15",
-    status: "在籍",
-  },
-  {
-    id: "2",
-    name: "田中 花子",
-    nameKana: "たなか はなこ",
-    avatar: "/placeholder.svg?height=40&width=40",
-    store: "キリンシティプラス横浜ベイクォーター店",
-    position: "ホール",
-    role: "スタッフ",
-    employmentType: "パート",
-    skills: ["接客", "レジ", "ドリンク"],
-    phone: "090-2345-6789",
-    email: "h.tanaka@example.com",
-    joinDate: "2021-04-10",
-    hourlyRate: 1200,
-    status: "在籍",
-  },
-  {
-    id: "3",
-    name: "鈴木 健太",
-    nameKana: "すずき けんた",
-    avatar: "/placeholder.svg?height=40&width=40",
-    store: "キリンシティプラス横浜ベイクォーター店",
-    position: "キッチン",
-    role: "スタッフ",
-    employmentType: "アルバイト",
-    skills: ["調理補助", "食器洗浄", "仕込み"],
-    phone: "090-3456-7890",
-    email: "k.suzuki@example.com",
-    joinDate: "2022-08-01",
-    hourlyRate: 1100,
-    status: "在籍",
-  },
-  {
-    id: "4",
-    name: "山田 太郎",
-    nameKana: "やまだ たろう",
-    avatar: "/placeholder.svg?height=40&width=40",
-    store: "キリンシティプラス横浜ベイクォーター店",
-    position: "ホール",
-    role: "マネージャー",
-    employmentType: "正社員",
-    skills: ["接客", "マネジメント", "クレーム対応", "予約管理"],
-    phone: "090-4567-8901",
-    email: "t.yamada@example.com",
-    joinDate: "2019-06-01",
-    status: "在籍",
-  },
-  {
-    id: "5",
-    name: "伊藤 美咲",
-    nameKana: "いとう みさき",
-    avatar: "/placeholder.svg?height=40&width=40",
-    store: "キリンシティプラス横浜ベイクォーター店",
-    position: "ホール",
-    role: "スタッフ",
-    employmentType: "アルバイト",
-    skills: ["接客", "レジ"],
-    phone: "090-5678-9012",
-    email: "m.ito@example.com",
-    joinDate: "2023-03-15",
-    hourlyRate: 1100,
-    status: "在籍",
-  },
-  {
-    id: "6",
-    name: "渡辺 直樹",
-    nameKana: "わたなべ なおき",
-    avatar: "/placeholder.svg?height=40&width=40",
-    store: "キリンシティプラス横浜ベイクォーター店",
-    position: "キッチン",
-    role: "チーフ",
-    employmentType: "正社員",
-    skills: ["調理", "メニュー開発", "在庫管理", "衛生管理"],
-    phone: "090-6789-0123",
-    email: "n.watanabe@example.com",
-    joinDate: "2018-09-01",
-    status: "在籍",
-  },
-  {
-    id: "7",
-    name: "高橋 美咲",
-    nameKana: "たかはし みさき",
-    avatar: "/placeholder.svg?height=40&width=40",
-    store: "キリンシティ 横浜モアーズ店",
-    position: "キッチン",
-    role: "スタッフ",
-    employmentType: "パート",
-    skills: ["調理", "盛り付け"],
-    phone: "090-7890-1234",
-    email: "m.takahashi@example.com",
-    joinDate: "2022-01-10",
-    hourlyRate: 1150,
-    status: "在籍",
-  },
-  {
-    id: "8",
-    name: "中村 翔太",
-    nameKana: "なかむら しょうた",
-    avatar: "/placeholder.svg?height=40&width=40",
-    store: "キリンシティ 横浜モアーズ店",
-    position: "両方",
-    role: "スタッフ",
-    employmentType: "アルバイト",
-    skills: ["接客", "調理補助", "清掃"],
-    phone: "090-8901-2345",
-    email: "s.nakamura@example.com",
-    joinDate: "2023-06-01",
-    hourlyRate: 1100,
-    status: "在籍",
-  },
-]
-
-// スキルの色を取得
-const getSkillColor = (skill: string) => {
-  const skillColors: Record<string, string> = {
-    "調理": "bg-orange-100 text-orange-800",
-    "接客": "bg-blue-100 text-blue-800",
-    "マネジメント": "bg-purple-100 text-purple-800",
-    "レジ": "bg-green-100 text-green-800",
-    "ドリンク": "bg-cyan-100 text-cyan-800",
-    "調理補助": "bg-amber-100 text-amber-800",
-    "食器洗浄": "bg-gray-100 text-gray-800",
-    "仕込み": "bg-yellow-100 text-yellow-800",
-    "クレーム対応": "bg-red-100 text-red-800",
-    "予約管理": "bg-indigo-100 text-indigo-800",
-    "メニュー開発": "bg-pink-100 text-pink-800",
-    "在庫管理": "bg-teal-100 text-teal-800",
-    "衛生管理": "bg-lime-100 text-lime-800",
-    "発注管理": "bg-violet-100 text-violet-800",
-    "盛り付け": "bg-rose-100 text-rose-800",
-    "清掃": "bg-slate-100 text-slate-800",
-  }
-  return skillColors[skill] || "bg-gray-100 text-gray-800"
-}
-
-// ポジションの色を取得
-const getPositionColor = (position: string) => {
-  switch (position) {
-    case "ホール":
-      return "bg-blue-100 text-blue-800 border-blue-300"
-    case "キッチン":
-      return "bg-emerald-100 text-emerald-800 border-emerald-300"
-    case "両方":
-      return "bg-purple-100 text-purple-800 border-purple-300"
-    default:
-      return "bg-gray-100 text-gray-800 border-gray-300"
-  }
-}
-
-// 役職の色を取得
-const getRoleColor = (role: string) => {
-  switch (role) {
-    case "店長":
-      return "bg-red-100 text-red-800"
-    case "マネージャー":
-      return "bg-orange-100 text-orange-800"
-    case "チーフ":
-      return "bg-yellow-100 text-yellow-800"
-    case "スタッフ":
-      return "bg-gray-100 text-gray-800"
-    default:
-      return "bg-gray-100 text-gray-800"
-  }
-}
-
-// 雇用形態の色を取得
-const getEmploymentColor = (type: string) => {
-  switch (type) {
-    case "正社員":
-      return "bg-indigo-100 text-indigo-800"
-    case "パート":
-      return "bg-cyan-100 text-cyan-800"
-    case "アルバイト":
-      return "bg-teal-100 text-teal-800"
-    default:
-      return "bg-gray-100 text-gray-800"
-  }
-}
+// 初期スタッフデータ（共有モジュールから生成）
+const initialStaffData: StaffMember[] = ALL_STAFF.map((s) => ({
+  id: s.id,
+  name: s.name,
+  nameKana: s.nameKana,
+  avatar: s.avatar,
+  store: s.store,
+  position: s.position,
+  role: s.role,
+  employmentType: s.employmentType,
+  skills: s.simpleSkills,
+  phone: s.phone,
+  email: s.email,
+  joinDate: s.joinDate,
+  hourlyRate: s.hourlyRate,
+  status: s.status,
+}))
 
 export default function StaffManagement() {
+  const { showToast } = useToast()
   const [staffList, setStaffList] = useState<StaffMember[]>(initialStaffData)
   const [searchTerm, setSearchTerm] = useState("")
   const [filterStore, setFilterStore] = useState<string>("all")
@@ -334,11 +160,22 @@ export default function StaffManagement() {
               <p className="text-sm text-gray-600 mt-1">スタッフ情報の登録・編集・削除</p>
         </div>
         <div className="flex items-center gap-3">
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={() => {
+                const header = "ID,名前,フリガナ,店舗,ポジション,役職,雇用形態,電話,メール,入社日\n"
+                const rows = staffList.map(s => `${s.id},${s.name},${s.nameKana},${s.store},${s.position},${s.role},${s.employmentType},${s.phone},${s.email},${s.joinDate}`).join("\n")
+                const blob = new Blob([header + rows], { type: "text/csv;charset=utf-8;" })
+                const url = URL.createObjectURL(blob)
+                const link = document.createElement("a")
+                link.href = url
+                link.download = "staff_list.csv"
+                link.click()
+                URL.revokeObjectURL(url)
+                showToast("スタッフ一覧をCSVエクスポートしました")
+              }}>
                 <Download className="mr-2 h-4 w-4" />
                 エクスポート
               </Button>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={() => showToast("CSVファイルからのインポート機能は準備中です", "info")}>
                 <Upload className="mr-2 h-4 w-4" />
                 インポート
           </Button>
@@ -353,23 +190,32 @@ export default function StaffManagement() {
 
       <div className="p-6 space-y-6">
         {/* 統計情報 */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-gray-50 rounded-lg p-4">
-            <p className="text-sm font-medium text-gray-600">総スタッフ数</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{stats.total}名</p>
-          </div>
-          <div className="bg-blue-50 rounded-lg p-4">
-            <p className="text-sm font-medium text-blue-600">ホール担当</p>
-            <p className="text-2xl font-bold text-blue-900 mt-1">{stats.hall}名</p>
-          </div>
-          <div className="bg-emerald-50 rounded-lg p-4">
-            <p className="text-sm font-medium text-emerald-600">キッチン担当</p>
-            <p className="text-2xl font-bold text-emerald-900 mt-1">{stats.kitchen}名</p>
-          </div>
-          <div className="bg-purple-50 rounded-lg p-4">
-            <p className="text-sm font-medium text-purple-600">正社員</p>
-            <p className="text-2xl font-bold text-purple-900 mt-1">{stats.fullTime}名</p>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard label="総スタッフ数" value={`${stats.total}名`} />
+          <StatCard
+            label="ホール担当"
+            value={`${stats.hall}名`}
+            bgColor="bg-blue-50"
+            borderColor="border-blue-200"
+            labelColor="text-blue-600"
+            valueColor="text-blue-900"
+          />
+          <StatCard
+            label="キッチン担当"
+            value={`${stats.kitchen}名`}
+            bgColor="bg-emerald-50"
+            borderColor="border-emerald-200"
+            labelColor="text-emerald-600"
+            valueColor="text-emerald-900"
+          />
+          <StatCard
+            label="正社員"
+            value={`${stats.fullTime}名`}
+            bgColor="bg-purple-50"
+            borderColor="border-purple-200"
+            labelColor="text-purple-600"
+            valueColor="text-purple-900"
+          />
         </div>
 
         {/* 検索・フィルター */}

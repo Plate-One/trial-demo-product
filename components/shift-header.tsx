@@ -6,6 +6,7 @@ import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
 import { format, addDays, subDays, addMonths, subMonths } from "date-fns"
 import { ja } from "date-fns/locale"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useToast } from "@/components/toast"
 
 export function ShiftHeader({
   viewMode,
@@ -18,13 +19,7 @@ export function ShiftHeader({
   currentDate: Date
   setCurrentDate: React.Dispatch<React.SetStateAction<Date>>
 }) {
-  const handlePreviousDay = () => {
-    setCurrentDate((prevDate) => subDays(prevDate, 1))
-  }
-
-  const handleNextDay = () => {
-    setCurrentDate((prevDate) => addDays(prevDate, 1))
-  }
+  const { showToast } = useToast()
 
   const handleToday = () => {
     setCurrentDate(new Date())
@@ -75,10 +70,10 @@ export function ShiftHeader({
         </Button>
       </div>
       <div className="flex flex-wrap items-center gap-2 shrink-0">
-        <Button variant="outline" size="sm" className="h-9 text-xs sm:text-sm">
+        <Button variant="outline" size="sm" className="h-9 text-xs sm:text-sm" onClick={() => showToast("スタッフ管理ページへ移動します", "info")}>
           スタッフ管理
         </Button>
-        <Button size="sm" variant="outline" className="h-9 text-xs sm:text-sm whitespace-nowrap">
+        <Button size="sm" variant="outline" className="h-9 text-xs sm:text-sm whitespace-nowrap" onClick={() => showToast("シフトを公開しました")}>
           シフトを公開する
         </Button>
       </div>
