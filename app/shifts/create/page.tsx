@@ -158,6 +158,53 @@ export default function ShiftCreation() {
   const weekDates = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart])
   const DAY_LABELS = ["月", "火", "水", "木", "金", "土", "日"]
 
+  // ヘルプ必要枠（曜日ベース → dayOfWeek: 0=日,1=月,...6=土）
+  const HELP_SHORTAGE_SLOTS = [
+    { dayOfWeek: 1, start: "19:00", end: "21:00", role: "ホール" as const, shortage: 1 },
+    { dayOfWeek: 1, start: "19:00", end: "22:00", role: "キッチン" as const, shortage: 1 },
+    { dayOfWeek: 3, start: "19:00", end: "21:00", role: "ホール" as const, shortage: 1 },
+    { dayOfWeek: 5, start: "19:00", end: "21:00", role: "ホール" as const, shortage: 1 },
+    { dayOfWeek: 5, start: "19:00", end: "22:00", role: "キッチン" as const, shortage: 1 },
+    { dayOfWeek: 6, start: "11:00", end: "14:00", role: "ホール" as const, shortage: 2 },
+    { dayOfWeek: 6, start: "19:00", end: "22:00", role: "キッチン" as const, shortage: 1 },
+    { dayOfWeek: 0, start: "11:00", end: "14:00", role: "ホール" as const, shortage: 1 },
+    { dayOfWeek: 0, start: "18:00", end: "21:00", role: "キッチン" as const, shortage: 1 },
+  ]
+
+  // 仮シフト表データ生成
+  const previewShiftData = useMemo(() => {
+    if (periodData.length === 0) return { staffRows: [], helpRows: [], dates: [] }
+
+    const dates = periodData.map(d => d.date)
+
+    // スタッフ行
+    const staffRows = STAFF_SUBMISSIONS.map(staff => {
+      const shifts: (string | null)[] = dates.map((date) => {
+        const dayNum = date.getDate()
+        if (staff.employmentType === "正社員") {
+          if (staff.requestedDaysOff?.includes(dayNum)) return null
+          return "11-22"
+        }
+        if (!staff.submitted) return null
+        const available = staff.availableDays?.find(a => a.day === dayNum)
+        if (!available) return null
+        return `${available.start.replace(":00", "")}-${available.end.replace(":00", "")}`
+      })
+      return { ...staff, shifts }
+    })
+
+    // ヘルプ行（日付ごとにヘルプ枠を集約）
+    type HelpCell = { role: string; start: string; end: string; shortage: number }[]
+    const helpByDate: HelpCell[] = dates.map((date) => {
+      const dow = date.getDay()
+      return HELP_SHORTAGE_SLOTS.filter(s => s.dayOfWeek === dow).map(s => ({
+        role: s.role, start: s.start, end: s.end, shortage: s.shortage,
+      }))
+    })
+
+    return { staffRows, helpRows: helpByDate, dates }
+  }, [periodData])
+
   // 注目日のフラグ
   const flaggedDays = useMemo(() =>
     periodData.filter(d => d.event || d.isHoliday || d.weather.icon === "rain"), [periodData])
@@ -261,7 +308,13 @@ export default function ShiftCreation() {
   // ステップ遷移
   const goToStep = (step: WizardStep) => {
     setCurrentStep(step)
-    window.scrollTo({ top: 0, behavior: "smooth" })
+    // スクロールコンテナ（main要素）を先頭に戻す
+    const scrollContainer = document.querySelector("main")
+    if (scrollContainer) {
+      scrollContainer.scrollTo({ top: 0, behavior: "smooth" })
+    } else {
+      window.scrollTo({ top: 0, behavior: "smooth" })
+    }
   }
   const handleConfirmForecast = () => {
     setCompletedSteps(prev => new Set([...prev, 1]))
@@ -334,8 +387,8 @@ export default function ShiftCreation() {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse min-w-[1000px]">
             <thead>
-              <tr className="bg-gray-50 sticky top-0 z-10">
-                <th className="sticky left-0 z-20 bg-gray-50 border-b border-r p-2 text-center font-medium text-gray-600 w-24">
+              <tr className="bg-gray-50">
+                <th className="sticky left-0 z-10 bg-gray-50 border-b border-r p-2 text-center font-medium text-gray-600 w-24">
                   <div className="text-xs">時間</div>
                 </th>
                 {periodData.map((day, dayIndex) => {
@@ -486,41 +539,41 @@ export default function ShiftCreation() {
   // ========== レンダリング ==========
   return (
     <div className="bg-white rounded-lg shadow-sm">
-      {/* ========== ステッパーヘッダー ========== */}
-      <div className="sticky top-0 z-40 bg-white border-b">
-        <div className="p-4 sm:p-6">
-          <div className="mb-4">
-            <h1 className="text-xl font-semibold text-gray-800">シフト作成</h1>
-            <p className="text-sm text-gray-500 mt-0.5">{periodLabel}　{periodData.length}日間</p>
+      {/* ========== ステッパーヘッダー（コンパクト） ========== */}
+      <div className="bg-white border-b">
+        <div className="px-4 py-2.5 sm:px-6 flex items-center gap-4">
+          <div className="flex-shrink-0">
+            <h1 className="text-base font-semibold text-gray-800 leading-tight">シフト作成</h1>
+            <p className="text-[11px] text-gray-500">{periodLabel}　{periodData.length}日間</p>
           </div>
-          <div className="flex items-center w-full max-w-2xl mx-auto">
+          <div className="flex items-center flex-1 max-w-xl">
             {STEPS.map((item, i) => (
               <div key={item.step} className="flex items-center flex-1 last:flex-none">
                 <button
                   onClick={() => (completedSteps.has(item.step) || item.step === currentStep) && goToStep(item.step)}
                   disabled={!completedSteps.has(item.step) && item.step !== currentStep}
-                  className="flex flex-col items-center gap-1.5 group"
+                  className="flex items-center gap-1.5 group"
                 >
                   <span className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold transition-all",
+                    "flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all flex-shrink-0",
                     completedSteps.has(item.step) && item.step !== currentStep && "bg-indigo-600 text-white cursor-pointer group-hover:bg-indigo-700",
-                    item.step === currentStep && "bg-indigo-600 text-white ring-4 ring-indigo-100",
-                    !completedSteps.has(item.step) && item.step !== currentStep && "bg-gray-100 text-gray-400 border-2 border-dashed border-gray-300",
+                    item.step === currentStep && "bg-indigo-600 text-white ring-2 ring-indigo-100",
+                    !completedSteps.has(item.step) && item.step !== currentStep && "bg-gray-100 text-gray-400 border border-dashed border-gray-300",
                   )}>
                     {completedSteps.has(item.step) && item.step !== currentStep
-                      ? <CheckCircle2 className="h-5 w-5" />
+                      ? <CheckCircle2 className="h-3.5 w-3.5" />
                       : item.step}
                   </span>
                   <span className={cn(
                     "text-xs hidden sm:block whitespace-nowrap",
-                    item.step === currentStep ? "font-bold text-indigo-700" : "text-gray-500"
+                    item.step === currentStep ? "font-bold text-indigo-700" : "text-gray-400"
                   )}>
                     {item.label}
                   </span>
                 </button>
                 {i < STEPS.length - 1 && (
                   <div className={cn(
-                    "h-0.5 flex-1 mx-2 transition-colors",
+                    "h-0.5 flex-1 mx-1.5 transition-colors",
                     completedSteps.has(item.step) ? "bg-indigo-600" : "bg-gray-200"
                   )} />
                 )}
@@ -767,7 +820,7 @@ export default function ShiftCreation() {
             </div>
 
             {/* ライブKPIストリップ */}
-            <div className="sticky top-[120px] z-30 bg-white/95 backdrop-blur border rounded-lg p-3">
+            <div className="border rounded-lg p-3 bg-white">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                 <div>
                   <p className="text-xs text-gray-500">総工数</p>
@@ -1077,6 +1130,144 @@ export default function ShiftCreation() {
               <h2 className="text-lg font-semibold text-gray-800">確認・提出</h2>
               <p className="text-sm text-gray-500 mt-1">シフト編集結果を確認し、問題なければ提出してください。</p>
             </div>
+
+            {/* 仮シフト表 */}
+            {(() => {
+              const hallStaff = previewShiftData.staffRows.filter(s => s.position === "ホール" || s.position === "両方")
+              const kitchenStaff = previewShiftData.staffRows.filter(s => s.position === "キッチン" || s.position === "両方")
+              const dates = previewShiftData.dates
+              const dayInfos = dates.map(d => ({
+                date: d,
+                dayOfWeek: format(d, "E", { locale: ja }),
+                isWeekend: d.getDay() === 0 || d.getDay() === 6,
+              }))
+              const weekdays = ["日", "月", "火", "水", "木", "金", "土"]
+
+              const renderStaffShiftCell = (shift: string | null, date: Date, staffId: string) => {
+                const isWeekend = date.getDay() === 0 || date.getDay() === 6
+                if (shift) {
+                  const [s, e] = shift.split("-")
+                  return (
+                    <td key={`${staffId}-${format(date, "d")}`} className={`border p-2 ${isWeekend ? "bg-red-50" : ""}`}>
+                      <div className="text-xs bg-blue-100 rounded px-2 py-1 text-center">
+                        <div className="font-medium">{s.includes(":") ? s : `${s}:00`}</div>
+                        <div className="text-gray-600">{e.includes(":") ? e : `${e}:00`}</div>
+                      </div>
+                    </td>
+                  )
+                }
+                return (
+                  <td key={`${staffId}-${format(date, "d")}`} className={`border p-2 ${isWeekend ? "bg-red-50" : ""}`} />
+                )
+              }
+
+              const renderSectionTable = (
+                sectionTitle: string,
+                staffList: typeof hallStaff,
+                helpRole: "ホール" | "キッチン",
+              ) => (
+                <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
+                  <div className="flex items-center justify-between px-4 py-3 border-b bg-gray-50">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-semibold text-gray-800">{sectionTitle}</h3>
+                      <Badge variant="secondary">
+                        {staffList.length}名
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse min-w-[800px]">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-200">
+                          <th className="sticky left-0 z-10 text-left p-3 font-medium text-gray-700 min-w-[120px] text-sm bg-gray-50" rowSpan={2}>
+                            スタッフ
+                          </th>
+                          {dayInfos.map((day, i) => (
+                            <th key={i} className={`border p-3 text-center font-medium min-w-[60px] text-sm ${day.isWeekend ? "text-red-600 bg-red-50" : "text-gray-700"}`}>
+                              {format(day.date, "d")}日
+                            </th>
+                          ))}
+                          <th className="text-center p-3 font-medium text-gray-700 text-sm" rowSpan={2}>合計</th>
+                        </tr>
+                        <tr className="bg-gray-50 border-b border-gray-200">
+                          {dayInfos.map((day, i) => (
+                            <th key={`dow-${i}`} className={`border p-3 text-center text-xs font-medium ${day.isWeekend ? "text-red-600 bg-red-50" : "text-gray-600"}`}>
+                              {weekdays[day.date.getDay()]}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {staffList.map((staff) => {
+                          const workedDays = staff.shifts.filter(s => s !== null).length
+                          return (
+                            <tr key={staff.staffId} className="border-b border-gray-200 hover:bg-gray-50">
+                              <td className="sticky left-0 z-10 p-3 font-medium text-gray-700 text-sm bg-white">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <span>{staff.name}</span>
+                                  <Badge variant="outline" className={cn("text-xs", staff.employmentType === "正社員" ? "text-blue-700 border-blue-300" : "text-purple-700 border-purple-300")}>
+                                    {staff.employmentType}
+                                  </Badge>
+                                </div>
+                              </td>
+                              {staff.shifts.map((shift, colIdx) => renderStaffShiftCell(shift, dates[colIdx], staff.staffId))}
+                              <td className="p-3 font-medium text-center bg-gray-50 text-sm">{workedDays}日</td>
+                            </tr>
+                          )
+                        })}
+                        {/* ヘルプ行 */}
+                        <tr className="border-b border-gray-200 bg-amber-50/50">
+                          <td className="sticky left-0 z-10 p-3 font-medium text-sm bg-amber-50/50">
+                            <div className="flex items-center gap-1.5 text-amber-800">
+                              <HandHelping className="h-4 w-4" />
+                              <span>ヘルプ（{helpRole}）</span>
+                            </div>
+                            <div className="text-xs text-amber-600 mt-0.5">他店舗から補充</div>
+                          </td>
+                          {dates.map((_, colIdx) => {
+                            const slots = (previewShiftData.helpRows[colIdx] || []).filter(s => s.role === helpRole)
+                            const isWeekend = dates[colIdx]?.getDay() === 0 || dates[colIdx]?.getDay() === 6
+                            return (
+                              <td key={`help-${helpRole}-${colIdx}`} className={`border p-2 ${isWeekend ? "bg-red-50" : ""}`}>
+                                {slots.length > 0 && (
+                                  <div className="flex flex-col gap-1">
+                                    {slots.map((slot, si) => (
+                                      <div key={si} className="text-xs bg-amber-100 border border-amber-300 rounded px-2 py-1 text-center">
+                                        <div className="font-bold text-amber-800">ヘルプ</div>
+                                        <div className="text-amber-700">{slot.start}</div>
+                                        <div className="text-amber-700">{slot.end}</div>
+                                        {slot.shortage > 1 && <div className="text-amber-600 text-[10px]">×{slot.shortage}</div>}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </td>
+                            )
+                          })}
+                          <td className="p-3 font-medium text-center bg-gray-50 text-sm">
+                            {(previewShiftData.helpRows.reduce((sum, slots) => sum + slots.filter(s => s.role === helpRole).reduce((s2, sl) => s2 + sl.shortage, 0), 0))}枠
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )
+
+              return (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-gray-800">仮シフト表</h3>
+                    <div className="flex items-center gap-3 text-xs text-gray-500">
+                      <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded bg-blue-100 border border-blue-200" /> シフト</span>
+                      <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded bg-amber-100 border border-amber-300" /> ヘルプ必要枠</span>
+                    </div>
+                  </div>
+                  {renderSectionTable("ホール", hallStaff, "ホール")}
+                  {renderSectionTable("キッチン", kitchenStaff, "キッチン")}
+                </div>
+              )
+            })()}
 
             {/* 比較カード */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
