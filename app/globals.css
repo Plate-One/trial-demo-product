@@ -89,6 +89,16 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* フォーカス表示の改善（キーボード操作時のみリングを表示） */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-blue-500 ring-offset-2;
+  }
+
+  /* スキップリンク（アクセシビリティ） */
+  .skip-link {
+    @apply sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:bg-white focus:px-4 focus:py-2 focus:rounded-md focus:shadow-lg focus:text-sm focus:font-medium;
+  }
 }
 
 /* 印刷用スタイル */

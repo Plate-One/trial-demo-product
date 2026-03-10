@@ -12,6 +12,7 @@ import Link from "next/link"
 import { seededRandom } from "@/lib/utils"
 import { useToast } from "@/components/toast"
 import { StatCard } from "@/components/stat-card"
+import { OnboardingHint } from "@/components/onboarding-hints"
 
 function generateDemandData(baseDate: Date) {
   return Array.from({ length: 7 }, (_, i) => {
@@ -153,10 +154,15 @@ export default function DemandForecastDashboard() {
   }, [dateStr])
 
   return (
+    <div className="space-y-3">
+      <OnboardingHint
+        id="demand-forecast-intro"
+        message="左右の矢印で日付を切り替えて予測を確認できます。グラフ上にカーソルを合わせると詳細な数値が表示されます。"
+      />
     <div className="bg-white rounded-lg shadow-sm">
       <div className="border-b">
         <div className="p-6">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
               <h1 className="text-xl font-semibold text-gray-800">需要予測ダッシュボード</h1>
               <p className="text-sm text-gray-600 mt-1">本日の売上・客数予測とスタッフ配置提案</p>
@@ -418,6 +424,7 @@ export default function DemandForecastDashboard() {
           </div>
         </div>
       </div>
+    </div>
     </div>
   )
 }

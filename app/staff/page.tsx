@@ -24,6 +24,18 @@ import Link from "next/link"
 import { ALL_STAFF, getSkillColor, getPositionColor, getRoleColor, getEmploymentColor } from "@/lib/mock-data"
 import { useToast } from "@/components/toast"
 import { StatCard } from "@/components/stat-card"
+import { ColumnToggle, useColumnVisibility } from "@/components/column-toggle"
+import { OnboardingHint } from "@/components/onboarding-hints"
+
+const STAFF_COLUMNS = [
+  { key: "name", label: "スタッフ" },
+  { key: "store", label: "所属店舗" },
+  { key: "position", label: "ポジション" },
+  { key: "role", label: "役職" },
+  { key: "employment", label: "雇用形態" },
+  { key: "contact", label: "連絡先", defaultVisible: false },
+  { key: "actions", label: "操作" },
+]
 
 // スタッフデータの型定義
 interface StaffMember {
@@ -63,6 +75,7 @@ const initialStaffData: StaffMember[] = ALL_STAFF.map((s) => ({
 
 export default function StaffManagement() {
   const { showToast } = useToast()
+  const { visibleColumns, toggle: toggleColumn, isVisible } = useColumnVisibility(STAFF_COLUMNS)
   const [staffList, setStaffList] = useState<StaffMember[]>(initialStaffData)
   const [searchTerm, setSearchTerm] = useState("")
   const [filterStore, setFilterStore] = useState<string>("all")
@@ -189,6 +202,10 @@ export default function StaffManagement() {
       </div>
 
       <div className="p-6 space-y-6">
+        <OnboardingHint
+          id="staff-intro"
+          message="スタッフの検索・フィルターで絞り込みができます。「表示列」ボタンで表示する列を選択できます。"
+        />
         {/* 統計情報 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard label="総スタッフ数" value={`${stats.total}名`} />
@@ -274,23 +291,28 @@ export default function StaffManagement() {
         </div>
 
         {/* スタッフリスト */}
+        <div className="flex justify-between items-center">
+          <p className="text-sm text-gray-500">{filteredStaff.length}件のスタッフ</p>
+          <ColumnToggle columns={STAFF_COLUMNS} visibleColumns={visibleColumns} onToggle={toggleColumn} />
+        </div>
         <div className="bg-white rounded-lg border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 border-b">
-                  <th className="text-left p-4 font-medium text-gray-600">スタッフ</th>
-                  <th className="text-left p-4 font-medium text-gray-600">所属店舗</th>
-                  <th className="text-left p-4 font-medium text-gray-600">ポジション</th>
-                  <th className="text-left p-4 font-medium text-gray-600">役職</th>
-                  <th className="text-left p-4 font-medium text-gray-600">雇用形態</th>
-                  <th className="text-left p-4 font-medium text-gray-600">連絡先</th>
-                  <th className="text-center p-4 font-medium text-gray-600">操作</th>
+                  {isVisible("name") && <th className="text-left p-4 font-medium text-gray-600">スタッフ</th>}
+                  {isVisible("store") && <th className="text-left p-4 font-medium text-gray-600">所属店舗</th>}
+                  {isVisible("position") && <th className="text-left p-4 font-medium text-gray-600">ポジション</th>}
+                  {isVisible("role") && <th className="text-left p-4 font-medium text-gray-600">役職</th>}
+                  {isVisible("employment") && <th className="text-left p-4 font-medium text-gray-600">雇用形態</th>}
+                  {isVisible("contact") && <th className="text-left p-4 font-medium text-gray-600">連絡先</th>}
+                  {isVisible("actions") && <th className="text-center p-4 font-medium text-gray-600">操作</th>}
                 </tr>
               </thead>
               <tbody>
                 {filteredStaff.map((staff) => (
                   <tr key={staff.id} className="border-b hover:bg-gray-50 transition-colors">
+                    {isVisible("name") && (
                     <td className="p-4">
                       <Link href={`/staff/${staff.id}`} className="flex items-center gap-3 hover:underline">
                         <Avatar className="h-10 w-10">
@@ -303,19 +325,27 @@ export default function StaffManagement() {
                         </div>
                       </Link>
                     </td>
+                    )}
+                    {isVisible("store") && (
                     <td className="p-4">
                       <span className="text-sm text-gray-700">{staff.store}</span>
                     </td>
+                    )}
+                    {isVisible("position") && (
                     <td className="p-4">
                       <Badge variant="outline" className={getPositionColor(staff.position)}>
                         {staff.position}
                       </Badge>
                     </td>
+                    )}
+                    {isVisible("role") && (
                     <td className="p-4">
                       <Badge className={getRoleColor(staff.role)}>
                         {staff.role}
                       </Badge>
                     </td>
+                    )}
+                    {isVisible("employment") && (
                     <td className="p-4">
                       <Badge variant="outline" className={getEmploymentColor(staff.employmentType)}>
                         {staff.employmentType}
@@ -324,23 +354,28 @@ export default function StaffManagement() {
                         <p className="text-xs text-gray-500 mt-1">¥{staff.hourlyRate}/h</p>
                       )}
                     </td>
+                    )}
+                    {isVisible("contact") && (
                     <td className="p-4">
                       <div className="text-sm">
                         <div className="flex items-center gap-1 text-gray-600">
-                          <Phone className="h-3 w-3" />
+                          <Phone className="h-3 w-3" aria-hidden="true" />
                           <span className="text-xs">{staff.phone}</span>
                         </div>
                         <div className="flex items-center gap-1 text-gray-600 mt-1">
-                          <Mail className="h-3 w-3" />
+                          <Mail className="h-3 w-3" aria-hidden="true" />
                           <span className="text-xs truncate max-w-[120px]">{staff.email}</span>
                         </div>
                       </div>
                     </td>
+                    )}
+                    {isVisible("actions") && (
                     <td className="p-4">
                       <div className="flex items-center justify-center gap-2">
                         <Button
                           variant="ghost"
                           size="sm"
+                          aria-label={`${staff.name}を編集`}
                           onClick={() => {
                             setSelectedStaff(staff)
                             setIsEditModalOpen(true)
@@ -352,6 +387,7 @@ export default function StaffManagement() {
                           variant="ghost"
                           size="sm"
                           className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          aria-label={`${staff.name}を削除`}
                           onClick={() => {
                             setSelectedStaff(staff)
                             setIsDeleteModalOpen(true)
@@ -361,14 +397,19 @@ export default function StaffManagement() {
                         </Button>
                       </div>
                     </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
           {filteredStaff.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
-              該当するスタッフが見つかりません
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                <Search className="h-8 w-8 text-gray-400" />
+              </div>
+              <h3 className="text-base font-semibold text-gray-700 mb-1">該当するスタッフが見つかりません</h3>
+              <p className="text-sm text-gray-500 max-w-sm">検索条件やフィルターを変更してみてください。</p>
             </div>
           )}
         </div>
