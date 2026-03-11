@@ -4,9 +4,9 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { Sidebar } from "@/components/sidebar"
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Bell, HelpCircle, Clock, CalendarDays, Users, AlertTriangle, Keyboard, Info, ExternalLink, Menu, X } from "lucide-react"
+import { Bell, HelpCircle, CalendarDays, Users, AlertTriangle, Keyboard, Info, ExternalLink, Menu, X, LogOut } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -19,23 +19,24 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ToastProvider, useToast } from "@/components/toast"
+import { ToastProvider } from "@/components/toast"
 import { Breadcrumb } from "@/components/breadcrumb"
 import { ThemeProvider } from "@/components/theme-provider"
 import { ThemeToggle } from "@/components/theme-toggle"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { useAuth } from "@/lib/hooks/use-auth"
+import { useStores } from "@/lib/hooks/use-stores"
+import { StoreContext } from "@/lib/hooks/use-store-context"
 
 const inter = Inter({ subsets: ["latin"] })
 
-function HeaderActions() {
-  const { showToast } = useToast()
-
+function HeaderActions({ profile, signOut }: { profile: { id: string; name: string } | null; signOut: () => void }) {
   return (
     <div className="flex items-center space-x-2 sm:space-x-4">
-      {/* 通知ベル */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="relative" aria-label="通知を表示（3件の未読）">
+          <Button variant="ghost" size="icon" className="relative" aria-label="通知を表示">
             <Bell className="h-5 w-5" />
             <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-red-500 text-[10px] font-bold text-white flex items-center justify-center" aria-hidden="true">
               3
@@ -57,7 +58,7 @@ function HeaderActions() {
             <Users className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" aria-hidden="true" />
             <div>
               <p className="text-sm font-medium">新しいヘルプリクエスト</p>
-              <p className="text-xs text-gray-500 mt-0.5">横浜モアーズ店から金曜ディナー帯のヘルプ依頼</p>
+              <p className="text-xs text-gray-500 mt-0.5">ヘルプ依頼が届いています</p>
               <p className="text-xs text-gray-400 mt-1">2時間前</p>
             </div>
           </DropdownMenuItem>
@@ -76,7 +77,6 @@ function HeaderActions() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* ヘルプアイコン */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" aria-label="ヘルプメニュー" className="hidden sm:flex">
@@ -105,31 +105,31 @@ function HeaderActions() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* ユーザーメニュー */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative h-8 w-8 rounded-full" aria-label="ユーザーメニュー（佐藤 一郎）">
+          <Button variant="ghost" className="relative h-8 w-8 rounded-full" aria-label={`ユーザーメニュー（${profile?.name ?? ""}）`}>
             <Avatar className="h-8 w-8">
-              <AvatarImage src="/avatars/01.png" alt="佐藤 一郎" />
-              <AvatarFallback>佐</AvatarFallback>
+              <AvatarImage src="/avatars/01.png" alt={profile?.name ?? ""} />
+              <AvatarFallback>{profile?.name?.charAt(0) ?? "U"}</AvatarFallback>
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56" align="end" forceMount>
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">佐藤 一郎</p>
-              <p className="text-xs leading-none text-muted-foreground">i.sato@kirincity.co.jp</p>
+              <p className="text-sm font-medium leading-none">{profile?.name ?? "ユーザー"}</p>
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
-            <Link href="/staff/1">
-              <DropdownMenuItem className="cursor-pointer">
-                プロフィール
-                <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
-              </DropdownMenuItem>
-            </Link>
+            {profile && (
+              <Link href={`/staff/${profile.id}`}>
+                <DropdownMenuItem className="cursor-pointer">
+                  プロフィール
+                  <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
+                </DropdownMenuItem>
+              </Link>
+            )}
             <Link href="/settings">
               <DropdownMenuItem className="cursor-pointer">
                 設定
@@ -138,10 +138,8 @@ function HeaderActions() {
             </Link>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className="cursor-pointer"
-            onClick={() => showToast("ログアウトしました", "info")}
-          >
+          <DropdownMenuItem className="cursor-pointer" onClick={signOut}>
+            <LogOut className="h-4 w-4 mr-2" />
             ログアウト
             <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
           </DropdownMenuItem>
@@ -168,65 +166,97 @@ function MobileOverlay({ open, onClose }: { open: boolean; onClose: () => void }
   )
 }
 
+function AppShell({ children }: { children: React.ReactNode }) {
+  const { profile, loading: authLoading, signOut } = useAuth()
+  const { stores, loading: storesLoading } = useStores()
+  const [selectedStoreId, setSelectedStoreId] = useState<string>("")
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  useEffect(() => {
+    if (stores.length > 0 && !selectedStoreId) {
+      if (profile?.store_id) {
+        setSelectedStoreId(profile.store_id)
+      } else {
+        setSelectedStoreId(stores[0].id)
+      }
+    }
+  }, [stores, profile, selectedStoreId])
+
+  const selectedStore = stores.find((s) => s.id === selectedStoreId) ?? null
+
+  if (authLoading || storesLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center space-y-2">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white mx-auto" />
+          <p className="text-sm text-muted-foreground">読み込み中...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <StoreContext.Provider value={{ stores, selectedStore, setSelectedStoreId, loading: storesLoading }}>
+      <div className="flex h-screen">
+        <div className="hidden lg:block">
+          <Sidebar />
+        </div>
+        <MobileOverlay open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <header className="relative z-40 bg-white dark:bg-gray-900 shadow-sm dark:shadow-gray-800/50" role="banner">
+            <div className="flex items-center justify-between p-3 sm:p-4">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="lg:hidden"
+                  onClick={() => setMobileMenuOpen(true)}
+                  aria-label="メニューを開く"
+                >
+                  <Menu className="h-5 w-5" />
+                </Button>
+                <Select value={selectedStoreId} onValueChange={setSelectedStoreId}>
+                  <SelectTrigger className="w-[180px] sm:w-[280px]" aria-label="店舗を選択">
+                    <SelectValue placeholder="店舗を選択" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stores.map((store) => (
+                      <SelectItem key={store.id} value={store.id}>
+                        {store.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-1">
+                <ThemeToggle />
+                <HeaderActions profile={profile} signOut={signOut} />
+              </div>
+            </div>
+          </header>
+          <Breadcrumb />
+          <main className="flex-1 overflow-y-auto bg-gray-100 dark:bg-gray-950 p-3 sm:p-4" role="main">{children}</main>
+        </div>
+      </div>
+    </StoreContext.Provider>
+  )
+}
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const pathname = usePathname()
+  const isLoginPage = pathname === "/login"
 
   return (
     <html lang="ja" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-        <ToastProvider>
-          <div className="flex h-screen">
-            {/* デスクトップサイドバー */}
-            <div className="hidden lg:block">
-              <Sidebar />
-            </div>
-
-            {/* モバイルオーバーレイ */}
-            <MobileOverlay open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
-
-            <div className="flex flex-1 flex-col overflow-hidden">
-              <header className="relative z-40 bg-white dark:bg-gray-900 shadow-sm dark:shadow-gray-800/50" role="banner">
-                <div className="flex items-center justify-between p-3 sm:p-4">
-                  <div className="flex items-center gap-2">
-                    {/* モバイルハンバーガー */}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="lg:hidden"
-                      onClick={() => setMobileMenuOpen(true)}
-                      aria-label="メニューを開く"
-                    >
-                      <Menu className="h-5 w-5" />
-                    </Button>
-                    <Select defaultValue="bayquarter">
-                      <SelectTrigger className="w-[180px] sm:w-[280px]" aria-label="店舗を選択">
-                        <SelectValue placeholder="店舗を選択" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="bayquarter">キリンシティプラス横浜ベイクォーター店</SelectItem>
-                        <SelectItem value="mores">キリンシティ 横浜モアーズ店</SelectItem>
-                        <SelectItem value="fti">キリンシティ FOOD＆TIME ISETAN YOKOHAMA店</SelectItem>
-                        <SelectItem value="cial">キリンシティ CIAL桜木町店</SelectItem>
-                        <SelectItem value="machida">キリンシティ 町田店</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <ThemeToggle />
-                    <HeaderActions />
-                  </div>
-                </div>
-              </header>
-              <Breadcrumb />
-              <main className="flex-1 overflow-y-auto bg-gray-100 dark:bg-gray-950 p-3 sm:p-4" role="main">{children}</main>
-            </div>
-          </div>
-        </ToastProvider>
+          <ToastProvider>
+            {isLoginPage ? children : <AppShell>{children}</AppShell>}
+          </ToastProvider>
         </ThemeProvider>
       </body>
     </html>
