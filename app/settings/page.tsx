@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,37 +8,85 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
-import { Store, Bell, Clock, Shield, Save, CheckCircle2 } from "lucide-react"
+import { Store, Bell, Clock, Shield, Save, CheckCircle2, Loader2 } from "lucide-react"
 import { useToast } from "@/components/toast"
 import { OnboardingHint } from "@/components/onboarding-hints"
+import { useStoreContext } from "@/lib/hooks/use-store-context"
+import { createClient } from "@/lib/supabase/client"
 
 export default function SettingsPage() {
   const { showToast } = useToast()
+  const { selectedStore } = useStoreContext()
   const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [storeName, setStoreName] = useState("キリンシティプラス横浜ベイクォーター店")
-  const [storeCode, setStoreCode] = useState("KC-YBQ-001")
-  const [phone, setPhone] = useState("045-XXX-XXXX")
-  const [seats, setSeats] = useState("48")
+  const [storeName, setStoreName] = useState("")
+  const [storeSlug, setStoreSlug] = useState("")
+  const [address, setAddress] = useState("")
+  const [seats, setSeats] = useState("")
+  const [openHour, setOpenHour] = useState("11:00")
+  const [closeHour, setCloseHour] = useState("23:00")
+
+  // 選択中の店舗データをロード
+  useEffect(() => {
+    if (!selectedStore) return
+    setStoreName(selectedStore.name)
+    setStoreSlug(selectedStore.slug)
+    setAddress(selectedStore.address ?? "")
+    setSeats(String(selectedStore.seat_count ?? ""))
+    const startH = selectedStore.operating_hour_start ?? 11
+    const endH = selectedStore.operating_hour_end ?? 23
+    setOpenHour(`${String(startH).padStart(2, "0")}:00`)
+    setCloseHour(`${String(endH).padStart(2, "0")}:00`)
+  }, [selectedStore])
 
   const validate = () => {
     const newErrors: Record<string, string> = {}
     if (!storeName.trim()) newErrors.storeName = "店舗名を入力してください"
-    if (!storeCode.trim()) newErrors.storeCode = "店舗コードを入力してください"
-    if (!phone.trim()) newErrors.phone = "電話番号を入力してください"
+    if (!storeSlug.trim()) newErrors.storeSlug = "店舗コードを入力してください"
     if (!seats || Number(seats) < 1 || Number(seats) > 999) newErrors.seats = "1〜999の数値を入力してください"
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSave = () => {
-    if (!validate()) {
+  const handleSave = async () => {
+    if (!validate() || !selectedStore) {
       showToast("入力内容にエラーがあります。確認してください。", "error")
       return
     }
-    setSaved(true)
-    showToast("設定を保存しました", "success")
-    setTimeout(() => setSaved(false), 2000)
+    setSaving(true)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from("stores")
+        .update({
+          name: storeName,
+          slug: storeSlug,
+          address: address || null,
+          seat_count: Number(seats),
+          operating_hour_start: parseInt(openHour.split(":")[0], 10),
+          operating_hour_end: parseInt(closeHour.split(":")[0], 10),
+        } as never)
+        .eq("id", selectedStore.id)
+
+      if (error) throw error
+
+      setSaved(true)
+      showToast("設定を保存しました", "success")
+      setTimeout(() => setSaved(false), 2000)
+    } catch (e: any) {
+      showToast(`保存に失敗しました: ${e.message}`, "error")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!selectedStore) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6 text-center text-gray-500">
+        店舗を選択してください
+      </div>
+    )
   }
 
   return (
@@ -48,10 +96,15 @@ export default function SettingsPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
               <h1 className="text-xl font-semibold text-gray-800">設定</h1>
-              <p className="text-sm text-gray-600 mt-1">システム設定とカスタマイズ</p>
+              <p className="text-sm text-gray-600 mt-1">{selectedStore.name} の設定</p>
             </div>
-            <Button onClick={handleSave} size="sm" className={saved ? "bg-green-600 hover:bg-green-700" : ""}>
-              {saved ? (
+            <Button onClick={handleSave} size="sm" disabled={saving} className={saved ? "bg-green-600 hover:bg-green-700" : ""}>
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" aria-hidden="true" />
+                  保存中...
+                </>
+              ) : saved ? (
                 <>
                   <CheckCircle2 className="h-4 w-4 mr-1" aria-hidden="true" />
                   保存しました
@@ -97,28 +150,24 @@ export default function SettingsPage() {
                 {errors.storeName && <p id="storeName-error" className="text-xs text-red-500">{errors.storeName}</p>}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="storeCode">店舗コード <span className="text-red-500">*</span></Label>
+                <Label htmlFor="storeSlug">店舗コード <span className="text-red-500">*</span></Label>
                 <Input
-                  id="storeCode"
-                  value={storeCode}
-                  onChange={(e) => { setStoreCode(e.target.value); setErrors((p) => ({ ...p, storeCode: "" })) }}
-                  className={errors.storeCode ? "border-red-500 focus-visible:ring-red-500" : ""}
-                  aria-invalid={!!errors.storeCode}
-                  aria-describedby={errors.storeCode ? "storeCode-error" : undefined}
+                  id="storeSlug"
+                  value={storeSlug}
+                  onChange={(e) => { setStoreSlug(e.target.value); setErrors((p) => ({ ...p, storeSlug: "" })) }}
+                  className={errors.storeSlug ? "border-red-500 focus-visible:ring-red-500" : ""}
+                  aria-invalid={!!errors.storeSlug}
+                  aria-describedby={errors.storeSlug ? "storeSlug-error" : undefined}
                 />
-                {errors.storeCode && <p id="storeCode-error" className="text-xs text-red-500">{errors.storeCode}</p>}
+                {errors.storeSlug && <p id="storeSlug-error" className="text-xs text-red-500">{errors.storeSlug}</p>}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone">電話番号 <span className="text-red-500">*</span></Label>
+                <Label htmlFor="address">住所</Label>
                 <Input
-                  id="phone"
-                  value={phone}
-                  onChange={(e) => { setPhone(e.target.value); setErrors((p) => ({ ...p, phone: "" })) }}
-                  className={errors.phone ? "border-red-500 focus-visible:ring-red-500" : ""}
-                  aria-invalid={!!errors.phone}
-                  aria-describedby={errors.phone ? "phone-error" : undefined}
+                  id="address"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
                 />
-                {errors.phone && <p id="phone-error" className="text-xs text-red-500">{errors.phone}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="seats">座席数 <span className="text-red-500">*</span></Label>
@@ -146,33 +195,29 @@ export default function SettingsPage() {
               <Clock className="h-5 w-5 text-green-600" aria-hidden="true" />
               営業時間
             </CardTitle>
-            <CardDescription>営業時間とラストオーダー時間を設定します</CardDescription>
+            <CardDescription>営業時間を設定します</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="weekdayOpen">平日営業時間</Label>
-                <div className="flex items-center gap-2">
-                  <Input id="weekdayOpen" type="time" defaultValue="11:00" className="w-28" />
-                  <span className="text-gray-500">〜</span>
-                  <Input type="time" defaultValue="23:00" className="w-28" aria-label="平日閉店時間" />
-                </div>
+                <Label htmlFor="openHour">営業開始</Label>
+                <Input
+                  id="openHour"
+                  type="time"
+                  value={openHour}
+                  onChange={(e) => setOpenHour(e.target.value)}
+                  className="w-28"
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="holidayOpen">休日営業時間</Label>
-                <div className="flex items-center gap-2">
-                  <Input id="holidayOpen" type="time" defaultValue="11:00" className="w-28" />
-                  <span className="text-gray-500">〜</span>
-                  <Input type="time" defaultValue="22:00" className="w-28" aria-label="休日閉店時間" />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="lastOrderFood">ラストオーダー（フード）</Label>
-                <Input id="lastOrderFood" defaultValue="閉店30分前" className="w-48" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="lastOrderDrink">ラストオーダー（ドリンク）</Label>
-                <Input id="lastOrderDrink" defaultValue="閉店15分前" className="w-48" />
+                <Label htmlFor="closeHour">営業終了</Label>
+                <Input
+                  id="closeHour"
+                  type="time"
+                  value={closeHour}
+                  onChange={(e) => setCloseHour(e.target.value)}
+                  className="w-28"
+                />
               </div>
             </div>
           </CardContent>

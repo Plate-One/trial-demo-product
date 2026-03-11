@@ -28,34 +28,21 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 
-import { getStaffById, type StaffDetailMember } from "@/lib/mock-data"
+import { useStaffById, type StaffWithRelations } from "@/lib/hooks/use-staff"
+import { useStoreContext } from "@/lib/hooks/use-store-context"
 
-// Use unified type from mock-data module
-type StaffMember = StaffDetailMember
-
-// スキルに応じたバッジの色を返す関数
 const getSkillBadgeVariant = (skill: string) => {
   switch (skill) {
-    case "調理":
-      return "default"
-    case "接客":
-      return "secondary"
-    case "マネジメント":
-      return "destructive"
-    case "レジ":
-      return "outline"
-    case "食器洗浄":
-      return "secondary"
-    case "ワイン":
-      return "default"
-    case "メニュー開発":
-      return "destructive"
-    case "在庫管理":
-      return "outline"
-    case "ドリンク作成":
-      return "secondary"
-    default:
-      return "default"
+    case "調理": return "default"
+    case "接客": return "secondary"
+    case "マネジメント": return "destructive"
+    case "レジ": return "outline"
+    case "食器洗浄": return "secondary"
+    case "ワイン": return "default"
+    case "メニュー開発": return "destructive"
+    case "在庫管理": return "outline"
+    case "ドリンク作成": return "secondary"
+    default: return "default"
   }
 }
 
@@ -76,8 +63,7 @@ const SkillLevel = ({ level }: { level: number }) => {
   )
 }
 
-// 勤務可能時間帯の表示
-const AvailabilityTable = ({ availability }: { availability: StaffMember["availability"] }) => {
+const AvailabilityTable = ({ availability }: { availability: Record<string, boolean[]> | null }) => {
   if (!availability) return null
 
   const timeSlots = ["朝 (6-12)", "昼 (12-18)", "夜 (18-24)"]
@@ -91,9 +77,7 @@ const AvailabilityTable = ({ availability }: { availability: StaffMember["availa
           <tr>
             <th className="border p-2 bg-muted text-left">時間帯</th>
             {days.map((day) => (
-              <th key={day} className="border p-2 bg-muted text-center">
-                {day}
-              </th>
+              <th key={day} className="border p-2 bg-muted text-center">{day}</th>
             ))}
           </tr>
         </thead>
@@ -103,7 +87,7 @@ const AvailabilityTable = ({ availability }: { availability: StaffMember["availa
               <td className="border p-2 font-medium">{slot}</td>
               {dayKeys.map((day) => (
                 <td key={day} className="border p-2 text-center">
-                  {availability[day][idx] ? (
+                  {availability[day]?.[idx] ? (
                     <span className="text-green-600">○</span>
                   ) : (
                     <span className="text-red-500">×</span>
@@ -121,43 +105,48 @@ const AvailabilityTable = ({ availability }: { availability: StaffMember["availa
 export default function StaffDetail() {
   const router = useRouter()
   const params = useParams()
-  const [staff, setStaff] = useState<StaffMember | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { staff: staffData, loading } = useStaffById(params.id as string)
+  const { stores } = useStoreContext()
   const [date, setDate] = useState<Date | undefined>(new Date())
   const [isEditing, setIsEditing] = useState(false)
-  const [editedStaff, setEditedStaff] = useState<StaffMember | null>(null)
+  const [editedStaff, setEditedStaff] = useState<StaffWithRelations | null>(null)
 
-  useEffect(() => {
-    const id = params.id as string
-    const staffMember = getStaffById(id)
+  const staff = staffData
 
-    if (staffMember) {
-      setStaff({ ...staffMember, role: staffMember.detailRole })
-      setEditedStaff({ ...staffMember, role: staffMember.detailRole })
-    }
-
-    setLoading(false)
-  }, [params.id])
-
-  const handleEditToggle = () => {
+  const handleEditToggle = async () => {
     if (isEditing) {
-      // 編集モードを終了して変更を保存
       if (editedStaff) {
-        setStaff(editedStaff)
-        // 実際のアプリケーションではここでAPIを呼び出して保存
-        console.log("保存されたデータ:", editedStaff)
+        const { createClient } = await import("@/lib/supabase/client")
+        const supabase = createClient()
+        await supabase.from("staff").update({
+          name: editedStaff.name,
+          name_kana: editedStaff.name_kana,
+          store_id: editedStaff.store_id,
+          position: editedStaff.position,
+          role: editedStaff.role,
+          employment_type: editedStaff.employment_type,
+          schedule_type: editedStaff.schedule_type,
+          phone: editedStaff.phone,
+          email: editedStaff.email,
+          join_date: editedStaff.join_date,
+          hourly_rate: editedStaff.hourly_rate,
+          address: editedStaff.address,
+          notes: editedStaff.notes,
+        } as never).eq("id", editedStaff.id)
+        router.refresh()
       }
     } else {
-      // 編集モードを開始
-      setEditedStaff(staff)
+      setEditedStaff(staff ? { ...staff } : null)
     }
     setIsEditing(!isEditing)
   }
 
   const handleInputChange = (field: string, value: string) => {
     if (!editedStaff) return
-    setEditedStaff({ ...editedStaff, [field]: value })
+    setEditedStaff({ ...editedStaff, [field]: value } as any)
   }
+
+  const getStoreName = (storeId: string) => stores.find((s) => s.id === storeId)?.name ?? ""
 
   if (!staff) {
     return (
@@ -196,7 +185,7 @@ export default function StaffDetail() {
                 <div className="space-y-6">
                   <div className="flex flex-col items-center text-center mb-6">
                     <Avatar className="h-32 w-32 mb-4">
-                      <AvatarImage src={editedStaff?.avatar} alt={editedStaff?.name} />
+                      <AvatarImage src={editedStaff?.avatar_url ?? undefined} alt={editedStaff?.name} />
                       <AvatarFallback>{editedStaff?.name.slice(0, 2)}</AvatarFallback>
                     </Avatar>
                     <div className="space-y-2 w-full">
@@ -206,8 +195,8 @@ export default function StaffDetail() {
                         className="text-center font-bold text-lg"
                       />
                       <Input
-                        value={editedStaff?.nameKana || ""}
-                        onChange={(e) => handleInputChange("nameKana", e.target.value)}
+                        value={editedStaff?.name_kana || ""}
+                        onChange={(e) => handleInputChange("name_kana", e.target.value)}
                         className="text-center text-muted-foreground"
                       />
                     </div>
@@ -225,8 +214,8 @@ export default function StaffDetail() {
                         </SelectContent>
                       </Select>
                       <Select
-                        value={editedStaff?.employmentType}
-                        onValueChange={(value) => handleInputChange("employmentType", value as any)}
+                        value={editedStaff?.employment_type}
+                        onValueChange={(value) => handleInputChange("employment_type", value as any)}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="雇用形態" />
@@ -257,16 +246,14 @@ export default function StaffDetail() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Building className="h-4 w-4 text-muted-foreground" />
-                      <Select value={editedStaff?.store} onValueChange={(value) => handleInputChange("store", value)}>
+                      <Select value={editedStaff?.store_id} onValueChange={(value) => handleInputChange("store_id", value)}>
                         <SelectTrigger>
                           <SelectValue placeholder="所属店舗" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="キリンシティプラス横浜ベイクォーター店">キリンシティプラス横浜ベイクォーター店</SelectItem>
-                          <SelectItem value="キリンシティ 横浜モアーズ店">キリンシティ 横浜モアーズ店</SelectItem>
-                          <SelectItem value="キリンシティ FOOD＆TIME ISETAN YOKOHAMA店">キリンシティ FTI横浜店</SelectItem>
-                          <SelectItem value="キリンシティ CIAL桜木町店">キリンシティ CIAL桜木町店</SelectItem>
-                          <SelectItem value="キリンシティ 町田店">キリンシティ 町田店</SelectItem>
+                          {stores.map((store) => (
+                            <SelectItem key={store.id} value={store.id}>{store.name}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -274,15 +261,15 @@ export default function StaffDetail() {
                       <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                       <Input
                         type="date"
-                        value={editedStaff?.joinDate || ""}
-                        onChange={(e) => handleInputChange("joinDate", e.target.value)}
+                        value={editedStaff?.join_date || ""}
+                        onChange={(e) => handleInputChange("join_date", e.target.value)}
                       />
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-muted-foreground" />
                       <Select
-                        value={editedStaff?.schedule}
-                        onValueChange={(value) => handleInputChange("schedule", value as any)}
+                        value={editedStaff?.schedule_type}
+                        onValueChange={(value) => handleInputChange("schedule_type", value as any)}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="シフト" />
@@ -295,13 +282,13 @@ export default function StaffDetail() {
                         </SelectContent>
                       </Select>
                     </div>
-                    {editedStaff?.hourlyRate !== undefined && (
+                    {editedStaff?.hourly_rate !== undefined && (
                       <div className="flex items-center gap-2">
                         <span className="ml-6">時給:</span>
                         <Input
                           type="number"
-                          value={editedStaff?.hourlyRate || 0}
-                          onChange={(e) => handleInputChange("hourlyRate", e.target.value)}
+                          value={editedStaff?.hourly_rate || 0}
+                          onChange={(e) => handleInputChange("hourly_rate", e.target.value)}
                         />
                         <span>円</span>
                       </div>
@@ -324,14 +311,14 @@ export default function StaffDetail() {
                 <>
                   <div className="flex flex-col items-center text-center mb-6">
                     <Avatar className="h-32 w-32 mb-4">
-                      <AvatarImage src={staff.avatar} alt={staff.name} />
+                      <AvatarImage src={staff.avatar_url ?? undefined} alt={staff.name} />
                       <AvatarFallback>{staff.name.slice(0, 2)}</AvatarFallback>
                     </Avatar>
                     <h2 className="text-2xl font-bold">{staff.name}</h2>
-                    <p className="text-muted-foreground">{staff.nameKana}</p>
+                    <p className="text-muted-foreground">{staff.name_kana}</p>
                     <div className="mt-2">
                       <Badge className="mr-1">{staff.role}</Badge>
-                      <Badge variant="outline">{staff.employmentType}</Badge>
+                      <Badge variant="outline">{staff.employment_type}</Badge>
                     </div>
                   </div>
 
@@ -346,19 +333,19 @@ export default function StaffDetail() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Building className="h-4 w-4 text-muted-foreground" />
-                      <span>{staff.store}</span>
+                      <span>{getStoreName(staff.store_id)}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                      <span>入社日: {staff.joinDate}</span>
+                      <span>入社日: {staff.join_date}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span>シフト: {staff.schedule}</span>
+                      <span>シフト: {staff.schedule_type}</span>
                     </div>
-                    {staff.hourlyRate && (
+                    {staff.hourly_rate && (
                       <div className="flex items-center gap-2">
-                        <span className="ml-6">時給: {staff.hourlyRate}円</span>
+                        <span className="ml-6">時給: {staff.hourly_rate}円</span>
                       </div>
                     )}
                     {staff.address && (
@@ -393,7 +380,7 @@ export default function StaffDetail() {
             </div>
 
           {/* 緊急連絡先 */}
-          {staff.emergencyContact && (
+          {staff.emergency_contact && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">緊急連絡先</CardTitle>
@@ -401,13 +388,13 @@ export default function StaffDetail() {
               <CardContent>
                 <div className="space-y-2">
                   <div>
-                    <span className="font-medium">氏名:</span> {staff.emergencyContact.name}
+                    <span className="font-medium">氏名:</span> {(staff.emergency_contact as any)?.name}
                   </div>
                   <div>
-                    <span className="font-medium">続柄:</span> {staff.emergencyContact.relation}
+                    <span className="font-medium">続柄:</span> {(staff.emergency_contact as any)?.relation}
                   </div>
                   <div>
-                    <span className="font-medium">電話番号:</span> {staff.emergencyContact.phone}
+                    <span className="font-medium">電話番号:</span> {(staff.emergency_contact as any)?.phone}
                   </div>
                 </div>
               </CardContent>
@@ -426,8 +413,8 @@ export default function StaffDetail() {
                       <div>
                         <div className="font-medium">{cert.name}</div>
                         <div className="text-sm text-muted-foreground">
-                          取得日: {cert.date}
-                          {cert.expires && <div>有効期限: {cert.expires}</div>}
+                          取得日: {cert.obtained_date}
+                          {cert.expires_date && <div>有効期限: {cert.expires_date}</div>}
                         </div>
                       </div>
                     </div>
@@ -443,7 +430,7 @@ export default function StaffDetail() {
           <Tabs defaultValue="skills">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="skills">スキル</TabsTrigger>
-              <TabsTrigger value="schedule">勤務可能時間</TabsTrigger>
+              <TabsTrigger value="schedule_type">勤務可能時間</TabsTrigger>
               <TabsTrigger value="shifts">シフト履歴</TabsTrigger>
               <TabsTrigger value="notes">メモ</TabsTrigger>
             </TabsList>
@@ -479,7 +466,7 @@ export default function StaffDetail() {
             </TabsContent>
 
             {/* 勤務可能時間タブ */}
-            <TabsContent value="schedule" className="mt-4">
+            <TabsContent value="schedule_type" className="mt-4">
               <div className="bg-gray-50 rounded-lg p-4">
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">勤務可能時間</h3>
                 <p className="text-sm text-gray-600 mb-4">スタッフの希望勤務時間帯</p>

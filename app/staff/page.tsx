@@ -8,24 +8,25 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import {
-  UserPlus, 
-  Search, 
-  Edit, 
-  Trash2, 
-  MoreHorizontal,
+  UserPlus,
+  Search,
+  Edit,
+  Trash2,
   Building,
   Phone,
   Mail,
-  Filter,
   Download,
   Upload
 } from "lucide-react"
 import Link from "next/link"
-import { ALL_STAFF, getSkillColor, getPositionColor, getRoleColor, getEmploymentColor } from "@/lib/mock-data"
+import { getSkillColor, getPositionColor, getRoleColor, getEmploymentColor } from "@/lib/mock-data"
 import { useToast } from "@/components/toast"
 import { StatCard } from "@/components/stat-card"
 import { ColumnToggle, useColumnVisibility } from "@/components/column-toggle"
 import { OnboardingHint } from "@/components/onboarding-hints"
+import { useStaff, useStaffMutations, type StaffWithRelations } from "@/lib/hooks/use-staff"
+import { useStoreContext } from "@/lib/hooks/use-store-context"
+import { createClient } from "@/lib/supabase/client"
 
 const STAFF_COLUMNS = [
   { key: "name", label: "スタッフ" },
@@ -37,46 +38,15 @@ const STAFF_COLUMNS = [
   { key: "actions", label: "操作" },
 ]
 
-// スタッフデータの型定義
-interface StaffMember {
-  id: string
-  name: string
-  nameKana: string
-  avatar?: string
-  store: string
-  position: "ホール" | "キッチン" | "両方"
-  role: "店長" | "マネージャー" | "チーフ" | "スタッフ"
-  employmentType: "正社員" | "パート" | "アルバイト"
-  skills: string[]
-  phone: string
-  email: string
-  joinDate: string
-  hourlyRate?: number
-  status: "在籍" | "休職" | "退職"
-}
-
-// 初期スタッフデータ（共有モジュールから生成）
-const initialStaffData: StaffMember[] = ALL_STAFF.map((s) => ({
-  id: s.id,
-  name: s.name,
-  nameKana: s.nameKana,
-  avatar: s.avatar,
-  store: s.store,
-  position: s.position,
-  role: s.role,
-  employmentType: s.employmentType,
-  skills: s.simpleSkills,
-  phone: s.phone,
-  email: s.email,
-  joinDate: s.joinDate,
-  hourlyRate: s.hourlyRate,
-  status: s.status,
-}))
+const allSkills = ["調理", "接客", "マネジメント", "レジ", "ドリンク", "調理補助", "食器洗浄", "仕込み", "クレーム対応", "予約管理", "メニュー開発", "在庫管理", "衛生管理", "発注管理", "盛り付け", "清掃"]
 
 export default function StaffManagement() {
   const { showToast } = useToast()
   const { visibleColumns, toggle: toggleColumn, isVisible } = useColumnVisibility(STAFF_COLUMNS)
-  const [staffList, setStaffList] = useState<StaffMember[]>(initialStaffData)
+  const { stores } = useStoreContext()
+  const { staff: staffList, loading, refetch } = useStaff()
+  const { createStaff, updateStaff, deleteStaff } = useStaffMutations()
+
   const [searchTerm, setSearchTerm] = useState("")
   const [filterStore, setFilterStore] = useState<string>("all")
   const [filterPosition, setFilterPosition] = useState<string>("all")
@@ -84,84 +54,141 @@ export default function StaffManagement() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null)
-  const [newStaff, setNewStaff] = useState<Partial<StaffMember>>({
+  const [selectedStaff, setSelectedStaff] = useState<StaffWithRelations | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  // New staff form state
+  const defaultNewStaff = {
     name: "",
-    nameKana: "",
-    store: "キリンシティプラス横浜ベイクォーター店",
-    position: "ホール",
-    role: "スタッフ",
-    employmentType: "アルバイト",
-    skills: [],
+    name_kana: "",
+    store_id: stores[0]?.id ?? "",
+    position: "ホール" as const,
+    role: "スタッフ" as const,
+    employment_type: "アルバイト" as const,
     phone: "",
     email: "",
-    joinDate: new Date().toISOString().split("T")[0],
-    status: "在籍",
-  })
+    join_date: new Date().toISOString().split("T")[0],
+    hourly_rate: undefined as number | undefined,
+    selectedSkills: [] as string[],
+  }
+  const [newStaff, setNewStaff] = useState(defaultNewStaff)
 
-  // フィルタリングされたスタッフリスト
-  const filteredStaff = staffList.filter((staff) => {
-    const matchesSearch = 
-      staff.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      staff.nameKana.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      staff.email.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStore = filterStore === "all" || staff.store === filterStore
-    const matchesPosition = filterPosition === "all" || staff.position === filterPosition
-    const matchesEmployment = filterEmployment === "all" || staff.employmentType === filterEmployment
-    
+  // Filtering
+  const filteredStaff = staffList.filter((s) => {
+    const matchesSearch =
+      s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.name_kana.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.email.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesStore = filterStore === "all" || s.store_id === filterStore
+    const matchesPosition = filterPosition === "all" || s.position === filterPosition
+    const matchesEmployment = filterEmployment === "all" || s.employment_type === filterEmployment
     return matchesSearch && matchesStore && matchesPosition && matchesEmployment
   })
 
-  // スタッフ作成
-  const handleCreateStaff = () => {
-    const id = (Math.max(...staffList.map((s) => parseInt(s.id))) + 1).toString()
-    const staff: StaffMember = {
-      ...newStaff as StaffMember,
-      id,
-    }
-    setStaffList([...staffList, staff])
-    setIsCreateModalOpen(false)
-    setNewStaff({
-      name: "",
-      nameKana: "",
-      store: "キリンシティプラス横浜ベイクォーター店",
-      position: "ホール",
-      role: "スタッフ",
-      employmentType: "アルバイト",
-      skills: [],
-      phone: "",
-      email: "",
-      joinDate: new Date().toISOString().split("T")[0],
-      status: "在籍",
-    })
-  }
-
-  // スタッフ更新
-  const handleUpdateStaff = () => {
-    if (!selectedStaff) return
-    setStaffList(staffList.map((s) => (s.id === selectedStaff.id ? selectedStaff : s)))
-    setIsEditModalOpen(false)
-    setSelectedStaff(null)
-  }
-
-  // スタッフ削除
-  const handleDeleteStaff = () => {
-    if (!selectedStaff) return
-    setStaffList(staffList.filter((s) => s.id !== selectedStaff.id))
-    setIsDeleteModalOpen(false)
-    setSelectedStaff(null)
-  }
-
-  // 統計情報
   const stats = {
     total: staffList.length,
     hall: staffList.filter((s) => s.position === "ホール" || s.position === "両方").length,
     kitchen: staffList.filter((s) => s.position === "キッチン" || s.position === "両方").length,
-    fullTime: staffList.filter((s) => s.employmentType === "正社員").length,
+    fullTime: staffList.filter((s) => s.employment_type === "正社員").length,
   }
 
-  // スキル一覧
-  const allSkills = ["調理", "接客", "マネジメント", "レジ", "ドリンク", "調理補助", "食器洗浄", "仕込み", "クレーム対応", "予約管理", "メニュー開発", "在庫管理", "衛生管理", "発注管理", "盛り付け", "清掃"]
+  const getStoreName = (storeId: string) => {
+    return stores.find((s) => s.id === storeId)?.name ?? ""
+  }
+
+  const getSkillNames = (s: StaffWithRelations) => {
+    return s.skills?.map((sk) => sk.name) ?? []
+  }
+
+  // Create
+  const handleCreateStaff = async () => {
+    if (!newStaff.name || !newStaff.email) return
+    setSaving(true)
+    try {
+      const orgId = staffList[0]?.organization_id
+      if (!orgId) throw new Error("Organization not found")
+
+      await createStaff(
+        {
+          organization_id: orgId,
+          store_id: newStaff.store_id,
+          name: newStaff.name,
+          name_kana: newStaff.name_kana,
+          position: newStaff.position,
+          role: newStaff.role,
+          employment_type: newStaff.employment_type,
+          phone: newStaff.phone,
+          email: newStaff.email,
+          join_date: newStaff.join_date,
+          hourly_rate: newStaff.hourly_rate ?? null,
+        },
+        newStaff.selectedSkills.map((name) => ({ name, level: 50 }))
+      )
+      setIsCreateModalOpen(false)
+      setNewStaff({ ...defaultNewStaff, store_id: stores[0]?.id ?? "" })
+      showToast("スタッフを登録しました")
+      refetch()
+    } catch (e) {
+      showToast("登録に失敗しました", "error")
+    }
+    setSaving(false)
+  }
+
+  // Update
+  const handleUpdateStaff = async () => {
+    if (!selectedStaff) return
+    setSaving(true)
+    try {
+      await updateStaff(selectedStaff.id, {
+        name: selectedStaff.name,
+        name_kana: selectedStaff.name_kana,
+        store_id: selectedStaff.store_id,
+        position: selectedStaff.position,
+        role: selectedStaff.role,
+        employment_type: selectedStaff.employment_type,
+        phone: selectedStaff.phone,
+        email: selectedStaff.email,
+        join_date: selectedStaff.join_date,
+        hourly_rate: selectedStaff.hourly_rate,
+      })
+      setIsEditModalOpen(false)
+      setSelectedStaff(null)
+      showToast("スタッフ情報を更新しました")
+      refetch()
+    } catch (e) {
+      showToast("更新に失敗しました", "error")
+    }
+    setSaving(false)
+  }
+
+  // Delete
+  const handleDeleteStaff = async () => {
+    if (!selectedStaff) return
+    setSaving(true)
+    try {
+      await deleteStaff(selectedStaff.id)
+      setIsDeleteModalOpen(false)
+      setSelectedStaff(null)
+      showToast("スタッフを削除しました")
+      refetch()
+    } catch (e) {
+      showToast("削除に失敗しました", "error")
+    }
+    setSaving(false)
+  }
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-6 bg-gray-200 rounded w-1/4" />
+          <div className="h-10 bg-gray-200 rounded" />
+          <div className="h-10 bg-gray-200 rounded" />
+          <div className="h-10 bg-gray-200 rounded" />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="bg-white rounded-lg shadow-sm">
@@ -175,7 +202,7 @@ export default function StaffManagement() {
         <div className="flex items-center gap-3">
               <Button variant="outline" size="sm" onClick={() => {
                 const header = "ID,名前,フリガナ,店舗,ポジション,役職,雇用形態,電話,メール,入社日\n"
-                const rows = staffList.map(s => `${s.id},${s.name},${s.nameKana},${s.store},${s.position},${s.role},${s.employmentType},${s.phone},${s.email},${s.joinDate}`).join("\n")
+                const rows = staffList.map(s => `${s.id},${s.name},${s.name_kana},${getStoreName(s.store_id)},${s.position},${s.role},${s.employment_type},${s.phone},${s.email},${s.join_date}`).join("\n")
                 const blob = new Blob([header + rows], { type: "text/csv;charset=utf-8;" })
                 const url = URL.createObjectURL(blob)
                 const link = document.createElement("a")
@@ -206,47 +233,20 @@ export default function StaffManagement() {
           id="staff-intro"
           message="スタッフの検索・フィルターで絞り込みができます。「表示列」ボタンで表示する列を選択できます。"
         />
-        {/* 統計情報 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard label="総スタッフ数" value={`${stats.total}名`} />
-          <StatCard
-            label="ホール担当"
-            value={`${stats.hall}名`}
-            bgColor="bg-blue-50"
-            borderColor="border-blue-200"
-            labelColor="text-blue-600"
-            valueColor="text-blue-900"
-          />
-          <StatCard
-            label="キッチン担当"
-            value={`${stats.kitchen}名`}
-            bgColor="bg-emerald-50"
-            borderColor="border-emerald-200"
-            labelColor="text-emerald-600"
-            valueColor="text-emerald-900"
-          />
-          <StatCard
-            label="正社員"
-            value={`${stats.fullTime}名`}
-            bgColor="bg-purple-50"
-            borderColor="border-purple-200"
-            labelColor="text-purple-600"
-            valueColor="text-purple-900"
-          />
+          <StatCard label="ホール担当" value={`${stats.hall}名`} bgColor="bg-blue-50" borderColor="border-blue-200" labelColor="text-blue-600" valueColor="text-blue-900" />
+          <StatCard label="キッチン担当" value={`${stats.kitchen}名`} bgColor="bg-emerald-50" borderColor="border-emerald-200" labelColor="text-emerald-600" valueColor="text-emerald-900" />
+          <StatCard label="正社員" value={`${stats.fullTime}名`} bgColor="bg-purple-50" borderColor="border-purple-200" labelColor="text-purple-600" valueColor="text-purple-900" />
         </div>
 
-        {/* 検索・フィルター */}
+        {/* Search & Filter */}
         <div className="bg-gray-50 rounded-lg p-4">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="名前、フリガナ、メールで検索..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+                <Input placeholder="名前、フリガナ、メールで検索..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
               </div>
             </div>
             <div className="flex gap-2">
@@ -257,11 +257,9 @@ export default function StaffManagement() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">すべての店舗</SelectItem>
-                  <SelectItem value="キリンシティプラス横浜ベイクォーター店">横浜ベイクォーター店</SelectItem>
-                  <SelectItem value="キリンシティ 横浜モアーズ店">横浜モアーズ店</SelectItem>
-                  <SelectItem value="キリンシティ CIAL桜木町店">CIAL桜木町店</SelectItem>
-                  <SelectItem value="キリンシティ FOOD＆TIME ISETAN YOKOHAMA店">FTI横浜店</SelectItem>
-                  <SelectItem value="キリンシティ 町田店">町田店</SelectItem>
+                  {stores.map((store) => (
+                    <SelectItem key={store.id} value={store.id}>{store.short_name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <Select value={filterPosition} onValueChange={setFilterPosition}>
@@ -290,7 +288,7 @@ export default function StaffManagement() {
           </div>
         </div>
 
-        {/* スタッフリスト */}
+        {/* Staff List */}
         <div className="flex justify-between items-center">
           <p className="text-sm text-gray-500">{filteredStaff.length}件のスタッフ</p>
           <ColumnToggle columns={STAFF_COLUMNS} visibleColumns={visibleColumns} onToggle={toggleColumn} />
@@ -316,19 +314,19 @@ export default function StaffManagement() {
                     <td className="p-4">
                       <Link href={`/staff/${staff.id}`} className="flex items-center gap-3 hover:underline">
                         <Avatar className="h-10 w-10">
-                          <AvatarImage src={staff.avatar} alt={staff.name} />
+                          <AvatarImage src={staff.avatar_url ?? undefined} alt={staff.name} />
                           <AvatarFallback>{staff.name.slice(0, 2)}</AvatarFallback>
                         </Avatar>
                         <div>
                           <p className="font-medium text-gray-900">{staff.name}</p>
-                          <p className="text-xs text-gray-500">{staff.nameKana}</p>
+                          <p className="text-xs text-gray-500">{staff.name_kana}</p>
                         </div>
                       </Link>
                     </td>
                     )}
                     {isVisible("store") && (
                     <td className="p-4">
-                      <span className="text-sm text-gray-700">{staff.store}</span>
+                      <span className="text-sm text-gray-700">{getStoreName(staff.store_id)}</span>
                     </td>
                     )}
                     {isVisible("position") && (
@@ -347,11 +345,11 @@ export default function StaffManagement() {
                     )}
                     {isVisible("employment") && (
                     <td className="p-4">
-                      <Badge variant="outline" className={getEmploymentColor(staff.employmentType)}>
-                        {staff.employmentType}
+                      <Badge variant="outline" className={getEmploymentColor(staff.employment_type)}>
+                        {staff.employment_type}
                       </Badge>
-                      {staff.hourlyRate && (
-                        <p className="text-xs text-gray-500 mt-1">¥{staff.hourlyRate}/h</p>
+                      {staff.hourly_rate && (
+                        <p className="text-xs text-gray-500 mt-1">¥{staff.hourly_rate}/h</p>
                       )}
                     </td>
                     )}
@@ -372,27 +370,10 @@ export default function StaffManagement() {
                     {isVisible("actions") && (
                     <td className="p-4">
                       <div className="flex items-center justify-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`${staff.name}を編集`}
-                          onClick={() => {
-                            setSelectedStaff(staff)
-                            setIsEditModalOpen(true)
-                          }}
-                        >
+                        <Button variant="ghost" size="sm" aria-label={`${staff.name}を編集`} onClick={() => { setSelectedStaff(staff); setIsEditModalOpen(true) }}>
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          aria-label={`${staff.name}を削除`}
-                          onClick={() => {
-                            setSelectedStaff(staff)
-                            setIsDeleteModalOpen(true)
-                          }}
-                        >
+                        <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50" aria-label={`${staff.name}を削除`} onClick={() => { setSelectedStaff(staff); setIsDeleteModalOpen(true) }}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -414,7 +395,7 @@ export default function StaffManagement() {
           )}
         </div>
 
-        {/* 新規登録モーダル */}
+        {/* Create Modal */}
         <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -424,49 +405,29 @@ export default function StaffManagement() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-700">名前 *</label>
-                  <Input
-                    value={newStaff.name || ""}
-                    onChange={(e) => setNewStaff({ ...newStaff, name: e.target.value })}
-                    placeholder="山田 太郎"
-                  />
+                  <Input value={newStaff.name} onChange={(e) => setNewStaff({ ...newStaff, name: e.target.value })} placeholder="山田 太郎" />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">フリガナ *</label>
-                  <Input
-                    value={newStaff.nameKana || ""}
-                    onChange={(e) => setNewStaff({ ...newStaff, nameKana: e.target.value })}
-                    placeholder="やまだ たろう"
-                  />
+                  <Input value={newStaff.name_kana} onChange={(e) => setNewStaff({ ...newStaff, name_kana: e.target.value })} placeholder="やまだ たろう" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-700">所属店舗 *</label>
-                  <Select
-                    value={newStaff.store}
-                    onValueChange={(value) => setNewStaff({ ...newStaff, store: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                  <Select value={newStaff.store_id} onValueChange={(value) => setNewStaff({ ...newStaff, store_id: value })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="キリンシティプラス横浜ベイクォーター店">キリンシティプラス横浜ベイクォーター店</SelectItem>
-                      <SelectItem value="キリンシティ 横浜モアーズ店">キリンシティ 横浜モアーズ店</SelectItem>
-                      <SelectItem value="キリンシティ FOOD＆TIME ISETAN YOKOHAMA店">キリンシティ FTI横浜店</SelectItem>
-                      <SelectItem value="キリンシティ CIAL桜木町店">キリンシティ CIAL桜木町店</SelectItem>
-                      <SelectItem value="キリンシティ 町田店">キリンシティ 町田店</SelectItem>
+                      {stores.map((store) => (
+                        <SelectItem key={store.id} value={store.id}>{store.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">ポジション *</label>
-                  <Select
-                    value={newStaff.position}
-                    onValueChange={(value) => setNewStaff({ ...newStaff, position: value as any })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                  <Select value={newStaff.position} onValueChange={(value) => setNewStaff({ ...newStaff, position: value as any })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="ホール">ホール</SelectItem>
                       <SelectItem value="キッチン">キッチン</SelectItem>
@@ -478,13 +439,8 @@ export default function StaffManagement() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-700">役職 *</label>
-                  <Select
-                    value={newStaff.role}
-                    onValueChange={(value) => setNewStaff({ ...newStaff, role: value as any })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                  <Select value={newStaff.role} onValueChange={(value) => setNewStaff({ ...newStaff, role: value as any })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="店長">店長</SelectItem>
                       <SelectItem value="マネージャー">マネージャー</SelectItem>
@@ -495,13 +451,8 @@ export default function StaffManagement() {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">雇用形態 *</label>
-                  <Select
-                    value={newStaff.employmentType}
-                    onValueChange={(value) => setNewStaff({ ...newStaff, employmentType: value as any })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                  <Select value={newStaff.employment_type} onValueChange={(value) => setNewStaff({ ...newStaff, employment_type: value as any })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="正社員">正社員</SelectItem>
                       <SelectItem value="パート">パート</SelectItem>
@@ -513,55 +464,37 @@ export default function StaffManagement() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-700">電話番号 *</label>
-                  <Input
-                    value={newStaff.phone || ""}
-                    onChange={(e) => setNewStaff({ ...newStaff, phone: e.target.value })}
-                    placeholder="090-1234-5678"
-                  />
+                  <Input value={newStaff.phone} onChange={(e) => setNewStaff({ ...newStaff, phone: e.target.value })} placeholder="090-1234-5678" />
                 </div>
-              <div>
+                <div>
                   <label className="text-sm font-medium text-gray-700">メールアドレス *</label>
-                  <Input
-                    type="email"
-                    value={newStaff.email || ""}
-                    onChange={(e) => setNewStaff({ ...newStaff, email: e.target.value })}
-                    placeholder="example@email.com"
-                  />
+                  <Input type="email" value={newStaff.email} onChange={(e) => setNewStaff({ ...newStaff, email: e.target.value })} placeholder="example@email.com" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-700">入社日 *</label>
-                  <Input
-                    type="date"
-                    value={newStaff.joinDate || ""}
-                    onChange={(e) => setNewStaff({ ...newStaff, joinDate: e.target.value })}
-                  />
+                  <Input type="date" value={newStaff.join_date} onChange={(e) => setNewStaff({ ...newStaff, join_date: e.target.value })} />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">時給（パート・アルバイトのみ）</label>
-                  <Input
-                    type="number"
-                    value={newStaff.hourlyRate || ""}
-                    onChange={(e) => setNewStaff({ ...newStaff, hourlyRate: parseInt(e.target.value) || undefined })}
-                    placeholder="1100"
-                  />
+                  <Input type="number" value={newStaff.hourly_rate ?? ""} onChange={(e) => setNewStaff({ ...newStaff, hourly_rate: parseInt(e.target.value) || undefined })} placeholder="1100" />
                 </div>
-            </div>
+              </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">スキル</label>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {allSkills.map((skill) => (
                     <Badge
                       key={skill}
-                      variant={newStaff.skills?.includes(skill) ? "default" : "outline"}
-                      className={`cursor-pointer ${newStaff.skills?.includes(skill) ? "" : "hover:bg-gray-100"}`}
+                      variant={newStaff.selectedSkills.includes(skill) ? "default" : "outline"}
+                      className={`cursor-pointer ${newStaff.selectedSkills.includes(skill) ? "" : "hover:bg-gray-100"}`}
                       onClick={() => {
-                        const skills = newStaff.skills || []
+                        const skills = newStaff.selectedSkills
                         if (skills.includes(skill)) {
-                          setNewStaff({ ...newStaff, skills: skills.filter((s) => s !== skill) })
+                          setNewStaff({ ...newStaff, selectedSkills: skills.filter((s) => s !== skill) })
                         } else {
-                          setNewStaff({ ...newStaff, skills: [...skills, skill] })
+                          setNewStaff({ ...newStaff, selectedSkills: [...skills, skill] })
                         }
                       }}
                     >
@@ -572,17 +505,15 @@ export default function StaffManagement() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>
-                キャンセル
-              </Button>
-              <Button onClick={handleCreateStaff} disabled={!newStaff.name || !newStaff.phone || !newStaff.email}>
-                登録する
+              <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>キャンセル</Button>
+              <Button onClick={handleCreateStaff} disabled={!newStaff.name || !newStaff.email || saving}>
+                {saving ? "登録中..." : "登録する"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* 編集モーダル */}
+        {/* Edit Modal */}
         <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -593,47 +524,29 @@ export default function StaffManagement() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-gray-700">名前 *</label>
-                    <Input
-                      value={selectedStaff.name}
-                      onChange={(e) => setSelectedStaff({ ...selectedStaff, name: e.target.value })}
-                    />
+                    <Input value={selectedStaff.name} onChange={(e) => setSelectedStaff({ ...selectedStaff, name: e.target.value })} />
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-700">フリガナ *</label>
-                    <Input
-                      value={selectedStaff.nameKana}
-                      onChange={(e) => setSelectedStaff({ ...selectedStaff, nameKana: e.target.value })}
-                    />
-            </div>
-          </div>
+                    <Input value={selectedStaff.name_kana} onChange={(e) => setSelectedStaff({ ...selectedStaff, name_kana: e.target.value })} />
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-gray-700">所属店舗 *</label>
-                    <Select
-                      value={selectedStaff.store}
-                      onValueChange={(value) => setSelectedStaff({ ...selectedStaff, store: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
+                    <Select value={selectedStaff.store_id} onValueChange={(value) => setSelectedStaff({ ...selectedStaff, store_id: value })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="キリンシティプラス横浜ベイクォーター店">キリンシティプラス横浜ベイクォーター店</SelectItem>
-                        <SelectItem value="キリンシティ 横浜モアーズ店">キリンシティ 横浜モアーズ店</SelectItem>
-                        <SelectItem value="キリンシティ FOOD＆TIME ISETAN YOKOHAMA店">キリンシティ FTI横浜店</SelectItem>
-                        <SelectItem value="キリンシティ CIAL桜木町店">キリンシティ CIAL桜木町店</SelectItem>
-                        <SelectItem value="キリンシティ 町田店">キリンシティ 町田店</SelectItem>
+                        {stores.map((store) => (
+                          <SelectItem key={store.id} value={store.id}>{store.name}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
-              </div>
+                  </div>
                   <div>
                     <label className="text-sm font-medium text-gray-700">ポジション *</label>
-                    <Select
-                      value={selectedStaff.position}
-                      onValueChange={(value) => setSelectedStaff({ ...selectedStaff, position: value as any })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
+                    <Select value={selectedStaff.position} onValueChange={(value) => setSelectedStaff({ ...selectedStaff, position: value as any })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="ホール">ホール</SelectItem>
                         <SelectItem value="キッチン">キッチン</SelectItem>
@@ -645,13 +558,8 @@ export default function StaffManagement() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-gray-700">役職 *</label>
-                    <Select
-                      value={selectedStaff.role}
-                      onValueChange={(value) => setSelectedStaff({ ...selectedStaff, role: value as any })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
+                    <Select value={selectedStaff.role} onValueChange={(value) => setSelectedStaff({ ...selectedStaff, role: value as any })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="店長">店長</SelectItem>
                         <SelectItem value="マネージャー">マネージャー</SelectItem>
@@ -662,91 +570,48 @@ export default function StaffManagement() {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-700">雇用形態 *</label>
-                    <Select
-                      value={selectedStaff.employmentType}
-                      onValueChange={(value) => setSelectedStaff({ ...selectedStaff, employmentType: value as any })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
+                    <Select value={selectedStaff.employment_type} onValueChange={(value) => setSelectedStaff({ ...selectedStaff, employment_type: value as any })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="正社員">正社員</SelectItem>
                         <SelectItem value="パート">パート</SelectItem>
                         <SelectItem value="アルバイト">アルバイト</SelectItem>
                       </SelectContent>
                     </Select>
-                                </div>
-                              </div>
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-gray-700">電話番号 *</label>
-                    <Input
-                      value={selectedStaff.phone}
-                      onChange={(e) => setSelectedStaff({ ...selectedStaff, phone: e.target.value })}
-                    />
+                    <Input value={selectedStaff.phone ?? ""} onChange={(e) => setSelectedStaff({ ...selectedStaff, phone: e.target.value })} />
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-700">メールアドレス *</label>
-                    <Input
-                      type="email"
-                      value={selectedStaff.email}
-                      onChange={(e) => setSelectedStaff({ ...selectedStaff, email: e.target.value })}
-                    />
-                            </div>
-                            </div>
+                    <Input type="email" value={selectedStaff.email} onChange={(e) => setSelectedStaff({ ...selectedStaff, email: e.target.value })} />
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-gray-700">入社日 *</label>
-                    <Input
-                      type="date"
-                      value={selectedStaff.joinDate}
-                      onChange={(e) => setSelectedStaff({ ...selectedStaff, joinDate: e.target.value })}
-                    />
-                        </div>
+                    <Input type="date" value={selectedStaff.join_date ?? ""} onChange={(e) => setSelectedStaff({ ...selectedStaff, join_date: e.target.value })} />
+                  </div>
                   <div>
                     <label className="text-sm font-medium text-gray-700">時給</label>
-                    <Input
-                      type="number"
-                      value={selectedStaff.hourlyRate || ""}
-                      onChange={(e) => setSelectedStaff({ ...selectedStaff, hourlyRate: parseInt(e.target.value) || undefined })}
-                    />
-                    </div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700">スキル</label>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {allSkills.map((skill) => (
-                      <Badge
-                        key={skill}
-                        variant={selectedStaff.skills.includes(skill) ? "default" : "outline"}
-                        className={`cursor-pointer ${selectedStaff.skills.includes(skill) ? "" : "hover:bg-gray-100"}`}
-                        onClick={() => {
-                          if (selectedStaff.skills.includes(skill)) {
-                            setSelectedStaff({ ...selectedStaff, skills: selectedStaff.skills.filter((s) => s !== skill) })
-                          } else {
-                            setSelectedStaff({ ...selectedStaff, skills: [...selectedStaff.skills, skill] })
-                          }
-                        }}
-                      >
-                        {skill}
-                    </Badge>
-                    ))}
+                    <Input type="number" value={selectedStaff.hourly_rate ?? ""} onChange={(e) => setSelectedStaff({ ...selectedStaff, hourly_rate: parseInt(e.target.value) || null })} />
                   </div>
                 </div>
               </div>
             )}
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
-                キャンセル
-              </Button>
-              <Button onClick={handleUpdateStaff}>
-                更新する
+              <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>キャンセル</Button>
+              <Button onClick={handleUpdateStaff} disabled={saving}>
+                {saving ? "更新中..." : "更新する"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* 削除確認モーダル */}
+        {/* Delete Modal */}
         <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
           <DialogContent>
             <DialogHeader>
@@ -755,22 +620,19 @@ export default function StaffManagement() {
             {selectedStaff && (
               <div className="py-4">
                 <p className="text-gray-600">
-                  <strong>{selectedStaff.name}</strong> さんの情報を削除します。
-                  この操作は取り消せません。
+                  <strong>{selectedStaff.name}</strong> さんの情報を削除します。この操作は取り消せません。
                 </p>
               </div>
             )}
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
-                キャンセル
-              </Button>
-              <Button variant="destructive" onClick={handleDeleteStaff}>
-                削除する
+              <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>キャンセル</Button>
+              <Button variant="destructive" onClick={handleDeleteStaff} disabled={saving}>
+                {saving ? "削除中..." : "削除する"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
-          </div>
+      </div>
     </div>
   )
 }

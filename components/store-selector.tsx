@@ -10,19 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { ChevronDown, Store } from "lucide-react"
-
-export interface Store {
-  id: string
-  name: string
-}
-
-const STORES: Store[] = [
-  { id: "bayquarter", name: "キリンシティプラス横浜ベイクォーター店" },
-  { id: "mores", name: "キリンシティ 横浜モアーズ店" },
-  { id: "fti", name: "キリンシティ FOOD＆TIME ISETAN YOKOHAMA店" },
-  { id: "cial", name: "キリンシティ CIAL桜木町店" },
-  { id: "machida", name: "キリンシティ 町田店" },
-]
+import { useStoreContext } from "@/lib/hooks/use-store-context"
 
 interface StoreSelectorProps {
   selectedStores: string[]
@@ -31,6 +19,7 @@ interface StoreSelectorProps {
 
 export function StoreSelector({ selectedStores, onStoresChange }: StoreSelectorProps) {
   const [open, setOpen] = useState(false)
+  const { stores } = useStoreContext()
 
   const handleToggleStore = (storeId: string) => {
     if (selectedStores.includes(storeId)) {
@@ -41,14 +30,14 @@ export function StoreSelector({ selectedStores, onStoresChange }: StoreSelectorP
   }
 
   const handleSelectAll = () => {
-    if (selectedStores.length === STORES.length) {
+    if (selectedStores.length === stores.length) {
       onStoresChange([])
     } else {
-      onStoresChange(STORES.map((s) => s.id))
+      onStoresChange(stores.map((s) => s.id))
     }
   }
 
-  const selectedStoreNames = STORES.filter((s) => selectedStores.includes(s.id)).map((s) => s.name)
+  const selectedStoreNames = stores.filter((s) => selectedStores.includes(s.id)).map((s) => s.name)
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -77,11 +66,11 @@ export function StoreSelector({ selectedStores, onStoresChange }: StoreSelectorP
               className="h-7 text-xs"
               onClick={handleSelectAll}
             >
-              {selectedStores.length === STORES.length ? "すべて解除" : "すべて選択"}
+              {selectedStores.length === stores.length ? "すべて解除" : "すべて選択"}
             </Button>
           </div>
           <div className="max-h-[300px] overflow-y-auto space-y-1">
-            {STORES.map((store) => (
+            {stores.map((store) => (
               <label
                 key={store.id}
                 className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-100 cursor-pointer"
@@ -110,5 +99,3 @@ export function StoreSelector({ selectedStores, onStoresChange }: StoreSelectorP
     </DropdownMenu>
   )
 }
-
-export { STORES }

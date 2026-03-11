@@ -4,7 +4,8 @@ import { useState } from "react"
 import { ShiftHeader } from "@/components/shift-header"
 import { ShiftTimeline } from "@/components/shift-timeline"
 import { ShiftEdit } from "@/components/shift-edit"
-import { StoreSelector, STORES } from "@/components/store-selector"
+import { StoreSelector } from "@/components/store-selector"
+import { useStoreContext } from "@/lib/hooks/use-store-context"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { PencilIcon, SaveIcon, CheckCircle2, Clock, FileText, Sparkles, PenLine } from "lucide-react"
@@ -17,7 +18,8 @@ export default function ShiftManagement() {
   const [viewMode, setViewMode] = useState<"daily" | "monthly">("daily")
   const [currentDate, setCurrentDate] = useState(new Date())
   const [shiftStatus, setShiftStatus] = useState<ShiftStatus>("preferred")
-  const [selectedStores, setSelectedStores] = useState<string[]>(["mores"])
+  const { stores, selectedStore } = useStoreContext()
+  const [selectedStores, setSelectedStores] = useState<string[]>(selectedStore ? [selectedStore.id] : [])
 
   const handleToggleEdit = () => setIsEditing((prev) => !prev)
 
@@ -59,7 +61,7 @@ export default function ShiftManagement() {
   }
 
   // 選択された店舗がない場合はデフォルトで1店舗を選択
-  const displayStores = selectedStores.length > 0 ? selectedStores : ["mores"]
+  const displayStores = selectedStores.length > 0 ? selectedStores : (selectedStore ? [selectedStore.id] : [])
 
   return (
     <div className="space-y-6">
@@ -86,7 +88,7 @@ export default function ShiftManagement() {
 
       {/* 選択された店舗ごとにシフト表を表示 */}
       {displayStores.map((storeId) => {
-        const store = STORES.find((s) => s.id === storeId)
+        const store = stores.find((s) => s.id === storeId)
         if (!store) return null
 
         return (
