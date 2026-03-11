@@ -1,5 +1,5 @@
 "use client"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect, useCallback } from "react"
 import { format, subDays, addDays } from "date-fns"
 import { ja } from "date-fns/locale"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,135 +9,99 @@ import { Sun, Cloud, CloudRain, ChevronLeft, ChevronRight, ArrowRight, Sparkles,
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts"
 import { ArrowUp, Users, Calendar, Phone, AlertCircle, TrendingUp } from "lucide-react"
 import Link from "next/link"
-import { seededRandom } from "@/lib/utils"
 import { useToast } from "@/components/toast"
 import { StatCard } from "@/components/stat-card"
 import { OnboardingHint } from "@/components/onboarding-hints"
-
-function generateDemandData(baseDate: Date) {
-  return Array.from({ length: 7 }, (_, i) => {
-    const date = subDays(baseDate, 6 - i)
-    const dateStr = format(date, "M/d")
-    const dayOfWeek = date.getDay()
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
-    const isFriday = dayOfWeek === 5
-    // 実績ベース: 平日~95人, 金曜~170人, 土日~255人
-    const baseCustomers = isWeekend ? 255 : isFriday ? 170 : 95
-    const baseAvgSpend = isWeekend ? 2900 : isFriday ? 3100 : 2700
-    const variation = Math.round(seededRandom(`demand-${dateStr}`) * baseCustomers * 0.15 - baseCustomers * 0.075)
-    const customers = baseCustomers + variation
-    const revenue = Math.round(customers * (baseAvgSpend + (seededRandom(`rev-${dateStr}`) - 0.5) * 400))
-    // 過去日（i < 6）は実績データを生成、当日（i === 6）は途中実績
-    const isPast = i < 6
-    const isToday = i === 6
-    const actualCustomers = isPast
-      ? Math.round(customers * (0.92 + seededRandom(`actual-c-${dateStr}`) * 0.16))
-      : isToday ? Math.round(customers * 0.45 * (0.95 + seededRandom(`actual-today-c-${dateStr}`) * 0.1)) : null
-    const actualRevenue = isPast
-      ? Math.round(revenue * (0.93 + seededRandom(`actual-r-${dateStr}`) * 0.14))
-      : isToday ? Math.round(revenue * 0.45 * (0.95 + seededRandom(`actual-today-r-${dateStr}`) * 0.1)) : null
-    return { date: dateStr, customers, revenue, actualCustomers, actualRevenue, isPast, isToday }
-  })
-}
-
-function generateHourlyData(seed: string, dayOfWeek: number) {
-  const currentHour = new Date().getHours()
-  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
-  const isFriday = dayOfWeek === 5
-
-  // 実績ベースの時間帯別パターン（営業時間 11:00-22:00）
-  const weekdayBase = [
-    { time: "11:00", hour: 11, customers: 8,  revenue: 17600 },
-    { time: "12:00", hour: 12, customers: 18, revenue: 34200 },
-    { time: "13:00", hour: 13, customers: 12, revenue: 25200 },
-    { time: "14:00", hour: 14, customers: 6,  revenue: 12000 },
-    { time: "15:00", hour: 15, customers: 3,  revenue: 5400 },
-    { time: "16:00", hour: 16, customers: 3,  revenue: 6600 },
-    { time: "17:00", hour: 17, customers: 6,  revenue: 19200 },
-    { time: "18:00", hour: 18, customers: 12, revenue: 45600 },
-    { time: "19:00", hour: 19, customers: 12, revenue: 50400 },
-    { time: "20:00", hour: 20, customers: 8,  revenue: 35200 },
-    { time: "21:00", hour: 21, customers: 5,  revenue: 18000 },
-    { time: "22:00", hour: 22, customers: 2,  revenue: 6000 },
-  ]
-  const fridayBase = [
-    { time: "11:00", hour: 11, customers: 12, revenue: 26400 },
-    { time: "12:00", hour: 12, customers: 25, revenue: 47500 },
-    { time: "13:00", hour: 13, customers: 15, revenue: 31500 },
-    { time: "14:00", hour: 14, customers: 8,  revenue: 16000 },
-    { time: "15:00", hour: 15, customers: 5,  revenue: 9000 },
-    { time: "16:00", hour: 16, customers: 5,  revenue: 11000 },
-    { time: "17:00", hour: 17, customers: 15, revenue: 48000 },
-    { time: "18:00", hour: 18, customers: 28, revenue: 106400 },
-    { time: "19:00", hour: 19, customers: 28, revenue: 117600 },
-    { time: "20:00", hour: 20, customers: 16, revenue: 70400 },
-    { time: "21:00", hour: 21, customers: 8,  revenue: 28800 },
-    { time: "22:00", hour: 22, customers: 5,  revenue: 15000 },
-  ]
-  const weekendBase = [
-    { time: "11:00", hour: 11, customers: 18, revenue: 39600 },
-    { time: "12:00", hour: 12, customers: 35, revenue: 66500 },
-    { time: "13:00", hour: 13, customers: 32, revenue: 67200 },
-    { time: "14:00", hour: 14, customers: 22, revenue: 44000 },
-    { time: "15:00", hour: 15, customers: 15, revenue: 27000 },
-    { time: "16:00", hour: 16, customers: 12, revenue: 26400 },
-    { time: "17:00", hour: 17, customers: 20, revenue: 64000 },
-    { time: "18:00", hour: 18, customers: 30, revenue: 114000 },
-    { time: "19:00", hour: 19, customers: 30, revenue: 126000 },
-    { time: "20:00", hour: 20, customers: 22, revenue: 96800 },
-    { time: "21:00", hour: 21, customers: 12, revenue: 43200 },
-    { time: "22:00", hour: 22, customers: 7,  revenue: 21000 },
-  ]
-
-  const base = isWeekend ? weekendBase : isFriday ? fridayBase : weekdayBase
-
-  return base.map((item) => {
-    const variation = 1 + (seededRandom(`${seed}-${item.time}`) - 0.5) * 0.2
-    const predicted = Math.round(item.customers * variation)
-    const predictedRev = Math.round(item.revenue * variation)
-    // 現在時刻より前の時間帯は実績データを生成
-    const hasPassed = item.hour < currentHour
-    const actualVariation = 0.9 + seededRandom(`${seed}-actual-${item.time}`) * 0.2
-    return {
-      time: item.time,
-      customers: predicted,
-      revenue: predictedRev,
-      実績客数: hasPassed ? Math.round(predicted * actualVariation) : undefined,
-      実績売上: hasPassed ? Math.round(predictedRev * actualVariation) : undefined,
-    }
-  })
-}
+import { useStoreContext } from "@/lib/hooks/use-store-context"
+import { useDemandForecasts, useForecastGeneration } from "@/lib/hooks/use-demand-forecast"
+import { useActualSales } from "@/lib/hooks/use-actual-sales"
+import { OPERATING_HOURS } from "@/lib/shift-create-data"
 
 export default function DemandForecastDashboard() {
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [isUpdating, setIsUpdating] = useState(false)
   const { showToast } = useToast()
+  const { selectedStore } = useStoreContext()
+  const storeId = selectedStore?.id || ""
 
   const dateStr = format(currentDate, "yyyy-MM-dd")
-  const demandData = useMemo(() => generateDemandData(currentDate), [dateStr])
-  const hourlyData = useMemo(() => generateHourlyData(dateStr, currentDate.getDay()), [dateStr])
+  const weekStart = format(subDays(currentDate, 6), "yyyy-MM-dd")
+
+  // DB予測データ取得
+  const { forecasts, loading: forecastLoading, refetch: refetchForecasts } = useDemandForecasts(storeId, weekStart, dateStr)
+  const { generateForecast, generating } = useForecastGeneration()
+
+  // 過去実績データ取得
+  const { sales: actualSalesData } = useActualSales(storeId, weekStart, dateStr)
+
+  // 予測データを7日分に変換
+  const demandData = useMemo(() => {
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = subDays(currentDate, 6 - i)
+      const ds = format(date, "yyyy-MM-dd")
+      const label = format(date, "M/d")
+      const forecast = forecasts.find((f) => f.date === ds)
+      const daySales = actualSalesData.filter((s) => s.date === ds)
+      const actualCustomers = daySales.reduce((sum, s) => sum + s.customers, 0) || null
+      const actualRevenue = daySales.reduce((sum, s) => sum + s.sales, 0) || null
+      return {
+        date: label,
+        customers: forecast?.forecast_customers || 0,
+        revenue: forecast?.forecast_sales || 0,
+        actualCustomers,
+        actualRevenue,
+        isPast: i < 6,
+        isToday: i === 6,
+      }
+    })
+  }, [forecasts, actualSalesData, dateStr])
+
+  // 時間帯別データ
+  const hourlyData = useMemo(() => {
+    const todayForecast = forecasts.find((f) => f.date === dateStr)
+    const hourly = todayForecast?.hourly_data as Record<string, any> | null
+    const todayActuals = actualSalesData.filter((s) => s.date === dateStr)
+
+    return OPERATING_HOURS.map((hour) => {
+      const hd = hourly?.[hour] || hourly?.[String(hour)]
+      const actual = todayActuals.find((s) => s.hour === hour)
+      return {
+        time: `${String(hour).padStart(2, "0")}:00`,
+        customers: hd?.customers || 0,
+        revenue: hd?.sales || 0,
+        実績客数: actual ? actual.customers : undefined,
+        実績売上: actual ? actual.sales : undefined,
+      }
+    })
+  }, [forecasts, actualSalesData, dateStr])
 
   const todayData = demandData[demandData.length - 1]
   const yesterdayData = demandData[demandData.length - 2]
-  const dayChange = yesterdayData ? Math.round((todayData.revenue / yesterdayData.revenue - 1) * 100) : 0
 
   const totalCustomers = hourlyData.reduce((s, h) => s + h.customers, 0)
-  const peakHour = hourlyData.reduce((max, h) => (h.customers > max.customers ? h : max), hourlyData[0])
+  const peakHour = hourlyData.length > 0
+    ? hourlyData.reduce((max, h) => (h.customers > max.customers ? h : max), hourlyData[0])
+    : { time: "-", customers: 0 }
 
   // 実績集計
   const actualTotalCustomers = hourlyData.reduce((s, h) => s + (h.実績客数 || 0), 0)
   const actualTotalRevenue = hourlyData.reduce((s, h) => s + (h.実績売上 || 0), 0)
   const hoursWithActual = hourlyData.filter((h) => h.実績客数 !== undefined).length
-  const revenueAccuracy = todayData.actualRevenue && todayData.revenue
+  const revenueAccuracy = todayData?.actualRevenue && todayData?.revenue && hoursWithActual > 0
     ? Math.round((todayData.actualRevenue / (todayData.revenue * (hoursWithActual / hourlyData.length)) - 1) * 100)
     : 0
 
-  const handleUpdateForecast = () => {
-    setIsUpdating(true)
-    setTimeout(() => {
-      setIsUpdating(false)
+  const isUpdating = generating
+
+  const handleUpdateForecast = async () => {
+    if (!storeId) return
+    try {
+      const endDate = format(addDays(currentDate, 14), "yyyy-MM-dd")
+      await generateForecast(storeId, weekStart, endDate)
+      await refetchForecasts()
       showToast("予測データを更新しました")
-    }, 1500)
+    } catch (e: any) {
+      showToast(`予測更新に失敗: ${e.message}`, "error")
+    }
   }
 
   const dayOfWeek = currentDate.getDay()

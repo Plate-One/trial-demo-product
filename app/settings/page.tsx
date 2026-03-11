@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,11 +8,12 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
-import { Store, Bell, Clock, Shield, Save, CheckCircle2, Loader2 } from "lucide-react"
+import { Store, Bell, Clock, Shield, Save, CheckCircle2, Loader2, Upload, FileSpreadsheet, AlertCircle } from "lucide-react"
 import { useToast } from "@/components/toast"
 import { OnboardingHint } from "@/components/onboarding-hints"
 import { useStoreContext } from "@/lib/hooks/use-store-context"
 import { createClient } from "@/lib/supabase/client"
+import { useImportActualSales } from "@/lib/hooks/use-actual-sales"
 
 export default function SettingsPage() {
   const { showToast } = useToast()
@@ -26,6 +27,13 @@ export default function SettingsPage() {
   const [seats, setSeats] = useState("")
   const [openHour, setOpenHour] = useState("11:00")
   const [closeHour, setCloseHour] = useState("23:00")
+
+  // CSV import
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [csvPreview, setCsvPreview] = useState<string[][] | null>(null)
+  const [csvFileName, setCsvFileName] = useState("")
+  const [csvRawData, setCsvRawData] = useState("")
+  const { importCsv, importing, result: importResult } = useImportActualSales()
 
   // 選択中の店舗データをロード
   useEffect(() => {
@@ -79,6 +87,39 @@ export default function SettingsPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setCsvFileName(file.name)
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string
+      setCsvRawData(text)
+      // プレビュー: 最初の6行
+      const lines = text.trim().split("\n").slice(0, 6)
+      const rows = lines.map(line => line.split(",").map(c => c.trim()))
+      setCsvPreview(rows)
+    }
+    reader.readAsText(file)
+  }
+
+  const handleImport = async () => {
+    if (!csvRawData || !selectedStore) return
+    try {
+      await importCsv(selectedStore.id, csvRawData)
+      showToast("売上実績データを取り込みました", "success")
+    } catch {
+      showToast("データ取り込みに失敗しました", "error")
+    }
+  }
+
+  const handleClearCsv = () => {
+    setCsvPreview(null)
+    setCsvFileName("")
+    setCsvRawData("")
+    if (fileInputRef.current) fileInputRef.current.value = ""
   }
 
   if (!selectedStore) {
@@ -264,6 +305,110 @@ export default function SettingsPage() {
               </div>
               <Switch defaultChecked aria-label="ヘルプリクエスト通知の切り替え" />
             </div>
+          </CardContent>
+        </Card>
+
+        {/* 売上実績データ取込 */}
+        <Card className="transition-shadow hover:shadow-md">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileSpreadsheet className="h-5 w-5 text-teal-600" aria-hidden="true" />
+              売上実績データ取込
+            </CardTitle>
+            <CardDescription>CSVファイルから過去の売上実績データを取り込みます。需要予測の精度向上に使用されます。</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>CSVフォーマット</Label>
+              <div className="bg-gray-50 rounded-md p-3 text-xs font-mono text-gray-600">
+                <p className="font-semibold text-gray-700 mb-1">ヘッダー行: date,hour,customers,sales</p>
+                <p>2026-01-15,11,8,17600</p>
+                <p>2026-01-15,12,18,34200</p>
+                <p>2026-01-15,13,12,25200</p>
+                <p className="text-gray-400 mt-1">※ hour: 11-22, date: YYYY-MM-DD形式</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={importing}
+              >
+                <Upload className="h-4 w-4 mr-1" />
+                CSVファイルを選択
+              </Button>
+              {csvFileName && (
+                <span className="text-sm text-gray-600">{csvFileName}</span>
+              )}
+            </div>
+
+            {csvPreview && (
+              <div className="space-y-3">
+                <div className="overflow-x-auto rounded border border-gray-200">
+                  <table className="w-full text-xs">
+                    <tbody>
+                      {csvPreview.map((row, i) => (
+                        <tr key={i} className={i === 0 ? "bg-gray-100 font-semibold" : "border-t border-gray-100"}>
+                          {row.map((cell, j) => (
+                            <td key={j} className="px-3 py-1.5">{cell}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button onClick={handleImport} disabled={importing} size="sm">
+                    {importing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                        取込中...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 mr-1" />
+                        データを取り込む
+                      </>
+                    )}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={handleClearCsv} disabled={importing}>
+                    クリア
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {importResult && (
+              <div className={`flex items-start gap-2 p-3 rounded-md text-sm ${
+                importResult.errors && importResult.errors.length > 0
+                  ? "bg-amber-50 text-amber-800"
+                  : "bg-green-50 text-green-800"
+              }`}>
+                {importResult.errors && importResult.errors.length > 0 ? (
+                  <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                )}
+                <div>
+                  <p>{importResult.inserted}件のデータを取り込みました</p>
+                  {importResult.errors && importResult.errors.length > 0 && (
+                    <ul className="mt-1 text-xs">
+                      {importResult.errors.slice(0, 5).map((err, i) => (
+                        <li key={i}>{err}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

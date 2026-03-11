@@ -11,6 +11,9 @@ import { Badge } from "@/components/ui/badge"
 import { seededRandom } from "@/lib/utils"
 import { useToast } from "@/components/toast"
 import { StatCard } from "@/components/stat-card"
+import { useStoreContext } from "@/lib/hooks/use-store-context"
+import { useDemandForecasts, useForecastGeneration } from "@/lib/hooks/use-demand-forecast"
+import { useActualSales } from "@/lib/hooks/use-actual-sales"
 
 const WeatherIcon = ({ type, size = "h-6 w-6" }: { type: string; size?: string }) => {
   switch (type) {
@@ -110,6 +113,15 @@ export default function DemandForecastPage() {
   const [expandedDayIndex, setExpandedDayIndex] = useState<Set<number>>(new Set())
   const [isUpdating, setIsUpdating] = useState(false)
   const { showToast } = useToast()
+  const { selectedStore } = useStoreContext()
+  const storeId = selectedStore?.id || ""
+
+  // DB data: 30日分の予測 + 実績
+  const startDate = format(new Date(), "yyyy-MM-dd")
+  const endDate = format(addDays(new Date(), 29), "yyyy-MM-dd")
+  const { forecasts, refetch: refetchForecasts } = useDemandForecasts(storeId, startDate, endDate)
+  const { sales: actualSalesData } = useActualSales(storeId, format(subDays(new Date(), 7), "yyyy-MM-dd"), endDate)
+  const { generateForecast, generating } = useForecastGeneration()
 
   const toggleDayTimeSlots = (i: number) => {
     setExpandedDayIndex((prev) => {
@@ -131,13 +143,73 @@ export default function DemandForecastPage() {
   const currentWeekStart = startOfWeek(currentDate, { weekStartsOn: 1 })
   const currentWeekEnd = endOfWeek(currentDate, { weekStartsOn: 1 })
 
-  // Generate 30 days of forecast data
+  // 実績データをdate別に集計
+  const actualByDate = useMemo(() => {
+    const map: Record<string, { customers: number; sales: number }> = {}
+    for (const row of actualSalesData) {
+      const key = row.date
+      if (!map[key]) map[key] = { customers: 0, sales: 0 }
+      map[key].customers += row.customers
+      map[key].sales += row.sales
+    }
+    return map
+  }, [actualSalesData])
+
+  // Generate 30 days of forecast data — DB予測があれば使用、なければモック
   const forecastDays = useMemo(() => {
+    if (forecasts.length > 0) {
+      // DB予測データを使用
+      const forecastMap = new Map(forecasts.map(f => [f.date, f]))
+      return Array.from({ length: 30 }, (_, i) => {
+        const date = addDays(new Date(), i)
+        const dateStr = format(date, "yyyy-MM-dd")
+        const fc = forecastMap.get(dateStr)
+        const actual = actualByDate[dateStr]
+
+        if (fc) {
+          const hourlyData = fc.hourly_data as Record<string, any> | null
+          const dayCustomers = fc.predicted_customers
+          const daySales = fc.predicted_sales
+
+          const dayOfWeek = date.getDay()
+          const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+
+          const weatherSeed = seededRandom(`weather-${dateStr}`)
+          const weather = weatherSeed < 0.5 ? "sunny" : weatherSeed < 0.8 ? "cloudy" : "rainy"
+          const tempBase = 8 + seededRandom(`temp-${dateStr}`) * 8
+          const tempHigh = Math.round(tempBase + 3)
+          const tempLow = Math.round(tempBase - 4)
+          const rainProb = weather === "rainy" ? 80 : weather === "cloudy" ? 40 : 10
+
+          const eventSeed = seededRandom(`event-${dateStr}`)
+          const events = eventSeed < 0.15 ? ["地域祭り", "コンサート"] : eventSeed < 0.3 ? ["商店街セール"] : []
+
+          return {
+            date,
+            dateStr: format(date, "M/d"),
+            dayLabel: format(date, "E", { locale: ja }),
+            isWeekend,
+            weather,
+            tempHigh,
+            tempLow,
+            rainProb,
+            dayCustomers,
+            daySales,
+            actualCustomers: actual ? actual.customers : null,
+            actualRevenue: actual ? actual.sales : null,
+            events,
+          }
+        }
+        // fallback to mock
+        return generateDayForecast(date, i)
+      })
+    }
+    // 全てモック
     return Array.from({ length: 30 }, (_, i) => {
       const date = addDays(new Date(), i)
       return generateDayForecast(date, i)
     })
-  }, [])
+  }, [forecasts, actualByDate])
 
   // Summary stats
   const totalPredictedRevenue = forecastDays.reduce((s, d) => s + d.daySales, 0)
@@ -175,12 +247,21 @@ export default function DemandForecastPage() {
 
   const [events, setEvents] = useState(upcomingEvents)
 
-  const handleUpdateForecast = () => {
+  const handleUpdateForecast = async () => {
+    if (!storeId) {
+      showToast("店舗が選択されていません", "error")
+      return
+    }
     setIsUpdating(true)
-    setTimeout(() => {
-      setIsUpdating(false)
+    try {
+      await generateForecast(storeId, startDate, endDate)
+      await refetchForecasts()
       showToast("予測データを更新しました")
-    }, 1500)
+    } catch {
+      showToast("予測更新に失敗しました", "error")
+    } finally {
+      setIsUpdating(false)
+    }
   }
 
   const handleCsvExport = () => {
@@ -209,7 +290,7 @@ export default function DemandForecastPage() {
         <div className="p-6">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-xl font-semibold text-gray-800">キリンシティプラス横浜ベイクォーター店</h1>
+              <h1 className="text-xl font-semibold text-gray-800">{selectedStore?.name || "店舗未選択"}</h1>
               <p className="text-sm text-gray-600 mt-1">1ヶ月先までの詳細需要予測</p>
             </div>
             <div className="flex items-center gap-4">

@@ -366,6 +366,38 @@ export interface Database {
           created_at?: string
         }
       }
+      actual_sales: {
+        Row: {
+          id: string
+          store_id: string
+          date: string
+          hour: number
+          customers: number
+          sales: number
+          day_type: 'weekday' | 'friday' | 'saturday' | 'sunday' | 'holiday'
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          store_id: string
+          date: string
+          hour: number
+          customers?: number
+          sales?: number
+          day_type?: 'weekday' | 'friday' | 'saturday' | 'sunday' | 'holiday'
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          store_id?: string
+          date?: string
+          hour?: number
+          customers?: number
+          sales?: number
+          day_type?: 'weekday' | 'friday' | 'saturday' | 'sunday' | 'holiday'
+          created_at?: string
+        }
+      }
       demand_forecasts: {
         Row: {
           id: string

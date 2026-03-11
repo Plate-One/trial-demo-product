@@ -254,6 +254,70 @@ export const calculateKpis = (periodData: DayStaffing[]): KpiSummary => {
   return { hallTotal, kitchenTotal, totalHours, laborCost, totalSales, laborCostRatio, totalCustomers, avgCustomersPerDay }
 }
 
+// ========== DB予測データ → DayStaffing変換 ==========
+export const generatePeriodDataFromForecasts = (
+  forecasts: {
+    date: string
+    forecast_customers: number | null
+    forecast_sales: number | null
+    hourly_data: any
+    weather: any
+    event: string | null
+    is_holiday: boolean
+    holiday_name: string | null
+  }[]
+): DayStaffing[] => {
+  return forecasts.map((f) => {
+    const hourlyForecast: HourlyForecast = {}
+    const hallStaffing: HourlyStaffing = {}
+    const kitchenStaffing: HourlyStaffing = {}
+
+    const hourlyData = f.hourly_data as Record<string, any> || {}
+
+    for (const hour of OPERATING_HOURS) {
+      const hd = hourlyData[hour] || hourlyData[String(hour)]
+      if (hd) {
+        hourlyForecast[hour] = {
+          customers: hd.customers || 0,
+          avgSpend: hd.avgSpend || 2500,
+          sales: hd.sales || 0,
+          suggestedHall: hd.suggestedHall || calculateRecommendedHall(hd.customers || 0, hour),
+          suggestedKitchen: hd.suggestedKitchen || calculateRecommendedKitchen(hd.customers || 0, hour),
+          isPeak: hd.isPeak ?? isPeakHour(hour),
+        }
+      } else {
+        hourlyForecast[hour] = {
+          customers: 5,
+          avgSpend: 2500,
+          sales: 12500,
+          suggestedHall: 2,
+          suggestedKitchen: 2,
+          isPeak: isPeakHour(hour),
+        }
+      }
+
+      // 初期スタッフ配置 = 推奨値
+      hallStaffing[hour] = hourlyForecast[hour].suggestedHall
+      kitchenStaffing[hour] = hourlyForecast[hour].suggestedKitchen
+    }
+
+    const weather = f.weather || WEATHER_PATTERNS[0]
+
+    return {
+      date: new Date(f.date),
+      hallStaffing,
+      kitchenStaffing,
+      forecastSales: f.forecast_sales || OPERATING_HOURS.reduce((s, h) => s + hourlyForecast[h].sales, 0),
+      forecastCustomers: f.forecast_customers || OPERATING_HOURS.reduce((s, h) => s + hourlyForecast[h].customers, 0),
+      hourlyForecast,
+      weather,
+      event: f.event || undefined,
+      isHoliday: f.is_holiday,
+      holidayName: f.holiday_name || undefined,
+    }
+  })
+}
+
 // ========== 問題セル分析 ==========
 export interface ProblemSummary {
   understaffed: number

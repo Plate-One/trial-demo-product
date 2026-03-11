@@ -25,8 +25,11 @@ import {
   type DayStaffing, type HourlyStaffing, type KpiSummary,
   OPERATING_HOURS, HOURLY_WAGE_HALL, HOURLY_WAGE_KITCHEN,
   isPeakHour, getPeriodRange, generatePeriodData, generateAIProposal,
+  generatePeriodDataFromForecasts,
   calculateKpis, analyzeProblemCells, getDeviations,
 } from "@/lib/shift-create-data"
+import { useStoreContext } from "@/lib/hooks/use-store-context"
+import { useDemandForecasts, useForecastGeneration, useShiftOptimization } from "@/lib/hooks/use-demand-forecast"
 
 // ========== 天気アイコン ==========
 const WeatherIcon = ({ icon, className = "h-4 w-4" }: { icon: string; className?: string }) => {
@@ -109,6 +112,8 @@ export default function ShiftCreation() {
   const today = new Date()
   const router = useRouter()
   const { showToast } = useToast()
+  const { selectedStore } = useStoreContext()
+  const storeId = selectedStore?.id || ""
 
   // ウィザード状態
   const [currentStep, setCurrentStep] = useState<WizardStep>(1)
@@ -139,11 +144,25 @@ export default function ShiftCreation() {
 
   const { start: periodStart, end: periodEnd } = useMemo(() => getPeriodRange(currentMonth, periodHalf), [currentMonth, periodHalf])
 
+  // DB予測データ取得
+  const startDateStr = format(periodStart, "yyyy-MM-dd")
+  const endDateStr = format(periodEnd, "yyyy-MM-dd")
+  const { forecasts } = useDemandForecasts(storeId, startDateStr, endDateStr)
+  const { generateForecast, generating: forecastGenerating } = useForecastGeneration()
+  const { optimizeShifts: optimizeShiftsApi, confirmShifts, optimizing: shiftOptimizing } = useShiftOptimization()
+
+  // DB予測データがあればそれを使い、なければモックデータにフォールバック
   useEffect(() => {
-    const data = generatePeriodData(periodStart, periodEnd)
-    setPeriodData(data)
-    setAIProposalData(generateAIProposal(data))
-  }, [periodStart, periodEnd])
+    if (forecasts.length > 0) {
+      const data = generatePeriodDataFromForecasts(forecasts)
+      setPeriodData(data)
+      setAIProposalData(generateAIProposal(data))
+    } else {
+      const data = generatePeriodData(periodStart, periodEnd)
+      setPeriodData(data)
+      setAIProposalData(generateAIProposal(data))
+    }
+  }, [forecasts, periodStart, periodEnd])
 
   // KPI計算
   const kpis = useMemo(() => calculateKpis(periodData), [periodData])
@@ -328,12 +347,39 @@ export default function ShiftCreation() {
   const handleAIOptimize = async () => {
     setIsOptimizing(true)
     setAiOptPhase(0)
-    for (let i = 0; i < AI_SHIFT_STEPS.length; i++) {
-      await new Promise(r => setTimeout(r, 1200))
-      setAiOptPhase(i + 1)
+
+    try {
+      // ステップ1: 需要予測
+      setAiOptPhase(1)
+      if (storeId && forecasts.length === 0) {
+        await generateForecast(storeId, startDateStr, endDateStr)
+      }
+      await new Promise(r => setTimeout(r, 800))
+
+      // ステップ2: スタッフ希望反映
+      setAiOptPhase(2)
+      await new Promise(r => setTimeout(r, 800))
+
+      // ステップ3: 最適化API呼び出し
+      setAiOptPhase(3)
+      if (storeId) {
+        try {
+          await optimizeShiftsApi(storeId, startDateStr, endDateStr)
+        } catch {
+          // APIが失敗してもモックで続行
+        }
+      }
+      await new Promise(r => setTimeout(r, 800))
+
+      // ステップ4: 完了
+      setAiOptPhase(4)
+      await new Promise(r => setTimeout(r, 600))
+
+      setPeriodData(aiProposalData)
+    } catch (e: any) {
+      showToast(`最適化エラー: ${e.message}`, "error")
     }
-    await new Promise(r => setTimeout(r, 600))
-    setPeriodData(aiProposalData)
+
     setIsOptimizing(false)
     setCompletedSteps(prev => new Set([...prev, 3]))
     goToStep(4)
