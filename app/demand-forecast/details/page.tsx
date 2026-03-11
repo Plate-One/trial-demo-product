@@ -168,8 +168,8 @@ export default function DemandForecastPage() {
 
         if (fc) {
           const hourlyData = fc.hourly_data as Record<string, any> | null
-          const dayCustomers = fc.predicted_customers
-          const daySales = fc.predicted_sales
+          const dayCustomers = fc.forecast_customers ?? 0
+          const daySales = fc.forecast_sales ?? 0
 
           const dayOfWeek = date.getDay()
           const isWeekend = dayOfWeek === 0 || dayOfWeek === 6

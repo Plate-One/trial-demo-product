@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { createServiceRoleClient } from "@/lib/supabase/server"
 
 /**
  * CSV取込API
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     }
 
     // バルクinsert (50行ずつ)
-    const supabase = createServerSupabaseClient()
+    const supabase = createServiceRoleClient()
     let insertedCount = 0
     const batchSize = 50
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { createServiceRoleClient } from "@/lib/supabase/server"
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "store_id は必須です" }, { status: 400 })
     }
 
-    const supabase = createServerSupabaseClient()
+    const supabase = createServiceRoleClient()
 
     let query = supabase
       .from("shifts")
