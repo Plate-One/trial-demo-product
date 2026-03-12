@@ -5,9 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
 import { Store, Bell, Clock, Shield, Save, CheckCircle2, Loader2, Upload, FileSpreadsheet, AlertCircle } from "lucide-react"
 import { useToast } from "@/components/toast"
 import { OnboardingHint } from "@/components/onboarding-hints"
@@ -273,37 +270,11 @@ export default function SettingsPage() {
             </CardTitle>
             <CardDescription>アラートと通知の設定を行います</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">シフト未提出アラート</p>
-                <p className="text-xs text-gray-500">提出期限の2日前に通知</p>
-              </div>
-              <Switch defaultChecked aria-label="シフト未提出アラートの切り替え" />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">需要予測アラート</p>
-                <p className="text-xs text-gray-500">予測値と実績の乖離が20%以上の場合に通知</p>
-              </div>
-              <Switch defaultChecked aria-label="需要予測アラートの切り替え" />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">人件費率アラート</p>
-                <p className="text-xs text-gray-500">人件費率が目標値を超えた場合に通知</p>
-              </div>
-              <Switch defaultChecked aria-label="人件費率アラートの切り替え" />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">ヘルプリクエスト通知</p>
-                <p className="text-xs text-gray-500">他店舗からのヘルプ依頼を受信</p>
-              </div>
-              <Switch defaultChecked aria-label="ヘルプリクエスト通知の切り替え" />
+          <CardContent>
+            <div className="flex flex-col items-center justify-center py-6 text-gray-400">
+              <Bell className="h-8 w-8 mb-2" />
+              <p className="text-sm font-medium text-gray-500">通知機能は準備中です</p>
+              <p className="text-xs mt-1">今後のアップデートでメール・Slack通知に対応予定です</p>
             </div>
           </CardContent>
         </Card>
@@ -421,36 +392,11 @@ export default function SettingsPage() {
             </CardTitle>
             <CardDescription>AI予測とシステムの動作設定</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="laborTarget">人件費率目標</Label>
-                <Select defaultValue="25">
-                  <SelectTrigger id="laborTarget" aria-label="人件費率目標を選択">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="20">20%</SelectItem>
-                    <SelectItem value="23">23%</SelectItem>
-                    <SelectItem value="25">25%</SelectItem>
-                    <SelectItem value="28">28%</SelectItem>
-                    <SelectItem value="30">30%</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="modelSelect">予測モデル</Label>
-                <Select defaultValue="advanced">
-                  <SelectTrigger id="modelSelect" aria-label="予測モデルを選択">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="basic">ベーシック（過去データのみ）</SelectItem>
-                    <SelectItem value="advanced">アドバンスド（天候・イベント考慮）</SelectItem>
-                    <SelectItem value="premium">プレミアム（AI最適化）</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+          <CardContent>
+            <div className="flex flex-col items-center justify-center py-6 text-gray-400">
+              <Shield className="h-8 w-8 mb-2" />
+              <p className="text-sm font-medium text-gray-500">詳細設定は準備中です</p>
+              <p className="text-xs mt-1">予測モデルの選択・人件費率目標の設定は今後対応予定です</p>
             </div>
           </CardContent>
         </Card>

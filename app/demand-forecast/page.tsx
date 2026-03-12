@@ -1,13 +1,11 @@
 "use client"
-import { useState, useMemo, useEffect, useCallback } from "react"
+import { useState, useMemo } from "react"
 import { format, subDays, addDays } from "date-fns"
 import { ja } from "date-fns/locale"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Sun, Cloud, CloudRain, ChevronLeft, ChevronRight, ArrowRight, Sparkles, RefreshCw, Loader2 } from "lucide-react"
+import { Cloud, ChevronLeft, ChevronRight, ArrowRight, Sparkles, RefreshCw, Loader2, TrendingUp } from "lucide-react"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts"
-import { ArrowUp, Users, Calendar, Phone, AlertCircle, TrendingUp } from "lucide-react"
+import { ArrowUp } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/components/toast"
 import { StatCard } from "@/components/stat-card"
@@ -107,15 +105,33 @@ export default function DemandForecastDashboard() {
   const dayOfWeek = currentDate.getDay()
   const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
 
-  // AI insights based on current date
+  // AI insights based on actual data
   const insights = useMemo(() => {
-    const base = [
-      { text: "先週と比較して客数が12%増加傾向にあります", type: "up" as const },
-      { text: isWeekend ? "週末のため通常より30%多い来客が予想されます" : "平日パターンに基づく標準的な需要予測です", type: "info" as const },
-      { text: "ディナータイム(18-20時)が特に混雑が予想されます", type: "warning" as const },
-    ]
-    return base
-  }, [dateStr])
+    const items: { text: string; type: "up" | "info" | "warning" }[] = []
+
+    // Compare today vs yesterday
+    if (todayData && yesterdayData && yesterdayData.customers > 0) {
+      const diff = Math.round(((todayData.customers - yesterdayData.customers) / yesterdayData.customers) * 100)
+      if (diff > 0) items.push({ text: `昨日と比較して客数が${diff}%増加予測です`, type: "up" })
+      else if (diff < 0) items.push({ text: `昨日と比較して客数が${Math.abs(diff)}%減少予測です`, type: "info" })
+    }
+
+    // Weekend/weekday info
+    if (isWeekend) items.push({ text: "週末のため通常より多い来客が予想されます", type: "info" })
+    else items.push({ text: "平日パターンに基づく標準的な需要予測です", type: "info" })
+
+    // Peak hour info from actual data
+    if (peakHour && peakHour.customers > 0) {
+      items.push({ text: `ピークタイムは${peakHour.time}頃（予測${peakHour.customers}人）です`, type: "warning" })
+    }
+
+    // Show message when no forecast data
+    if (totalCustomers === 0) {
+      items.push({ text: "予測データがありません。「予測を更新」ボタンを押してください", type: "warning" })
+    }
+
+    return items
+  }, [todayData, yesterdayData, isWeekend, peakHour, totalCustomers])
 
   return (
     <div className="space-y-3">
@@ -152,6 +168,25 @@ export default function DemandForecastDashboard() {
         </div>
       </div>
       <div className="p-6 space-y-6">
+
+        {forecastLoading && (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+            <span className="ml-2 text-sm text-gray-500">データを読み込み中...</span>
+          </div>
+        )}
+
+        {totalCustomers === 0 && !forecastLoading && (
+          <div className="flex flex-col items-center justify-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+            <TrendingUp className="h-10 w-10 text-gray-300 mb-3" />
+            <p className="text-lg font-medium text-gray-600 mb-1">予測データがありません</p>
+            <p className="text-sm text-gray-400 mb-4">「予測を更新」ボタンを押して需要予測を生成してください</p>
+            <Button size="sm" onClick={handleUpdateForecast} disabled={isUpdating}>
+              {isUpdating ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+              予測を更新
+            </Button>
+          </div>
+        )}
 
         {/* 本日の重要指標 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -239,45 +274,17 @@ export default function DemandForecastDashboard() {
           <div className="bg-gray-50 rounded-lg p-4">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">天気・イベント情報</h3>
             <div className="space-y-4">
-            <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg">
-              <Sun className="w-5 h-5 text-yellow-600" />
-              <div>
-                <p className="text-sm font-medium">晴れ 24°C</p>
-                <p className="text-xs text-gray-600">降水確率: 10%</p>
+              <div className="flex items-center gap-3 p-3 bg-gray-100 rounded-lg">
+                <Cloud className="w-5 h-5 text-gray-400" />
+                <div>
+                  <p className="text-sm text-gray-500">天気情報は現在準備中です</p>
+                  <p className="text-xs text-gray-400">今後のアップデートで天気データとの連携を予定しています</p>
+                </div>
               </div>
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm font-medium">近隣イベント</p>
-              <div className="text-xs text-gray-600 space-y-1">
-                <p>&#8226; 横浜ベイクォーター フリーマーケット (10:00-16:00)</p>
-                <p>&#8226; 商店街セール開催中</p>
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-500">近隣イベント</p>
+                <p className="text-xs text-gray-400">イベント情報機能は今後追加予定です</p>
               </div>
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm font-medium">交通情報</p>
-              <p className="text-xs text-green-600">JR横浜線: 正常運行</p>
-            </div>
-            </div>
-          </div>
-        </div>
-
-        {/* クイックアクション */}
-        <div className="bg-gray-50 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">クイックアクション</h3>
-          <div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Button variant="outline" className="h-16 flex flex-col gap-1" onClick={() => showToast("緊急スタッフ呼び出しを送信しました")}>
-                <Phone className="w-5 h-5" />
-                <span className="text-xs">緊急スタッフ呼び出し</span>
-              </Button>
-              <Button variant="outline" className="h-16 flex flex-col gap-1" onClick={() => showToast("予約受付を一時停止しました", "info")}>
-                <AlertCircle className="w-5 h-5" />
-                <span className="text-xs">予約受付停止</span>
-              </Button>
-              <Button variant="outline" className="h-16 flex flex-col gap-1" onClick={() => showToast("スタッフ配置変更画面に移動します", "info")}>
-                <Users className="w-5 h-5" />
-                <span className="text-xs">スタッフ配置変更</span>
-              </Button>
             </div>
           </div>
         </div>
@@ -350,40 +357,20 @@ export default function DemandForecastDashboard() {
           </div>
 
           <div className="bg-gray-50 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">今日の注意事項</h3>
-            <div className="space-y-4">
-            <div className="flex items-start gap-3 p-3 bg-yellow-50 rounded-lg">
-              <Sun className="w-5 h-5 text-yellow-600 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-yellow-800">天候による影響</p>
-                <p className="text-xs text-yellow-700">晴天のため、テラス席の利用増加が予想されます</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
-              <Users className="w-5 h-5 text-blue-600 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-blue-800">ピークタイム対応</p>
-                <p className="text-xs text-blue-700">12-14時は通常より30%多い客数が予想されます</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3 p-3 bg-purple-50 rounded-lg">
-              <Calendar className="w-5 h-5 text-purple-600 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-purple-800">週末準備</p>
-                <p className="text-xs text-purple-700">週末に向けて予約状況を確認してください</p>
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <Button className="w-full" variant="outline">
-                <Link href="/demand-forecast/details" className="flex items-center">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">アクション</h3>
+            <div className="space-y-3">
+              <Button className="w-full" variant="outline" asChild>
+                <Link href="/demand-forecast/details" className="flex items-center justify-center">
                   詳細な予測データを表示
                   <ArrowRight className="w-4 h-4 ml-1" />
                 </Link>
               </Button>
-            </div>
+              <Button className="w-full" variant="outline" asChild>
+                <Link href="/shifts/create" className="flex items-center justify-center">
+                  シフトを作成する
+                  <ArrowRight className="w-4 h-4 ml-1" />
+                </Link>
+              </Button>
             </div>
           </div>
         </div>

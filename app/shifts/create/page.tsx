@@ -30,6 +30,9 @@ import {
 } from "@/lib/shift-create-data"
 import { useStoreContext } from "@/lib/hooks/use-store-context"
 import { useDemandForecasts, useForecastGeneration, useShiftOptimization } from "@/lib/hooks/use-demand-forecast"
+import { useStaff } from "@/lib/hooks/use-staff"
+import { useShiftRequests } from "@/lib/hooks/use-shift-requests"
+import { createClient } from "@/lib/supabase/client"
 
 // ========== 天気アイコン ==========
 const WeatherIcon = ({ icon, className = "h-4 w-4" }: { icon: string; className?: string }) => {
@@ -83,29 +86,6 @@ interface StaffSubmission {
   availableSummary?: string
 }
 
-const STAFF_SUBMISSIONS: StaffSubmission[] = [
-  // 正社員 — 休暇希望日を回答
-  { staffId: "1", name: "佐藤 一郎", position: "両方", role: "店長", employmentType: "正社員", submissionType: "休暇希望", submitted: true, submittedAt: "2026-02-22", requestedDaysOff: [1, 5, 8, 15] },
-  { staffId: "4", name: "山田 太郎", position: "ホール", role: "マネージャー", employmentType: "正社員", submissionType: "休暇希望", submitted: true, submittedAt: "2026-02-21", requestedDaysOff: [4, 11] },
-  { staffId: "6", name: "渡辺 直樹", position: "キッチン", role: "チーフ", employmentType: "正社員", submissionType: "休暇希望", submitted: true, submittedAt: "2026-02-24", requestedDaysOff: [7, 8] },
-  // パート・アルバイト — 出勤可能日と希望時間帯を回答
-  { staffId: "2", name: "田中 花子", position: "ホール", role: "スタッフ", employmentType: "パート", submissionType: "出勤希望", submitted: true, submittedAt: "2026-02-20",
-    availableSummary: "週4日",
-    availableDays: [
-      { day: 2, start: "10:00", end: "16:00" }, { day: 3, start: "10:00", end: "16:00" },
-      { day: 4, start: "10:00", end: "16:00" }, { day: 7, start: "11:00", end: "17:00" },
-      { day: 9, start: "10:00", end: "16:00" }, { day: 10, start: "10:00", end: "16:00" },
-      { day: 11, start: "10:00", end: "16:00" }, { day: 14, start: "11:00", end: "17:00" },
-    ] },
-  { staffId: "3", name: "鈴木 健太", position: "キッチン", role: "スタッフ", employmentType: "アルバイト", submissionType: "出勤希望", submitted: true, submittedAt: "2026-02-23",
-    availableSummary: "週3日",
-    availableDays: [
-      { day: 2, start: "17:00", end: "22:00" }, { day: 4, start: "17:00", end: "22:00" },
-      { day: 6, start: "17:00", end: "22:00" }, { day: 9, start: "17:00", end: "22:00" },
-      { day: 11, start: "17:00", end: "22:00" }, { day: 13, start: "17:00", end: "22:00" },
-    ] },
-  { staffId: "5", name: "伊藤 美咲", position: "ホール", role: "スタッフ", employmentType: "アルバイト", submissionType: "出勤希望", submitted: false },
-]
 
 // ========== メインコンポーネント ==========
 export default function ShiftCreation() {
@@ -150,6 +130,67 @@ export default function ShiftCreation() {
   const { forecasts } = useDemandForecasts(storeId, startDateStr, endDateStr)
   const { generateForecast, generating: forecastGenerating } = useForecastGeneration()
   const { optimizeShifts: optimizeShiftsApi, confirmShifts, optimizing: shiftOptimizing } = useShiftOptimization()
+
+  // スタッフデータ取得
+  const { staff: staffList } = useStaff(storeId)
+
+  // シフト期間ID取得
+  const [shiftPeriodId, setShiftPeriodId] = useState<string>("")
+  useEffect(() => {
+    if (!storeId || !startDateStr) return
+    const fetchPeriod = async () => {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from("shift_periods")
+        .select("id")
+        .eq("store_id", storeId)
+        .eq("period_start", startDateStr)
+        .maybeSingle()
+      setShiftPeriodId(data?.id ?? "")
+    }
+    fetchPeriod()
+  }, [storeId, startDateStr])
+
+  // シフト希望データ取得
+  const { requests: shiftRequests } = useShiftRequests(shiftPeriodId)
+
+  // スタッフ提出状況を実データから算出
+  const staffSubmissions: StaffSubmission[] = useMemo(() => {
+    return staffList.map((s) => {
+      const request = shiftRequests.find((r) => r.staff_id === s.id)
+      if (request) {
+        const availableDays = Array.isArray(request.available_days)
+          ? (request.available_days as { day: number; start: string; end: string }[])
+          : undefined
+        const availableSummary = availableDays
+          ? `週${Math.ceil(availableDays.length / 2)}日`
+          : undefined
+        return {
+          staffId: s.id,
+          name: s.name,
+          position: s.position,
+          role: s.role,
+          employmentType: s.employment_type,
+          submissionType: request.submission_type,
+          submitted: true,
+          submittedAt: request.submitted_at ?? undefined,
+          requestedDaysOff: request.requested_days_off ?? undefined,
+          availableDays,
+          availableSummary,
+        } as StaffSubmission
+      }
+      // 未提出
+      return {
+        staffId: s.id,
+        name: s.name,
+        position: s.position,
+        role: s.role,
+        employmentType: s.employment_type,
+        submissionType: s.employment_type === "正社員" ? "休暇希望" : "出勤希望",
+        submitted: false,
+      } as StaffSubmission
+    })
+  }, [staffList, shiftRequests])
 
   // DB予測データがあればそれを使い、なければモックデータにフォールバック
   useEffect(() => {
@@ -197,7 +238,7 @@ export default function ShiftCreation() {
     const dates = periodData.map(d => d.date)
 
     // スタッフ行
-    const staffRows = STAFF_SUBMISSIONS.map(staff => {
+    const staffRows = staffSubmissions.map(staff => {
       const shifts: (string | null)[] = dates.map((date) => {
         const dayNum = date.getDate()
         if (staff.employmentType === "正社員") {
@@ -222,7 +263,7 @@ export default function ShiftCreation() {
     })
 
     return { staffRows, helpRows: helpByDate, dates }
-  }, [periodData])
+  }, [periodData, staffSubmissions])
 
   // 注目日のフラグ
   const flaggedDays = useMemo(() =>
@@ -238,10 +279,10 @@ export default function ShiftCreation() {
 
   // 提出状況の集計
   const submissionStats = useMemo(() => {
-    const total = STAFF_SUBMISSIONS.length
-    const submitted = STAFF_SUBMISSIONS.filter(s => s.submitted).length
-    return { total, submitted, percentage: Math.round((submitted / total) * 100) }
-  }, [])
+    const total = staffSubmissions.length
+    const submitted = staffSubmissions.filter(s => s.submitted).length
+    return { total, submitted, percentage: total > 0 ? Math.round((submitted / total) * 100) : 0 }
+  }, [staffSubmissions])
 
   // 時間帯別平均予測データ
   const hourlyAverages = useMemo(() => {
@@ -1022,11 +1063,11 @@ export default function ShiftCreation() {
                   <span className="text-xs text-gray-500">— 休暇希望日を回答</span>
                 </div>
                 <Badge variant="secondary" className="text-[10px]">
-                  {STAFF_SUBMISSIONS.filter(s => s.employmentType === "正社員" && s.submitted).length}/{STAFF_SUBMISSIONS.filter(s => s.employmentType === "正社員").length} 提出済み
+                  {staffSubmissions.filter(s => s.employmentType === "正社員" && s.submitted).length}/{staffSubmissions.filter(s => s.employmentType === "正社員").length} 提出済み
                 </Badge>
               </div>
               <div className="divide-y">
-                {STAFF_SUBMISSIONS.filter(s => s.employmentType === "正社員").map((staff) => (
+                {staffSubmissions.filter(s => s.employmentType === "正社員").map((staff) => (
                   <div key={staff.staffId} className="flex items-center gap-4 px-4 py-3 hover:bg-gray-50">
                     <div className="flex items-center justify-center h-9 w-9 rounded-full bg-gray-200 text-sm font-medium text-gray-700 flex-shrink-0">
                       {staff.name.charAt(0)}
@@ -1072,11 +1113,11 @@ export default function ShiftCreation() {
                   <span className="text-xs text-gray-500">— 出勤可能日・希望時間帯を回答</span>
                 </div>
                 <Badge variant="secondary" className="text-[10px]">
-                  {STAFF_SUBMISSIONS.filter(s => s.employmentType !== "正社員" && s.submitted).length}/{STAFF_SUBMISSIONS.filter(s => s.employmentType !== "正社員").length} 提出済み
+                  {staffSubmissions.filter(s => s.employmentType !== "正社員" && s.submitted).length}/{staffSubmissions.filter(s => s.employmentType !== "正社員").length} 提出済み
                 </Badge>
               </div>
               <div className="divide-y">
-                {STAFF_SUBMISSIONS.filter(s => s.employmentType !== "正社員").map((staff) => (
+                {staffSubmissions.filter(s => s.employmentType !== "正社員").map((staff) => (
                   <div key={staff.staffId} className="px-4 py-3 hover:bg-gray-50">
                     <div className="flex items-center gap-4">
                       <div className="flex items-center justify-center h-9 w-9 rounded-full bg-gray-200 text-sm font-medium text-gray-700 flex-shrink-0">

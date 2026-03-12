@@ -6,7 +6,7 @@ import { Sidebar } from "@/components/sidebar"
 import type React from "react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Bell, HelpCircle, CalendarDays, Users, AlertTriangle, Keyboard, Info, ExternalLink, Menu, X, LogOut } from "lucide-react"
+import { Bell, HelpCircle, Keyboard, Info, ExternalLink, Menu, X, LogOut } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -34,48 +34,9 @@ const inter = Inter({ subsets: ["latin"] })
 function HeaderActions({ profile, signOut }: { profile: { id: string; name: string } | null; signOut: () => void }) {
   return (
     <div className="flex items-center space-x-2 sm:space-x-4">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="relative" aria-label="通知を表示">
-            <Bell className="h-5 w-5" />
-            <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-red-500 text-[10px] font-bold text-white flex items-center justify-center" aria-hidden="true">
-              3
-            </span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-80" align="end">
-          <DropdownMenuLabel>通知</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem className="flex items-start gap-3 py-3 cursor-pointer">
-            <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" aria-hidden="true" />
-            <div>
-              <p className="text-sm font-medium">シフト提出期限が近づいています</p>
-              <p className="text-xs text-gray-500 mt-0.5">来週分のシフト提出期限は明日までです</p>
-              <p className="text-xs text-gray-400 mt-1">30分前</p>
-            </div>
-          </DropdownMenuItem>
-          <DropdownMenuItem className="flex items-start gap-3 py-3 cursor-pointer">
-            <Users className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" aria-hidden="true" />
-            <div>
-              <p className="text-sm font-medium">新しいヘルプリクエスト</p>
-              <p className="text-xs text-gray-500 mt-0.5">ヘルプ依頼が届いています</p>
-              <p className="text-xs text-gray-400 mt-1">2時間前</p>
-            </div>
-          </DropdownMenuItem>
-          <DropdownMenuItem className="flex items-start gap-3 py-3 cursor-pointer">
-            <CalendarDays className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" aria-hidden="true" />
-            <div>
-              <p className="text-sm font-medium">シフトが確定されました</p>
-              <p className="text-xs text-gray-500 mt-0.5">今週のシフトが店長により確定されました</p>
-              <p className="text-xs text-gray-400 mt-1">昨日</p>
-            </div>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-center text-sm text-blue-600 cursor-pointer justify-center">
-            すべての通知を見る
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <Button variant="ghost" size="icon" className="relative" aria-label="通知（準備中）" disabled>
+        <Bell className="h-5 w-5" />
+      </Button>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
