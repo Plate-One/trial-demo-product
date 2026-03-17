@@ -23,17 +23,17 @@ export function useActualSales(storeId: string, startDate?: string, endDate?: st
       if (endDate) params.set("end_date", endDate)
 
       const res = await fetch(`/api/actual-sales?${params}`)
-      const json = await res.json()
-
       if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
         setError(json.error || "データの取得に失敗しました")
         setSales([])
       } else {
+        const json = await res.json()
         setSales((json.data as ActualSales[]) ?? [])
         setError(null)
       }
     } catch (e: any) {
-      setError(e.message)
+      setError(e?.message || "データの取得に失敗しました")
       setSales([])
     }
 
@@ -60,12 +60,15 @@ export function useImportActualSales() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ store_id: storeId, csv_data: csvData }),
       })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || `CSV取込に失敗しました (${res.status})`)
+      }
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
       setResult({ inserted: data.inserted, errors: data.errors })
       return data
     } catch (e: any) {
-      setResult({ inserted: 0, errors: [e.message] })
+      setResult({ inserted: 0, errors: [e?.message || "CSV取込に失敗しました"] })
       throw e
     } finally {
       setImporting(false)

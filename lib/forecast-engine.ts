@@ -175,7 +175,7 @@ export function generateForecasts(
   const start = new Date(startDate)
   const end = new Date(endDate)
 
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+  for (let d = new Date(start); d <= end; d = new Date(d.getTime() + 86400000)) {
     const dateStr = d.toISOString().slice(0, 10)
     const dayType = getDayType(dateStr)
     const weather = getWeather(dateStr)

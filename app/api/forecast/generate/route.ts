@@ -65,12 +65,16 @@ export async function POST(request: NextRequest) {
 
     if (upsertError) {
       // UNIQUE制約がない場合は既存データを削除して再挿入
-      await supabase
+      const { error: deleteError } = await supabase
         .from("demand_forecasts")
         .delete()
         .eq("store_id", store_id)
         .gte("date", start_date)
         .lte("date", end_date)
+
+      if (deleteError) {
+        return NextResponse.json({ error: `予測データの削除に失敗しました: ${deleteError.message}` }, { status: 500 })
+      }
 
       const { error: insertError } = await supabase
         .from("demand_forecasts")

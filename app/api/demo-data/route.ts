@@ -115,25 +115,30 @@ export async function POST(request: NextRequest) {
     const periodEndStr = format(lastWeekEnd, "yyyy-MM-dd")
 
     // 既存のshift_period があれば取得、なければ作成
-    const { data: existingPeriod } = await supabase
+    const { data: existingPeriods } = await supabase
       .from("shift_periods")
       .select("id")
       .eq("store_id", store_id)
       .eq("period_start", periodStartStr)
-      .single()
+      .limit(1)
 
     let shiftPeriodId: string
-    if (existingPeriod) {
-      shiftPeriodId = existingPeriod.id
+    if (existingPeriods && existingPeriods.length > 0) {
+      shiftPeriodId = existingPeriods[0].id
       // 既存シフトを削除
-      await supabase.from("shifts").delete().eq("shift_period_id", shiftPeriodId)
+      const { error: delErr } = await supabase.from("shifts").delete().eq("shift_period_id", shiftPeriodId)
+      if (delErr) console.error("[demo-data] shift delete error:", delErr.message)
     } else {
-      const { data: newPeriod } = await supabase
+      const { data: newPeriod, error: periodErr } = await supabase
         .from("shift_periods")
         .insert({ store_id, period_start: periodStartStr, period_end: periodEndStr, status: "confirmed" } as any)
         .select("id")
         .single()
-      shiftPeriodId = newPeriod?.id ?? ""
+      if (periodErr || !newPeriod) {
+        console.error("[demo-data] shift_period insert error:", periodErr?.message)
+        return NextResponse.json({ error: "シフト期間の作成に失敗しました" }, { status: 500 })
+      }
+      shiftPeriodId = newPeriod.id
     }
 
     // スタッフ取得
@@ -178,7 +183,8 @@ export async function POST(request: NextRequest) {
       }
 
       if (shiftRows.length > 0) {
-        await supabase.from("shifts").insert(shiftRows as any)
+        const { error: shiftErr } = await supabase.from("shifts").insert(shiftRows as any)
+        if (shiftErr) console.error("[demo-data] shift insert error:", shiftErr.message)
       }
     }
 

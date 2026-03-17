@@ -61,11 +61,14 @@ export function useForecastGeneration() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ store_id: storeId, start_date: startDate, end_date: endDate }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      return data
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || `予測生成に失敗しました (${res.status})`)
+      }
+      return await res.json()
     } catch (e: any) {
-      setError(e.message)
+      const msg = e?.message || "予測生成中にエラーが発生しました"
+      setError(msg)
       throw e
     } finally {
       setGenerating(false)
@@ -101,11 +104,14 @@ export function useShiftOptimization() {
           shift_period_id: shiftPeriodId,
         }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      return data
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || `シフト最適化に失敗しました (${res.status})`)
+      }
+      return await res.json()
     } catch (e: any) {
-      setError(e.message)
+      const msg = e?.message || "シフト最適化中にエラーが発生しました"
+      setError(msg)
       throw e
     } finally {
       setOptimizing(false)
@@ -118,6 +124,8 @@ export function useShiftOptimization() {
     endDate: string,
     shiftPeriodId?: string
   ) => {
+    setOptimizing(true)
+    setError(null)
     try {
       const res = await fetch("/api/shifts/confirm", {
         method: "POST",
@@ -129,12 +137,17 @@ export function useShiftOptimization() {
           shift_period_id: shiftPeriodId,
         }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      return data
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || `シフト確定に失敗しました (${res.status})`)
+      }
+      return await res.json()
     } catch (e: any) {
-      setError(e.message)
+      const msg = e?.message || "シフト確定中にエラーが発生しました"
+      setError(msg)
       throw e
+    } finally {
+      setOptimizing(false)
     }
   }
 

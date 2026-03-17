@@ -63,13 +63,17 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. 既存のoptimizedシフトを削除
-    await supabase
+    const { error: deleteError } = await supabase
       .from("shifts")
       .delete()
       .eq("store_id", store_id)
       .eq("status", "optimized")
       .gte("date", start_date)
       .lte("date", end_date)
+
+    if (deleteError) {
+      return NextResponse.json({ error: `既存シフトの削除に失敗しました: ${deleteError.message}` }, { status: 500 })
+    }
 
     // 5. 最適化実行
     const generatedShifts = optimizeShifts(

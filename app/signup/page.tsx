@@ -31,9 +31,8 @@ export default function SignupPage() {
         body: JSON.stringify({ companyName, storeName, adminName, email, password }),
       })
 
-      const data = await res.json()
-
       if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
         setError(data.error || "登録に失敗しました")
         setLoading(false)
         return
