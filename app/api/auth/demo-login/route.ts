@@ -3,8 +3,12 @@ import { createServiceRoleClient } from "@/lib/supabase/server"
 import { generateForecasts } from "@/lib/forecast-engine"
 import { format, subDays, addDays } from "date-fns"
 
-const DEMO_EMAIL = process.env.NEXT_PUBLIC_DEMO_EMAIL
-const DEMO_PASSWORD = process.env.NEXT_PUBLIC_DEMO_PASSWORD
+// 関数内で読む（ビルド時インライン化の影響を避ける）
+function getDemoCredentials() {
+  const email = (process.env.NEXT_PUBLIC_DEMO_EMAIL || "").trim()
+  const password = (process.env.NEXT_PUBLIC_DEMO_PASSWORD || "").trim()
+  return { email, password }
+}
 
 // 時間帯別来客パターン
 const WEEKDAY_PATTERN = [0.05, 0.18, 0.12, 0.06, 0.04, 0.08, 0.15, 0.14, 0.10, 0.05, 0.02, 0.01]
@@ -39,6 +43,8 @@ const DEMO_STAFF = [
 
 export async function POST() {
   try {
+    const { email: DEMO_EMAIL, password: DEMO_PASSWORD } = getDemoCredentials()
+
     if (!DEMO_EMAIL || !DEMO_PASSWORD) {
       return NextResponse.json({ error: "デモアカウントが設定されていません" }, { status: 400 })
     }
