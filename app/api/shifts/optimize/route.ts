@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createServiceRoleClient } from "@/lib/supabase/server"
+import { createServiceRoleClient, validateStoreAccess } from "@/lib/supabase/server"
 import { optimizeShifts } from "@/lib/shift-optimizer"
 
 export async function POST(request: NextRequest) {
@@ -13,6 +13,10 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // テナント検証: ユーザーがこの店舗にアクセスできるか確認
+    const access = await validateStoreAccess(store_id)
+    if (access.error) return access.error
 
     const supabase = createServiceRoleClient()
 

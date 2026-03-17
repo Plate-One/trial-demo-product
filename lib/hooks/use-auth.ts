@@ -23,19 +23,23 @@ export function useAuth() {
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        setUser(user)
 
-      if (user) {
-        const { data } = await supabase
-          .from("staff")
-          .select("id, name, role, position, store_id, organization_id")
-          .eq("auth_user_id", user.id)
-          .single()
-        setProfile(data)
+        if (user) {
+          const { data } = await supabase
+            .from("staff")
+            .select("id, name, role, position, store_id, organization_id")
+            .eq("auth_user_id", user.id)
+            .maybeSingle()
+          setProfile(data)
+        }
+      } catch (e: any) {
+        console.error("[useAuth] exception:", e)
+      } finally {
+        setLoading(false)
       }
-
-      setLoading(false)
     }
 
     getUser()
@@ -44,12 +48,17 @@ export function useAuth() {
       async (_event, session) => {
         setUser(session?.user ?? null)
         if (session?.user) {
-          const { data } = await supabase
-            .from("staff")
-            .select("id, name, role, position, store_id, organization_id")
-            .eq("auth_user_id", session.user.id)
-            .single()
-          setProfile(data)
+          try {
+            const { data } = await supabase
+              .from("staff")
+              .select("id, name, role, position, store_id, organization_id")
+              .eq("auth_user_id", session.user.id)
+              .maybeSingle()
+            setProfile(data)
+          } catch (e: any) {
+            console.error("[useAuth] profile fetch error:", e)
+            setProfile(null)
+          }
         } else {
           setProfile(null)
         }

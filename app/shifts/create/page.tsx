@@ -19,14 +19,14 @@ import { cn } from "@/lib/utils"
 import { StatCard } from "@/components/stat-card"
 import { useToast } from "@/components/toast"
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts"
-import { HELP_ASSIGNMENTS } from "@/lib/help-assignments"
-import { getPositionColor, getEmploymentColor } from "@/lib/mock-data/staff"
+import { getPositionColor, getEmploymentColor } from "@/lib/ui-utils"
 import {
   type DayStaffing, type HourlyStaffing, type KpiSummary,
   OPERATING_HOURS, HOURLY_WAGE_HALL, HOURLY_WAGE_KITCHEN,
   isPeakHour, getPeriodRange, generatePeriodData, generateAIProposal,
   generatePeriodDataFromForecasts,
   calculateKpis, analyzeProblemCells, getDeviations,
+  applyStoreSettings,
 } from "@/lib/shift-create-data"
 import { useStoreContext } from "@/lib/hooks/use-store-context"
 import { useDemandForecasts, useForecastGeneration, useShiftOptimization } from "@/lib/hooks/use-demand-forecast"
@@ -57,7 +57,7 @@ const STEPS = [
 
 // ========== ヘルプ最適化用ステップ ==========
 const OPTIMIZATION_STEPS = [
-  { title: "ヘルプ必要枠を集約", description: "ベイクォーター店の不足枠を検出" },
+  { title: "ヘルプ必要枠を集約", description: "東京駅前店の不足枠を検出" },
   { title: "空きスタッフを検索", description: "近隣店舗のヘルプ可能スタッフを照合" },
   { title: "コスト最適な配置を計算", description: "移動コスト・スキル適合度を最適化" },
   { title: "ヘルプ配置の決定", description: "最適なヘルプ配置を決定" },
@@ -95,6 +95,11 @@ export default function ShiftCreation() {
   const { selectedStore } = useStoreContext()
   const storeId = selectedStore?.id || ""
 
+  // 店舗設定を反映（時給・営業時間等）
+  if (selectedStore) {
+    applyStoreSettings(selectedStore)
+  }
+
   // ウィザード状態
   const [currentStep, setCurrentStep] = useState<WizardStep>(1)
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set())
@@ -121,6 +126,9 @@ export default function ShiftCreation() {
   // AI最適化アニメーション
   const [isOptimizing, setIsOptimizing] = useState(false)
   const [aiOptPhase, setAiOptPhase] = useState(0)
+
+  // フロー説明の表示制御
+  const [showFlowGuide, setShowFlowGuide] = useState(true)
 
   const { start: periodStart, end: periodEnd } = useMemo(() => getPeriodRange(currentMonth, periodHalf), [currentMonth, periodHalf])
 
@@ -192,16 +200,15 @@ export default function ShiftCreation() {
     })
   }, [staffList, shiftRequests])
 
-  // DB予測データがあればそれを使い、なければモックデータにフォールバック
+  // DB予測データから期間データを生成（データがなければ空）
   useEffect(() => {
     if (forecasts.length > 0) {
       const data = generatePeriodDataFromForecasts(forecasts)
       setPeriodData(data)
       setAIProposalData(generateAIProposal(data))
     } else {
-      const data = generatePeriodData(periodStart, periodEnd)
-      setPeriodData(data)
-      setAIProposalData(generateAIProposal(data))
+      setPeriodData([])
+      setAIProposalData([])
     }
   }, [forecasts, periodStart, periodEnd])
 
@@ -211,9 +218,9 @@ export default function ShiftCreation() {
   const problems = useMemo(() => analyzeProblemCells(periodData), [periodData])
   const deviations = useMemo(() => getDeviations(periodData), [periodData])
 
-  // ベイクォーター店のヘルプアサイン
-  const bayquarterHelp = useMemo(() => HELP_ASSIGNMENTS.filter(a => a.toStoreId === "bayquarter"), [])
-  const totalTransportCost = useMemo(() => bayquarterHelp.reduce((sum, a) => sum + (a.transportCost || 0), 0), [bayquarterHelp])
+  // ヘルプアサイン（ヘルプ最適化ページで管理）
+  const tokyoHelp: { helperId: string; helperName: string; fromStoreName: string; toStoreName: string; dayIndex: number; start: string; end: string; role: string; travelMinutes?: number; transportCost?: number }[] = []
+  const totalTransportCost = 0
   const weekStart = useMemo(() => startOfWeek(new Date(), { weekStartsOn: 1 }), [])
   const weekDates = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart])
   const DAY_LABELS = ["月", "火", "水", "木", "金", "土", "日"]
@@ -453,6 +460,39 @@ export default function ShiftCreation() {
     setHelpPhase("result")
   }
 
+  // ========== 前提条件チェック ==========
+  const hasStaff = staffList.length > 0
+  const hasForecastData = forecasts.length > 0
+
+  if (!hasStaff && periodData.length === 0) {
+    return (
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm">
+        <div className="border-b p-6">
+          <h1 className="text-xl font-semibold text-gray-800 dark:text-gray-100">シフト作成</h1>
+        </div>
+        <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+          <Users className="h-12 w-12 text-gray-300 mb-4" />
+          <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">スタッフの登録が必要です</h2>
+          <p className="text-sm text-gray-500 mb-6 max-w-md">
+            シフトを作成するには、まずスタッフを登録してください。
+            スタッフのポジション・勤務可能時間をもとにAIが最適なシフトを提案します。
+          </p>
+          <div className="flex gap-3">
+            <Link href="/staff">
+              <Button>
+                <Users className="h-4 w-4 mr-2" />
+                スタッフを登録する
+              </Button>
+            </Link>
+            <Link href="/">
+              <Button variant="outline">ダッシュボードに戻る</Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (periodData.length === 0) return null
 
   const periodLabel = `${format(currentMonth, "yyyy年M月", { locale: ja })} ${periodHalf === "first" ? "前半（1〜15日）" : "後半（16日〜末日）"}`
@@ -626,6 +666,46 @@ export default function ShiftCreation() {
   // ========== レンダリング ==========
   return (
     <div className="bg-white rounded-lg shadow-sm">
+      {/* ========== AIフロー説明（初回表示） ========== */}
+      {showFlowGuide && currentStep === 1 && (
+        <div className="bg-gradient-to-r from-indigo-50 via-blue-50 to-purple-50 border-b border-indigo-100">
+          <div className="px-6 py-5">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-indigo-600" />
+                  AIシフト作成の流れ
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">AIが需要予測からシフトを自動作成します。各ステップで確認・調整ができます。</p>
+              </div>
+              <button onClick={() => setShowFlowGuide(false)} className="text-gray-400 hover:text-gray-600 p-1">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+              {[
+                { icon: TrendingUp, color: "text-indigo-600", bg: "bg-indigo-100", title: "需要予測", desc: "過去の売上データからAIが来客数を時間帯別に予測" },
+                { icon: Users, color: "text-cyan-600", bg: "bg-cyan-100", title: "必要人員の算出", desc: "予測来客数から最適なホール・キッチン人数を自動計算" },
+                { icon: Mail, color: "text-amber-600", bg: "bg-amber-100", title: "スタッフの希望", desc: "スタッフが提出した休暇・出勤希望をAIが考慮" },
+                { icon: Sparkles, color: "text-purple-600", bg: "bg-purple-100", title: "AI最適化", desc: "需要・希望・コストを総合判断し最適なシフトを生成" },
+                { icon: CheckCircle2, color: "text-green-600", bg: "bg-green-100", title: "確認・確定", desc: "店長が最終確認し、不足があればヘルプも自動調整" },
+              ].map((item, i) => (
+                <div key={i} className="relative">
+                  <div className="bg-white rounded-lg p-3 border border-gray-100 shadow-sm h-full">
+                    <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${item.bg} mb-2`}>
+                      <item.icon className={`h-4 w-4 ${item.color}`} />
+                    </div>
+                    <p className="text-sm font-semibold text-gray-800">{item.title}</p>
+                    <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{item.desc}</p>
+                  </div>
+                  {i < 4 && <ArrowRight className="hidden sm:block absolute -right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-300 z-10" />}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ========== ステッパーヘッダー（コンパクト） ========== */}
       <div className="bg-white border-b">
         <div className="px-4 py-2.5 sm:px-6 flex items-center gap-4">
@@ -675,8 +755,13 @@ export default function ShiftCreation() {
         {currentStep === 1 && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-lg font-semibold text-gray-800">需要予測確認</h2>
-              <p className="text-sm text-gray-500 mt-1">時間帯別の需要予測データを確認し、必要人員数の計画に進みます。</p>
+              <div className="flex items-center gap-2 mb-1">
+                <TrendingUp className="h-5 w-5 text-indigo-600" />
+                <h2 className="text-lg font-semibold text-gray-800">Step 1: 需要予測確認</h2>
+              </div>
+              <p className="text-sm text-gray-500">
+                <span className="text-indigo-600 font-medium">AIが過去90日間の売上データを分析</span>し、曜日・時間帯・天候を考慮した来客予測を算出しました。この予測をもとに必要人員を計算します。
+              </p>
             </div>
 
             {/* 期間セレクター */}
@@ -705,6 +790,33 @@ export default function ShiftCreation() {
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
+
+            {/* データがない場合のバナー */}
+            {periodData.length === 0 && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-amber-800">この期間の需要予測データがありません</p>
+                    <p className="text-xs text-amber-600 mt-1">売上実績データから予測を生成してください。予測がない場合、人員計画やAI最適化は利用できません。</p>
+                  </div>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <Button size="sm" variant="outline" onClick={async () => {
+                      if (!storeId) return
+                      try {
+                        await generateForecast(storeId, startDateStr, endDateStr)
+                        showToast("予測データを生成しました")
+                      } catch {
+                        showToast("予測生成に失敗しました。売上実績データが必要です。", "error")
+                      }
+                    }} disabled={forecastGenerating || !storeId}>
+                      <Sparkles className="h-4 w-4 mr-1" />
+                      {forecastGenerating ? "生成中..." : "予測を生成"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* KPIサマリー */}
             <div>
@@ -852,8 +964,13 @@ export default function ShiftCreation() {
         {currentStep === 2 && (
           <div className="space-y-4">
             <div>
-              <h2 className="text-lg font-semibold text-gray-800">人員計画</h2>
-              <p className="text-sm text-gray-500 mt-1">需要予測に基づく推奨人員数を確認・調整し、スタッフに提出依頼を送信します。</p>
+              <div className="flex items-center gap-2 mb-1">
+                <Users className="h-5 w-5 text-cyan-600" />
+                <h2 className="text-lg font-semibold text-gray-800">Step 2: 人員計画</h2>
+              </div>
+              <p className="text-sm text-gray-500">
+                <span className="text-cyan-600 font-medium">AIが来客予測から「何時に何人必要か」を自動算出</span>しました。過剰・不足がある箇所はハイライトされています。調整後、スタッフに希望シフトの提出を依頼します。
+              </p>
             </div>
 
             {/* 問題サマリーバナー */}
@@ -1006,8 +1123,13 @@ export default function ShiftCreation() {
         {currentStep === 3 && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-lg font-semibold text-gray-800">提出確認・AI最適化</h2>
-              <p className="text-sm text-gray-500 mt-1">スタッフのシフト希望提出状況を確認し、AIで最適なシフトを作成します。</p>
+              <div className="flex items-center gap-2 mb-1">
+                <Sparkles className="h-5 w-5 text-purple-600" />
+                <h2 className="text-lg font-semibold text-gray-800">Step 3: 提出確認・AI最適化</h2>
+              </div>
+              <p className="text-sm text-gray-500">
+                スタッフの希望を確認した後、<span className="text-purple-600 font-medium">「AIで最適化」を実行すると、需要予測 × スタッフの希望 × コスト制約を同時に考慮</span>して、最適なシフトを自動生成します。
+              </p>
             </div>
 
             {/* 提出期限バナー */}
@@ -1214,8 +1336,13 @@ export default function ShiftCreation() {
         {currentStep === 4 && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-lg font-semibold text-gray-800">確認・提出</h2>
-              <p className="text-sm text-gray-500 mt-1">シフト編集結果を確認し、問題なければ提出してください。</p>
+              <div className="flex items-center gap-2 mb-1">
+                <CalendarDays className="h-5 w-5 text-green-600" />
+                <h2 className="text-lg font-semibold text-gray-800">Step 4: シフト確認</h2>
+              </div>
+              <p className="text-sm text-gray-500">
+                <span className="text-green-600 font-medium">AIが作成したシフト案</span>です。各スタッフの配置・勤務時間を確認し、必要に応じて手動調整してから提出してください。
+              </p>
             </div>
 
             {/* 仮シフト表 */}
@@ -1475,8 +1602,13 @@ export default function ShiftCreation() {
         {currentStep === 5 && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-lg font-semibold text-gray-800">ヘルプ最適化</h2>
-              <p className="text-sm text-gray-500 mt-1">ベイクォーター店のヘルプ枠を最適化し、シフトを確定します。</p>
+              <div className="flex items-center gap-2 mb-1">
+                <HandHelping className="h-5 w-5 text-orange-600" />
+                <h2 className="text-lg font-semibold text-gray-800">Step 5: ヘルプ最適化</h2>
+              </div>
+              <p className="text-sm text-gray-500">
+                店舗内スタッフだけでは不足する時間帯を検出。<span className="text-orange-600 font-medium">AIが近隣店舗の空きスタッフ・移動コスト・スキルを考慮して最適なヘルプ配置を提案</span>します。
+              </p>
             </div>
 
             {/* 概要フェーズ */}
@@ -1515,7 +1647,7 @@ export default function ShiftCreation() {
                 {/* ヘルプ必要枠の詳細 */}
                 <div className="border rounded-lg overflow-hidden">
                   <div className="bg-gray-50 border-b px-4 py-3">
-                    <h3 className="text-sm font-medium text-gray-700">ベイクォーター店 ヘルプ必要枠一覧</h3>
+                    <h3 className="text-sm font-medium text-gray-700">東京駅前店 ヘルプ必要枠一覧</h3>
                   </div>
                   <table className="w-full">
                     <thead>
@@ -1605,11 +1737,11 @@ export default function ShiftCreation() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="border rounded-lg p-4 text-center">
                       <p className="text-sm text-gray-600">ヘルプ配置数</p>
-                      <p className="text-2xl font-bold text-gray-900">{bayquarterHelp.length}件</p>
+                      <p className="text-2xl font-bold text-gray-900">{tokyoHelp.length}件</p>
                     </div>
                     <div className="border rounded-lg p-4 text-center">
                       <p className="text-sm text-gray-600">対象スタッフ</p>
-                      <p className="text-2xl font-bold text-gray-900">{new Set(bayquarterHelp.map(a => a.helperId)).size}名</p>
+                      <p className="text-2xl font-bold text-gray-900">{new Set(tokyoHelp.map(a => a.helperId)).size}名</p>
                     </div>
                     <div className="border rounded-lg p-4 text-center">
                       <p className="text-sm text-gray-600">交通費合計</p>
@@ -1617,7 +1749,7 @@ export default function ShiftCreation() {
                     </div>
                     <div className="border rounded-lg p-4 text-center">
                       <p className="text-sm text-gray-600">充足率</p>
-                      <p className="text-2xl font-bold text-green-700">{Math.round((bayquarterHelp.length / 9) * 100)}%</p>
+                      <p className="text-2xl font-bold text-green-700">{Math.round((tokyoHelp.length / 9) * 100)}%</p>
                     </div>
                   </div>
                 </div>
@@ -1625,10 +1757,10 @@ export default function ShiftCreation() {
                 {/* 配置一覧 */}
                 <div className="border rounded-lg overflow-hidden">
                   <div className="bg-gray-50 border-b px-4 py-3">
-                    <h3 className="text-sm font-medium text-gray-700">ベイクォーター店へのヘルプ配置</h3>
+                    <h3 className="text-sm font-medium text-gray-700">東京駅前店へのヘルプ配置</h3>
                   </div>
                   <div className="divide-y">
-                    {bayquarterHelp.map((assignment, idx) => (
+                    {tokyoHelp.map((assignment, idx) => (
                       <div key={idx} className="p-4 hover:bg-gray-50">
                         <div className="flex items-start gap-4">
                           <div className="flex-1">
@@ -1653,7 +1785,7 @@ export default function ShiftCreation() {
                             <div className="flex items-center gap-2 text-sm">
                               <span className="text-gray-700">{assignment.fromStoreName}</span>
                               <ArrowRight className="h-4 w-4 text-gray-400" />
-                              <span className="text-gray-700">ベイクォーター</span>
+                              <span className="text-gray-700">東京駅前</span>
                             </div>
                             <div className="flex items-center gap-3 text-xs text-gray-500 mt-1.5 justify-end">
                               <div className="flex items-center gap-1">

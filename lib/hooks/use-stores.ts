@@ -15,17 +15,24 @@ export function useStores() {
     const supabase = createClient()
 
     const fetchStores = async () => {
-      const { data, error } = await supabase
-        .from("stores")
-        .select("*")
-        .order("slug")
+      try {
+        const { data, error } = await supabase
+          .from("stores")
+          .select("*")
+          .order("slug")
 
-      if (error) {
-        setError(error.message)
-      } else {
-        setStores(data ?? [])
+        if (error) {
+          console.error("[useStores] error:", error.message)
+          setError(error.message)
+        } else {
+          setStores(data ?? [])
+        }
+      } catch (e: any) {
+        console.error("[useStores] exception:", e)
+        setError(e.message ?? "店舗データの取得に失敗しました")
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
 
     fetchStores()

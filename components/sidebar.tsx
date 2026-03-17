@@ -65,7 +65,7 @@ export function Sidebar() {
           {!collapsed && (
             <Image
               src="https://storage.googleapis.com/studio-design-asset-files/projects/p6aonk4vqR/s-1198x200_v-fs_webp_e53ed8d2-99c2-4886-964e-6c87dd01508c_small.webp"
-              alt="キリンシティ Logo"
+              alt="Plate One Logo"
               width={120}
               height={20}
               className="object-contain"

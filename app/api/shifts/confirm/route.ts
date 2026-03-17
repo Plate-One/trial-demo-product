@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createServiceRoleClient } from "@/lib/supabase/server"
+import { createServiceRoleClient, validateStoreAccess } from "@/lib/supabase/server"
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,6 +9,10 @@ export async function POST(request: NextRequest) {
     if (!store_id) {
       return NextResponse.json({ error: "store_id は必須です" }, { status: 400 })
     }
+
+    // テナント検証: ユーザーがこの店舗にアクセスできるか確認
+    const access = await validateStoreAccess(store_id)
+    if (access.error) return access.error
 
     const supabase = createServiceRoleClient()
 

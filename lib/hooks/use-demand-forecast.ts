@@ -8,11 +8,14 @@ type DemandForecast = Database["public"]["Tables"]["demand_forecasts"]["Row"]
 
 export function useDemandForecasts(storeId: string, startDate?: string, endDate?: string) {
   const [forecasts, setForecasts] = useState<DemandForecast[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const fetchForecasts = useCallback(async () => {
-    if (!storeId) return
+    if (!storeId) {
+      setLoading(false)
+      return
+    }
     const supabase = createClient()
     setLoading(true)
 

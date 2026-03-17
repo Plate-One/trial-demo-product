@@ -11,5 +11,11 @@ export function createClient() {
     )
   }
 
-  return createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
+  return createBrowserClient<Database>(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      lock: async (_name: string, _acquireTimeout: number, fn: () => Promise<any>) => {
+        return await fn()
+      },
+    },
+  })
 }

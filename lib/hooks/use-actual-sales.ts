@@ -1,38 +1,42 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { createClient } from "@/lib/supabase/client"
 import type { Database } from "@/lib/supabase/types"
 
 type ActualSales = Database["public"]["Tables"]["actual_sales"]["Row"]
 
 export function useActualSales(storeId: string, startDate?: string, endDate?: string) {
   const [sales, setSales] = useState<ActualSales[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const fetchSales = useCallback(async () => {
-    if (!storeId) return
-    const supabase = createClient()
+    if (!storeId) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
 
-    let query = supabase
-      .from("actual_sales")
-      .select("*")
-      .eq("store_id", storeId)
-      .order("date")
-      .order("hour")
+    try {
+      const params = new URLSearchParams({ store_id: storeId })
+      if (startDate) params.set("start_date", startDate)
+      if (endDate) params.set("end_date", endDate)
 
-    if (startDate) query = query.gte("date", startDate)
-    if (endDate) query = query.lte("date", endDate)
+      const res = await fetch(`/api/actual-sales?${params}`)
+      const json = await res.json()
 
-    const { data, error } = await query
-
-    if (error) {
-      setError(error.message)
-    } else {
-      setSales((data as ActualSales[]) ?? [])
+      if (!res.ok) {
+        setError(json.error || "データの取得に失敗しました")
+        setSales([])
+      } else {
+        setSales((json.data as ActualSales[]) ?? [])
+        setError(null)
+      }
+    } catch (e: any) {
+      setError(e.message)
+      setSales([])
     }
+
     setLoading(false)
   }, [storeId, startDate, endDate])
 

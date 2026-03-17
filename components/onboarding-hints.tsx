@@ -11,7 +11,7 @@ interface HintProps {
   className?: string
 }
 
-const DISMISSED_KEY = "kirincity-dismissed-hints"
+const DISMISSED_KEY = "plateone-dismissed-hints"
 
 function getDismissed(): string[] {
   if (typeof window === "undefined") return []

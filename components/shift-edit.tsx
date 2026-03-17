@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect, useMemo } from "react"
 import { DndProvider, useDrag, useDrop } from "react-dnd"
 import { HTML5Backend } from "react-dnd-html5-backend"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { format } from "date-fns"
 import { ja } from "date-fns/locale"
 import { MonthlyShiftTable } from "@/components/monthly-shift-table"
+import { useShifts } from "@/lib/hooks/use-shifts"
 
 interface Shift {
   id: string
@@ -270,53 +271,50 @@ export function ShiftEdit({
   shiftStatus?: "preferred" | "optimized" | "confirmed"
   storeId?: string
 }) {
-  const [staff, setStaff] = useState<StaffMember[]>([
-    {
-      id: "1",
-      name: "鈴木 真一",
-      shifts: [{ id: "1", start: "10:00", end: "19:00", role: "ホール" }],
-    },
-    {
-      id: "2",
-      name: "高村 優",
-      shifts: [{ id: "2", start: "10:00", end: "23:00", role: "キッチン" }],
-    },
-    {
-      id: "3",
-      name: "杉浦 葵",
-      shifts: [{ id: "3", start: "12:00", end: "20:00", role: "ホール" }],
-    },
-    {
-      id: "4",
-      name: "富谷 明彦",
-      shifts: [{ id: "4", start: "09:00", end: "18:00", role: "キッチン" }],
-    },
-    {
-      id: "5",
-      name: "遠田 直人",
-      shifts: [{ id: "5", start: "11:00", end: "21:00", role: "ホール" }],
-    },
-    {
-      id: "6",
-      name: "竹永 勲",
-      shifts: [{ id: "6", start: "08:00", end: "17:00", role: "キッチン" }],
-    },
-    {
-      id: "7",
-      name: "小田 牧子",
-      shifts: [{ id: "7", start: "13:00", end: "22:00", role: "ホール" }],
-    },
-    {
-      id: "8",
-      name: "黄海 克史",
-      shifts: [{ id: "8", start: "11:00", end: "20:00", role: "キッチン" }],
-    },
-    {
-      id: "9",
-      name: "村上 利世",
-      shifts: [{ id: "9", start: "10:00", end: "19:00", role: "ホール" }],
-    },
-  ])
+  const dateStr = format(currentDate, "yyyy-MM-dd")
+  const { shifts: dbShifts, loading } = useShifts(storeId || "", dateStr)
+
+  // Convert DB shifts to StaffMember[] format
+  const dbStaffMembers = useMemo(() => {
+    if (!dbShifts || dbShifts.length === 0) return []
+
+    const staffMap = new Map<string, StaffMember>()
+
+    dbShifts.forEach((shift) => {
+      const staffId = shift.staff_id || shift.id
+      const staffName = shift.staff?.name || "不明"
+      const role = (shift.staff?.position === "キッチン" ? "キッチン" : "ホール") as "ホール" | "キッチン"
+
+      if (!staffMap.has(staffId)) {
+        staffMap.set(staffId, {
+          id: staffId,
+          name: staffName,
+          shifts: [],
+        })
+      }
+
+      const startTime = shift.start_time ? shift.start_time.slice(0, 5) : "10:00"
+      const endTime = shift.end_time ? shift.end_time.slice(0, 5) : "19:00"
+
+      staffMap.get(staffId)!.shifts.push({
+        id: shift.id,
+        start: startTime,
+        end: endTime,
+        role,
+      })
+    })
+
+    return Array.from(staffMap.values())
+  }, [dbShifts])
+
+  const [staff, setStaff] = useState<StaffMember[]>([])
+
+  // Sync DB data into local state for editing
+  useEffect(() => {
+    if (dbStaffMembers.length > 0) {
+      setStaff(dbStaffMembers)
+    }
+  }, [dbStaffMembers])
 
   const updateStaff = useCallback((id: string, newStaff: Partial<StaffMember>) => {
     setStaff((prevStaff) =>
@@ -328,31 +326,38 @@ export function ShiftEdit({
     <DndProvider backend={HTML5Backend}>
       <div className="mt-6 rounded-lg bg-white p-6 shadow-sm">
         <h2 className="mb-4 text-xl font-bold">シフト編集</h2>
-        <div className="overflow-x-auto">
-          <div className="overflow-hidden rounded-lg border">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr>
-                  <th className="sticky left-0 z-10 border-b border-r bg-gray-50 p-3 text-left text-sm font-medium text-gray-600 min-w-[120px]">
-                    スタッフ
-                  </th>
-                  {Array.from({ length: TOTAL_HOURS }, (_, i) => i + START_HOUR).map((hour) => (
-                    <th
-                      key={hour}
-                      className="border-b border-r bg-gray-50 p-3 text-center text-sm font-medium text-gray-600"
-                      style={{ width: `${HOUR_WIDTH}px` }}
-                    >
-                      {hour}時
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {staff.map((member) => member && <StaffRow key={member.id} staff={member} updateStaff={updateStaff} shiftStatus={shiftStatus} />)}
-              </tbody>
-            </table>
+        {staff.length === 0 && !loading ? (
+          <div className="text-center py-12 text-gray-500">
+            <p className="text-lg mb-2">この日のシフトデータがありません</p>
+            <p className="text-sm">シフト作成からシフトを生成してください</p>
           </div>
-        </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <div className="overflow-hidden rounded-lg border">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    <th className="sticky left-0 z-10 border-b border-r bg-gray-50 p-3 text-left text-sm font-medium text-gray-600 min-w-[120px]">
+                      スタッフ
+                    </th>
+                    {Array.from({ length: TOTAL_HOURS }, (_, i) => i + START_HOUR).map((hour) => (
+                      <th
+                        key={hour}
+                        className="border-b border-r bg-gray-50 p-3 text-center text-sm font-medium text-gray-600"
+                        style={{ width: `${HOUR_WIDTH}px` }}
+                      >
+                        {hour}時
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {staff.map((member) => member && <StaffRow key={member.id} staff={member} updateStaff={updateStaff} shiftStatus={shiftStatus} />)}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </DndProvider>
   ) : (

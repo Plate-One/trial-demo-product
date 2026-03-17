@@ -30,11 +30,27 @@ export interface DayStaffing {
   holidayName?: string
 }
 
-// ========== 定数 ==========
-export const OPERATING_HOURS = Array.from({ length: 12 }, (_, i) => i + 11) // 11:00〜22:00
-export const HOURLY_WAGE_HALL = 1150
-export const HOURLY_WAGE_KITCHEN = 1200
-export const SEAT_COUNT = 60
+// ========== 店舗設定（デフォルト値、DBのstores設定で上書き可能） ==========
+export let OPERATING_HOURS = Array.from({ length: 12 }, (_, i) => i + 11) // 11:00〜22:00
+export let HOURLY_WAGE_HALL = 1150
+export let HOURLY_WAGE_KITCHEN = 1200
+export let SEAT_COUNT = 60
+
+/** 店舗設定に応じて定数を更新する */
+export function applyStoreSettings(store: {
+  operating_hour_start?: number
+  operating_hour_end?: number
+  hourly_wage_hall?: number
+  hourly_wage_kitchen?: number
+  seat_count?: number
+}) {
+  const start = store.operating_hour_start ?? 11
+  const end = store.operating_hour_end ?? 22
+  OPERATING_HOURS = Array.from({ length: end - start + 1 }, (_, i) => i + start)
+  HOURLY_WAGE_HALL = store.hourly_wage_hall ?? 1150
+  HOURLY_WAGE_KITCHEN = store.hourly_wage_kitchen ?? 1200
+  SEAT_COUNT = store.seat_count ?? 60
+}
 
 export const holidays: Record<string, string> = {
   "2026-01-01": "元日", "2026-01-12": "成人の日", "2026-02-11": "建国記念の日",
@@ -45,7 +61,7 @@ export const holidays: Record<string, string> = {
   "2026-11-03": "文化の日", "2026-11-23": "勤労感謝の日",
 }
 
-// ========== リアルな時間帯別パターン（キリンシティプラス横浜ベイクォーター店 実績ベース） ==========
+// ========== リアルな時間帯別パターン（Plate One 東京駅前店 実績ベース） ==========
 // 平日合計 ~95人/日、金曜 ~170人/日、土日 ~255人/日
 const WEEKDAY_CUSTOMER_PATTERN: Record<number, number> = {
   11: 8,  12: 18, 13: 12, 14: 6,  15: 3,  16: 3,

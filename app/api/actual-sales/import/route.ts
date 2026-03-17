@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createServiceRoleClient } from "@/lib/supabase/server"
+import { createServiceRoleClient, validateStoreAccess } from "@/lib/supabase/server"
 
 /**
  * CSV取込API
@@ -17,6 +17,10 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // テナント検証: ユーザーがこの店舗にアクセスできるか確認
+    const access = await validateStoreAccess(store_id)
+    if (access.error) return access.error
 
     // CSVパース
     const lines = (csv_data as string).trim().split("\n")

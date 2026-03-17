@@ -16,36 +16,43 @@ export interface StaffWithRelations extends Staff {
 
 export function useStaff(storeId?: string) {
   const [staff, setStaff] = useState<StaffWithRelations[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const fetchStaff = useCallback(async () => {
     const supabase = createClient()
     setLoading(true)
 
-    let query = supabase
-      .from("staff")
-      .select(`
-        *,
-        skills:staff_skills(*),
-        certifications:staff_certifications(*),
-        store:stores(name, short_name)
-      `)
-      .eq("status", "在籍")
-      .order("name")
+    try {
+      let query = supabase
+        .from("staff")
+        .select(`
+          *,
+          skills:staff_skills(*),
+          certifications:staff_certifications(*),
+          store:stores(name, short_name)
+        `)
+        .eq("status", "在籍")
+        .order("name")
 
-    if (storeId) {
-      query = query.eq("store_id", storeId)
+      if (storeId) {
+        query = query.eq("store_id", storeId)
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        console.error("[useStaff] error:", error.message)
+        setError(error.message)
+      } else {
+        setStaff((data as StaffWithRelations[]) ?? [])
+      }
+    } catch (e: any) {
+      console.error("[useStaff] exception:", e)
+      setError(e.message ?? "スタッフデータの取得に失敗しました")
+    } finally {
+      setLoading(false)
     }
-
-    const { data, error } = await query
-
-    if (error) {
-      setError(error.message)
-    } else {
-      setStaff((data as StaffWithRelations[]) ?? [])
-    }
-    setLoading(false)
   }, [storeId])
 
   useEffect(() => {

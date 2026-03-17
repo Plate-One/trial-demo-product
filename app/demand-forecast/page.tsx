@@ -13,13 +13,18 @@ import { OnboardingHint } from "@/components/onboarding-hints"
 import { useStoreContext } from "@/lib/hooks/use-store-context"
 import { useDemandForecasts, useForecastGeneration } from "@/lib/hooks/use-demand-forecast"
 import { useActualSales } from "@/lib/hooks/use-actual-sales"
-import { OPERATING_HOURS } from "@/lib/shift-create-data"
+import { OPERATING_HOURS, applyStoreSettings } from "@/lib/shift-create-data"
 
 export default function DemandForecastDashboard() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const { showToast } = useToast()
   const { selectedStore } = useStoreContext()
   const storeId = selectedStore?.id || ""
+
+  // 店舗設定を反映（営業時間等）
+  if (selectedStore) {
+    applyStoreSettings(selectedStore)
+  }
 
   const dateStr = format(currentDate, "yyyy-MM-dd")
   const weekStart = format(subDays(currentDate, 6), "yyyy-MM-dd")
@@ -177,14 +182,20 @@ export default function DemandForecastDashboard() {
         )}
 
         {totalCustomers === 0 && !forecastLoading && (
-          <div className="flex flex-col items-center justify-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+          <div className="flex flex-col items-center justify-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-dashed border-gray-300 dark:border-gray-700">
             <TrendingUp className="h-10 w-10 text-gray-300 mb-3" />
-            <p className="text-lg font-medium text-gray-600 mb-1">予測データがありません</p>
-            <p className="text-sm text-gray-400 mb-4">「予測を更新」ボタンを押して需要予測を生成してください</p>
-            <Button size="sm" onClick={handleUpdateForecast} disabled={isUpdating}>
-              {isUpdating ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}
-              予測を更新
-            </Button>
+            <p className="text-lg font-medium text-gray-600 dark:text-gray-300 mb-1">予測データがありません</p>
+            <p className="text-sm text-gray-400 mb-1">売上実績データから AIが来客数・売上を自動予測します</p>
+            <p className="text-xs text-gray-400 mb-4">売上データがない場合は、先にダッシュボードからデモデータを生成してください</p>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={handleUpdateForecast} disabled={isUpdating}>
+                {isUpdating ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+                予測を生成
+              </Button>
+              <Link href="/">
+                <Button size="sm" variant="outline">ダッシュボードへ</Button>
+              </Link>
+            </div>
           </div>
         )}
 
@@ -319,11 +330,23 @@ export default function DemandForecastDashboard() {
             <h3 className="text-lg font-semibold text-gray-800 mb-2">推奨スタッフ配置</h3>
             <p className="text-sm text-gray-600 mb-4">時間帯別の最適な人員配置</p>
             <div>
+              {(() => {
+                const todayForecast = forecasts.find((f) => f.date === dateStr)
+                const hd = todayForecast?.hourly_data as Record<string, any> | null
+                const getMaxStaff = (hours: number[], role: "recommended_hall" | "recommended_kitchen") =>
+                  hd ? Math.max(...hours.map(h => hd[h]?.[role] ?? hd[String(h)]?.[role] ?? 0), 0) : 0
+                const lunchHall = getMaxStaff([11,12,13,14], "recommended_hall")
+                const lunchKitchen = getMaxStaff([11,12,13,14], "recommended_kitchen")
+                const dinnerHall = getMaxStaff([17,18,19,20,21,22], "recommended_hall")
+                const dinnerKitchen = getMaxStaff([17,18,19,20,21,22], "recommended_kitchen")
+                const idleHall = getMaxStaff([15,16], "recommended_hall")
+                const idleKitchen = getMaxStaff([15,16], "recommended_kitchen")
+                return (
               <div className="space-y-4">
                 <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
                   <div>
                     <p className="font-medium text-blue-900">ランチタイム (11:00-15:00)</p>
-                    <p className="text-sm text-blue-700">ホール: {isWeekend ? "4人" : "3人"} / キッチン: {isWeekend ? "3人" : "2人"}</p>
+                    <p className="text-sm text-blue-700">ホール: {lunchHall || "-"}人 / キッチン: {lunchKitchen || "-"}人</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-blue-600">予測客数</p>
@@ -334,7 +357,7 @@ export default function DemandForecastDashboard() {
                 <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
                   <div>
                     <p className="font-medium text-green-900">ディナータイム (17:00-22:00)</p>
-                    <p className="text-sm text-green-700">ホール: {isWeekend ? "4人" : "3人"} / キッチン: {isWeekend ? "3人" : "2人"}</p>
+                    <p className="text-sm text-green-700">ホール: {dinnerHall || "-"}人 / キッチン: {dinnerKitchen || "-"}人</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-green-600">予測客数</p>
@@ -345,7 +368,7 @@ export default function DemandForecastDashboard() {
                 <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                   <div>
                     <p className="font-medium text-gray-900">アイドルタイム (15:00-17:00)</p>
-                    <p className="text-sm text-gray-700">ホール: 2人 / キッチン: 2人</p>
+                    <p className="text-sm text-gray-700">ホール: {idleHall || "-"}人 / キッチン: {idleKitchen || "-"}人</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-gray-600">予測客数</p>
@@ -353,6 +376,8 @@ export default function DemandForecastDashboard() {
                   </div>
                 </div>
               </div>
+                )
+              })()}
             </div>
           </div>
 

@@ -8,7 +8,7 @@ import { format, addDays, subDays, startOfWeek, endOfWeek } from "date-fns"
 import { ja } from "date-fns/locale"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts"
 import { Badge } from "@/components/ui/badge"
-import { seededRandom } from "@/lib/utils"
+
 import { useToast } from "@/components/toast"
 import { StatCard } from "@/components/stat-card"
 import { useStoreContext } from "@/lib/hooks/use-store-context"
@@ -28,83 +28,44 @@ const WeatherIcon = ({ type, size = "h-6 w-6" }: { type: string; size?: string }
   }
 }
 
-// 営業時間 11:00-22:00 — 実績ベースの時間帯別按分比率
-const HOURLY_WEIGHTS = [
-  { hour: "11:00", label: "11-12時", weight: 0.08 },
-  { hour: "12:00", label: "12-13時", weight: 0.16 },
-  { hour: "13:00", label: "13-14時", weight: 0.12 },
-  { hour: "14:00", label: "14-15時", weight: 0.07 },
-  { hour: "15:00", label: "15-16時", weight: 0.04 },
-  { hour: "16:00", label: "16-17時", weight: 0.04 },
-  { hour: "17:00", label: "17-18時", weight: 0.07 },
-  { hour: "18:00", label: "18-19時", weight: 0.13 },
-  { hour: "19:00", label: "19-20時", weight: 0.13 },
-  { hour: "20:00", label: "20-21時", weight: 0.09 },
-  { hour: "21:00", label: "21-22時", weight: 0.05 },
-  { hour: "22:00", label: "22-23時", weight: 0.02 },
-]
+// 営業時間帯のラベル生成
+const DEFAULT_HOURS = Array.from({ length: 12 }, (_, i) => i + 11)
 
-function getHourlyBreakdown(totalCustomers: number, totalSales: number, actualCustomers: number | null, actualRevenue: number | null) {
-  const sumWeight = HOURLY_WEIGHTS.reduce((s, w) => s + w.weight, 0)
-  const maxWeight = Math.max(...HOURLY_WEIGHTS.map(w => w.weight))
-  return HOURLY_WEIGHTS.map(({ hour, label, weight }) => {
-    const ratio = weight / sumWeight
-    const customers = Math.round(totalCustomers * ratio)
-    const sales = Math.round(totalSales * ratio)
-    const barPercent = Math.round((weight / maxWeight) * 100)
-    const isPeak = weight >= 0.12
-    const isMidPeak = weight >= 0.08 && weight < 0.12
-    const actCust = actualCustomers !== null ? Math.round(actualCustomers * ratio) : null
-    const actSales = actualRevenue !== null ? Math.round(actualRevenue * ratio) : null
-    return { hour, label, customers, sales, barPercent, isPeak, isMidPeak, actCust, actSales }
-  })
-}
-
-function generateDayForecast(date: Date, i: number) {
-  const dateStr = format(date, "yyyy-MM-dd")
-  const dayOfWeek = date.getDay()
-  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
-  const isFriday = dayOfWeek === 5
-
-  // 実績ベース: 平日~95人, 金曜~170人, 土日~255人
-  const baseCustomers = isWeekend ? 255 : isFriday ? 170 : 95
-  const baseAvgSpend = isWeekend ? 2900 : isFriday ? 3100 : 2700
-  const variation = seededRandom(`forecast-${dateStr}`)
-  const customerVariation = Math.round((variation - 0.5) * baseCustomers * 0.15)
-  const dayCustomers = baseCustomers + customerVariation
-  const spendVariation = (seededRandom(`spend-${dateStr}`) - 0.5) * 400
-  const daySales = Math.round(dayCustomers * (baseAvgSpend + spendVariation))
-
-  const weatherSeed = seededRandom(`weather-${dateStr}`)
-  const weather = weatherSeed < 0.5 ? "sunny" : weatherSeed < 0.8 ? "cloudy" : "rainy"
-  const tempBase = 8 + seededRandom(`temp-${dateStr}`) * 8
-  const tempHigh = Math.round(tempBase + 3)
-  const tempLow = Math.round(tempBase - 4)
-  const rainProb = weather === "rainy" ? 80 : weather === "cloudy" ? 40 : 10
-
-  const eventSeed = seededRandom(`event-${dateStr}`)
-  const events = eventSeed < 0.15 ? ["地域祭り", "コンサート"] : eventSeed < 0.3 ? ["商店街セール"] : []
-
-  // Past days get "actual" data close to predicted
-  const isPast = i < 3
-  const actualCustomers = isPast ? Math.round(dayCustomers * (0.92 + seededRandom(`actual-c-${dateStr}`) * 0.16)) : null
-  const actualRevenue = isPast ? Math.round(daySales * (0.93 + seededRandom(`actual-r-${dateStr}`) * 0.14)) : null
-
-  return {
-    date,
-    dateStr: format(date, "M/d"),
-    dayLabel: format(date, "E", { locale: ja }),
-    isWeekend,
-    weather,
-    tempHigh,
-    tempLow,
-    rainProb,
-    dayCustomers,
-    daySales,
-    actualCustomers,
-    actualRevenue,
-    events,
+function getHourlyBreakdown(
+  totalCustomers: number,
+  totalSales: number,
+  actualCustomers: number | null,
+  actualRevenue: number | null,
+  hourlyData?: Record<string, any> | null
+) {
+  // DB hourly_dataがあれば実データから按分
+  if (hourlyData) {
+    const hours = Object.keys(hourlyData).map(Number).sort((a, b) => a - b)
+    const totalFcCust = hours.reduce((s, h) => s + (hourlyData[h]?.forecast_customers ?? 0), 0)
+    const maxCust = Math.max(...hours.map(h => hourlyData[h]?.forecast_customers ?? 0), 1)
+    return hours.map(h => {
+      const hd = hourlyData[h] ?? hourlyData[String(h)]
+      const fcCust = hd?.forecast_customers ?? 0
+      const fcSales = hd?.forecast_sales ?? 0
+      const ratio = totalFcCust > 0 ? fcCust / totalFcCust : 0
+      const barPercent = Math.round((fcCust / maxCust) * 100)
+      const isPeak = ratio >= 0.12
+      const isMidPeak = ratio >= 0.08 && ratio < 0.12
+      const actCust = actualCustomers !== null ? Math.round(actualCustomers * ratio) : null
+      const actSales = actualRevenue !== null ? Math.round(actualRevenue * ratio) : null
+      return { hour: `${h}:00`, label: `${h}-${h + 1}時`, customers: fcCust, sales: fcSales, barPercent, isPeak, isMidPeak, actCust, actSales }
+    })
   }
+
+  // データがなければ均等按分
+  const count = DEFAULT_HOURS.length
+  return DEFAULT_HOURS.map(h => {
+    const customers = count > 0 ? Math.round(totalCustomers / count) : 0
+    const sales = count > 0 ? Math.round(totalSales / count) : 0
+    const actCust = actualCustomers !== null && count > 0 ? Math.round(actualCustomers / count) : null
+    const actSales = actualRevenue !== null && count > 0 ? Math.round(actualRevenue / count) : null
+    return { hour: `${h}:00`, label: `${h}-${h + 1}時`, customers, sales, barPercent: count > 0 ? Math.round(100 / count) : 0, isPeak: false, isMidPeak: false, actCust, actSales }
+  })
 }
 
 export default function DemandForecastPage() {
@@ -155,70 +116,56 @@ export default function DemandForecastPage() {
     return map
   }, [actualSalesData])
 
-  // Generate 30 days of forecast data — DB予測があれば使用、なければモック
+  // Generate 30 days of forecast data — DBデータのみ使用
   const forecastDays = useMemo(() => {
-    if (forecasts.length > 0) {
-      // DB予測データを使用
-      const forecastMap = new Map(forecasts.map(f => [f.date, f]))
-      return Array.from({ length: 30 }, (_, i) => {
-        const date = addDays(new Date(), i)
-        const dateStr = format(date, "yyyy-MM-dd")
-        const fc = forecastMap.get(dateStr)
-        const actual = actualByDate[dateStr]
-
-        if (fc) {
-          const hourlyData = fc.hourly_data as Record<string, any> | null
-          const dayCustomers = fc.forecast_customers ?? 0
-          const daySales = fc.forecast_sales ?? 0
-
-          const dayOfWeek = date.getDay()
-          const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
-
-          const weatherSeed = seededRandom(`weather-${dateStr}`)
-          const weather = weatherSeed < 0.5 ? "sunny" : weatherSeed < 0.8 ? "cloudy" : "rainy"
-          const tempBase = 8 + seededRandom(`temp-${dateStr}`) * 8
-          const tempHigh = Math.round(tempBase + 3)
-          const tempLow = Math.round(tempBase - 4)
-          const rainProb = weather === "rainy" ? 80 : weather === "cloudy" ? 40 : 10
-
-          const eventSeed = seededRandom(`event-${dateStr}`)
-          const events = eventSeed < 0.15 ? ["地域祭り", "コンサート"] : eventSeed < 0.3 ? ["商店街セール"] : []
-
-          return {
-            date,
-            dateStr: format(date, "M/d"),
-            dayLabel: format(date, "E", { locale: ja }),
-            isWeekend,
-            weather,
-            tempHigh,
-            tempLow,
-            rainProb,
-            dayCustomers,
-            daySales,
-            actualCustomers: actual ? actual.customers : null,
-            actualRevenue: actual ? actual.sales : null,
-            events,
-          }
-        }
-        // fallback to mock
-        return generateDayForecast(date, i)
-      })
-    }
-    // 全てモック
+    const forecastMap = new Map(forecasts.map(f => [f.date, f]))
     return Array.from({ length: 30 }, (_, i) => {
       const date = addDays(new Date(), i)
-      return generateDayForecast(date, i)
+      const dateStr = format(date, "yyyy-MM-dd")
+      const fc = forecastMap.get(dateStr)
+      const actual = actualByDate[dateStr]
+
+      const dayCustomers = fc?.forecast_customers ?? 0
+      const daySales = fc?.forecast_sales ?? 0
+      const hourlyData = (fc?.hourly_data as Record<string, any> | null) ?? null
+
+      const dayOfWeek = date.getDay()
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+
+      // 天気情報: DB予測に含まれていればそれを使用、なければ空
+      const fcWeather = fc?.weather as { icon?: string; label?: string; tempHigh?: number; tempLow?: number } | null
+      const weather = fcWeather?.icon === "sun" ? "sunny" : fcWeather?.icon === "rain" ? "rainy" : fcWeather?.icon ? "cloudy" : ""
+      const tempHigh = fcWeather?.tempHigh ?? null
+      const tempLow = fcWeather?.tempLow ?? null
+      const rainProb = weather === "rainy" ? 80 : weather === "cloudy" ? 40 : weather ? 10 : null
+
+      return {
+        date,
+        dateStr: format(date, "M/d"),
+        dayLabel: format(date, "E", { locale: ja }),
+        isWeekend,
+        weather,
+        tempHigh,
+        tempLow,
+        rainProb,
+        dayCustomers,
+        daySales,
+        hourlyData,
+        actualCustomers: actual ? actual.customers : null,
+        actualRevenue: actual ? actual.sales : null,
+        events: fc?.event ? [fc.event] : [],
+      }
     })
   }, [forecasts, actualByDate])
 
   // Summary stats
   const totalPredictedRevenue = forecastDays.reduce((s, d) => s + d.daySales, 0)
   const totalPredictedCustomers = forecastDays.reduce((s, d) => s + d.dayCustomers, 0)
-  const avgUnitPrice = Math.round(totalPredictedRevenue / totalPredictedCustomers)
+  const avgUnitPrice = totalPredictedCustomers > 0 ? Math.round(totalPredictedRevenue / totalPredictedCustomers) : 0
   const pastDays = forecastDays.filter((d) => d.actualCustomers !== null)
   const accuracy = pastDays.length > 0
-    ? (100 - pastDays.reduce((s, d) => s + Math.abs(d.dayCustomers - (d.actualCustomers || 0)) / d.dayCustomers * 100, 0) / pastDays.length).toFixed(1)
-    : "94.2"
+    ? (100 - pastDays.reduce((s, d) => s + (d.dayCustomers > 0 ? Math.abs(d.dayCustomers - (d.actualCustomers || 0)) / d.dayCustomers * 100 : 0), 0) / pastDays.length).toFixed(1)
+    : "-"
 
   // 実績サマリー
   const totalActualRevenue = pastDays.reduce((s, d) => s + (d.actualRevenue || 0), 0)
@@ -235,17 +182,8 @@ export default function DemandForecastPage() {
     }))
   }, [forecastDays])
 
-  // Events for event management section
-  const upcomingEvents = useMemo(() => {
-    const today = new Date()
-    return [
-      { date: format(addDays(today, 11), "M/d"), name: "春祭り", impact: "+25%", type: "地域イベント" },
-      { date: format(addDays(today, 18), "M/d"), name: "商店街セール", impact: "+15%", type: "商業イベント" },
-      { date: format(addDays(today, 25), "M/d"), name: "桜まつり", impact: "+30%", type: "季節イベント" },
-    ]
-  }, [])
-
-  const [events, setEvents] = useState(upcomingEvents)
+  // Events for event management section（将来的にDBから取得）
+  const [events, setEvents] = useState<{ date: string; name: string; impact: string; type: string }[]>([])
 
   const handleUpdateForecast = async () => {
     if (!storeId) {
@@ -324,6 +262,24 @@ export default function DemandForecastPage() {
         </div>
       </div>
       <div className="p-6 space-y-6">
+        {totalPredictedCustomers === 0 && (
+          <div className="flex flex-col items-center justify-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+            <Calendar className="h-10 w-10 text-gray-300 mb-3" />
+            <p className="text-lg font-medium text-gray-600 mb-1">予測データがありません</p>
+            <p className="text-sm text-gray-400 mb-1">売上実績データからAIが来客数・売上を自動予測します</p>
+            <p className="text-xs text-gray-400 mb-4">売上データがない場合は、先にダッシュボードからデモデータを生成してください</p>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={handleUpdateForecast} disabled={isUpdating}>
+                {isUpdating ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+                予測を生成
+              </Button>
+              <a href="/">
+                <Button size="sm" variant="outline">ダッシュボードへ</Button>
+              </a>
+            </div>
+          </div>
+        )}
+        {totalPredictedCustomers > 0 && (<>
         {/* 月間サマリー */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 transition-colors hover:bg-gray-100">
@@ -417,7 +373,7 @@ export default function DemandForecastPage() {
               </thead>
               <tbody>
                 {forecastDays.map((day, i) => {
-                  const hourlyBreakdown = getHourlyBreakdown(day.dayCustomers, day.daySales, day.actualCustomers, day.actualRevenue)
+                  const hourlyBreakdown = getHourlyBreakdown(day.dayCustomers, day.daySales, day.actualCustomers, day.actualRevenue, day.hourlyData)
                   const isPast = day.actualCustomers !== null
 
                   return (
@@ -434,10 +390,14 @@ export default function DemandForecastPage() {
                           </div>
                         </td>
                         <td className="px-3 py-2.5">
-                          <div className="flex items-center justify-center gap-1">
-                            <WeatherIcon type={day.weather} size="h-4 w-4" />
-                            <span className="text-xs text-gray-500">{day.tempHigh}°</span>
-                          </div>
+                          {day.weather ? (
+                            <div className="flex items-center justify-center gap-1">
+                              <WeatherIcon type={day.weather} size="h-4 w-4" />
+                              {day.tempHigh !== null && <span className="text-xs text-gray-500">{day.tempHigh}°</span>}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-400">-</span>
+                          )}
                         </td>
                         <td className={`px-4 py-2.5 text-right font-medium tabular-nums ${isPast ? "text-gray-400" : "text-gray-900"}`}>
                           {day.dayCustomers}人
@@ -629,6 +589,7 @@ export default function DemandForecastPage() {
             </div>
           </div>
         </div>
+        </>)}
       </div>
     </div>
   )

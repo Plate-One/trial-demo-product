@@ -5,15 +5,15 @@
 
 -- 1. Organization
 INSERT INTO organizations (id, name) VALUES
-  ('a0000000-0000-0000-0000-000000000001', 'キリンシティ');
+  ('a0000000-0000-0000-0000-000000000001', '株式会社Plate One');
 
 -- 2. Stores
 INSERT INTO stores (id, organization_id, slug, name, short_name, address, seat_count) VALUES
-  ('b0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'bayquarter', 'キリンシティプラス横浜ベイクォーター店', 'ベイクォーター店', '神奈川県横浜市神奈川区金港町1-10', 60),
-  ('b0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'mores', 'キリンシティ 横浜モアーズ店', 'モアーズ店', '神奈川県横浜市西区南幸1-3-1', 50),
-  ('b0000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'fti', 'キリンシティ FOOD＆TIME ISETAN YOKOHAMA店', 'FTI横浜店', '神奈川県横浜市西区南幸1-5-1', 45),
-  ('b0000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000001', 'cial', 'キリンシティ CIAL桜木町店', 'CIAL桜木町店', '神奈川県横浜市中区桜木町1-1-93', 55),
-  ('b0000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000001', 'machida', 'キリンシティ 町田店', '町田店', '東京都町田市原町田6-3-3', 50);
+  ('b0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'tokyo', 'Plate One 東京駅前店', '東京駅前店', '東京都千代田区丸の内1-9-1', 60),
+  ('b0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'shibuya', 'Plate One 渋谷店', '渋谷店', '東京都渋谷区道玄坂2-1-1', 50),
+  ('b0000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'shinjuku', 'Plate One 新宿店', '新宿店', '東京都新宿区新宿3-14-1', 45),
+  ('b0000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000001', 'ikebukuro', 'Plate One 池袋店', '池袋店', '東京都豊島区南池袋1-28-1', 55),
+  ('b0000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000001', 'yokohama', 'Plate One 横浜店', '横浜店', '神奈川県横浜市西区南幸1-3-1', 50);
 
 -- 3. Staff (auth_user_id is NULL until linked with Supabase Auth)
 INSERT INTO staff (id, organization_id, store_id, name, name_kana, position, role, detail_role, employment_type, schedule_type, phone, email, join_date, hourly_rate, address, birthday, notes, status, emergency_contact, availability) VALUES
@@ -69,7 +69,7 @@ INSERT INTO staff (id, organization_id, store_id, name, name_kana, position, rol
    '高橋 美咲', 'たかはし みさき', 'キッチン', 'スタッフ', 'キッチンスタッフ', 'パート', '早番',
    '090-7890-1234', 'm.takahashi@example.com', '2022-01-10', 1150,
    '神奈川県横浜市中区桜木町7-7', '1990-04-25',
-   'モアーズ店のキッチン主力メンバー。盛り付けセンスが高く評価されている。', '在籍',
+   '渋谷店のキッチン主力メンバー。盛り付けセンスが高く評価されている。', '在籍',
    NULL,
    '{"mon": [true,true,false], "tue": [true,true,false], "wed": [false,false,false], "thu": [true,true,false], "fri": [true,true,false], "sat": [true,true,true], "sun": [false,false,false]}'),
 

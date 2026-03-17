@@ -145,13 +145,10 @@ function AppShell({ children }: { children: React.ReactNode }) {
 
   const selectedStore = stores.find((s) => s.id === selectedStoreId) ?? null
 
-  if (authLoading || storesLoading) {
+  if (authLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="text-center space-y-2">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white mx-auto" />
-          <p className="text-sm text-muted-foreground">読み込み中...</p>
-        </div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white mx-auto" />
       </div>
     )
   }
@@ -209,14 +206,18 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
-  const isLoginPage = pathname === "/login"
+  const isLoginPage = pathname === "/login" || pathname === "/signup"
+  const isMobilePage = pathname?.startsWith("/mypage")
 
   return (
     <html lang="ja" suppressHydrationWarning>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+      </head>
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <ToastProvider>
-            {isLoginPage ? children : <AppShell>{children}</AppShell>}
+            {isLoginPage || isMobilePage ? children : <AppShell>{children}</AppShell>}
           </ToastProvider>
         </ThemeProvider>
       </body>

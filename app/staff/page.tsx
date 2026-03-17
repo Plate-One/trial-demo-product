@@ -16,10 +16,11 @@ import {
   Phone,
   Mail,
   Download,
-  Upload
+  Upload,
+  Plus,
 } from "lucide-react"
 import Link from "next/link"
-import { getSkillColor, getPositionColor, getRoleColor, getEmploymentColor } from "@/lib/mock-data"
+import { getSkillColor, getPositionColor, getRoleColor, getEmploymentColor } from "@/lib/ui-utils"
 import { useToast } from "@/components/toast"
 import { StatCard } from "@/components/stat-card"
 import { ColumnToggle, useColumnVisibility } from "@/components/column-toggle"
@@ -386,11 +387,26 @@ export default function StaffManagement() {
           </div>
           {filteredStaff.length === 0 && (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+              <div className="h-16 w-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
                 <Search className="h-8 w-8 text-gray-400" />
               </div>
-              <h3 className="text-base font-semibold text-gray-700 mb-1">該当するスタッフが見つかりません</h3>
-              <p className="text-sm text-gray-500 max-w-sm">検索条件やフィルターを変更してみてください。</p>
+              {staffList.length === 0 ? (
+                <>
+                  <h3 className="text-base font-semibold text-gray-700 dark:text-gray-300 mb-1">スタッフが登録されていません</h3>
+                  <p className="text-sm text-gray-500 max-w-sm mb-4">
+                    「新規登録」ボタンからスタッフを登録してください。シフト作成やAI最適化に必要です。
+                  </p>
+                  <Button onClick={() => setIsCreateModalOpen(true)} size="sm">
+                    <Plus className="h-4 w-4 mr-1" />
+                    最初のスタッフを登録
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-base font-semibold text-gray-700 dark:text-gray-300 mb-1">該当するスタッフが見つかりません</h3>
+                  <p className="text-sm text-gray-500 max-w-sm">検索条件やフィルターを変更してみてください。</p>
+                </>
+              )}
             </div>
           )}
         </div>

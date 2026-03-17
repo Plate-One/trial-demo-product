@@ -13,6 +13,7 @@ import { useStoreContext } from "@/lib/hooks/use-store-context"
 import { useActualSales } from "@/lib/hooks/use-actual-sales"
 import { useDemandForecasts } from "@/lib/hooks/use-demand-forecast"
 import { useToast } from "@/components/toast"
+import Link from "next/link"
 
 export default function ReportsPage() {
   const { selectedStore } = useStoreContext()
@@ -166,10 +167,18 @@ export default function ReportsPage() {
             <h1 className="text-xl font-semibold text-gray-800">レポート</h1>
           </div>
         </div>
-        <div className="flex flex-col items-center justify-center py-24 text-gray-400">
+        <div className="flex flex-col items-center justify-center py-16 text-gray-400">
           <BarChart2 className="h-10 w-10 mb-3" />
-          <p className="text-sm font-medium text-gray-600">レポートを表示するには、売上実績データの登録が必要です</p>
-          <p className="text-xs mt-2 text-gray-400">「売上実績」ページからCSVインポートまたは手動入力で登録できます</p>
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-300">レポートを表示するには、売上実績データが必要です</p>
+          <p className="text-xs mt-2 text-gray-400 mb-4">ダッシュボードからデモデータを生成するか、設定ページからCSVで取り込めます</p>
+          <div className="flex gap-2">
+            <Link href="/">
+              <Button size="sm">ダッシュボードへ</Button>
+            </Link>
+            <Link href="/settings">
+              <Button size="sm" variant="outline">設定（CSV取込）</Button>
+            </Link>
+          </div>
         </div>
       </div>
     )
