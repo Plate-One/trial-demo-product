@@ -46,19 +46,34 @@ export default function LoginPage() {
     setEmail(DEMO_EMAIL)
     setPassword("••••••••")
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: DEMO_EMAIL,
-      password: DEMO_PASSWORD,
-    })
+    try {
+      // まずデモアカウント＋シードデータをセットアップ
+      const setupRes = await fetch("/api/auth/demo-login", { method: "POST" })
+      if (!setupRes.ok) {
+        const data = await setupRes.json().catch(() => ({}))
+        setError(data.error || "デモセットアップに失敗しました")
+        setLoading(false)
+        return
+      }
 
-    if (error) {
-      setError("デモアカウントが設定されていません。管理者にお問い合わせください。")
+      // セットアップ完了後にログイン
+      const { error } = await supabase.auth.signInWithPassword({
+        email: DEMO_EMAIL,
+        password: DEMO_PASSWORD,
+      })
+
+      if (error) {
+        setError("デモアカウントへのログインに失敗しました")
+        setLoading(false)
+        return
+      }
+
+      router.push("/")
+      router.refresh()
+    } catch {
+      setError("通信エラーが発生しました")
       setLoading(false)
-      return
     }
-
-    router.push("/")
-    router.refresh()
   }
 
   const hasDemoAccount = !!DEMO_EMAIL && !!DEMO_PASSWORD
