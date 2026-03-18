@@ -24,6 +24,7 @@ import {
   Loader2,
   Sparkles,
   Database,
+  Smartphone,
 } from "lucide-react"
 
 const navItems = [
@@ -62,6 +63,12 @@ const navItems = [
     title: "設定",
     description: "店舗情報やシステムの各種設定を管理します。",
     icon: Settings,
+  },
+  {
+    href: "/mypage",
+    title: "スタッフ用マイページ",
+    description: "スタッフ向けのモバイル画面。シフト確認・希望提出・欠勤連絡ができます。",
+    icon: Smartphone,
   },
 ]
 
@@ -247,14 +254,7 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {status.loading ? (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-        </div>
-      ) : showSetup ? (
-        <SetupGuide storeId={storeId} status={status} onDemoGenerated={handleDemoGenerated} />
-      ) : null}
-
+      {/* ナビカードを先に表示（ブロックしない） */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {navItems.map((item) => (
           <Link key={item.href} href={item.href} className="group">
@@ -274,6 +274,11 @@ export default function DashboardPage() {
           </Link>
         ))}
       </div>
+
+      {/* セットアップガイドは後から表示 */}
+      {showSetup && (
+        <SetupGuide storeId={storeId} status={status} onDemoGenerated={handleDemoGenerated} />
+      )}
     </div>
   )
 }

@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
-import { BarChart2, CalendarDays, FileText, Users, Settings, ChevronLeft, ChevronRight } from "lucide-react"
+import { BarChart2, CalendarDays, FileText, Users, Settings, ChevronLeft, ChevronRight, Smartphone } from "lucide-react"
 import Image from "next/image"
 
 export function Sidebar() {
@@ -48,6 +48,11 @@ export function Sidebar() {
       title: "設定",
       icon: Settings,
       href: "/settings",
+    },
+    {
+      title: "スタッフ用マイページ",
+      icon: Smartphone,
+      href: "/mypage",
     },
   ]
 

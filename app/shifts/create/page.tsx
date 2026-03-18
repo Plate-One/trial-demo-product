@@ -20,6 +20,7 @@ import { StatCard } from "@/components/stat-card"
 import { useToast } from "@/components/toast"
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts"
 import { getPositionColor, getEmploymentColor } from "@/lib/ui-utils"
+import StaffingPlanStep from "@/components/staffing-plan-step"
 import {
   type DayStaffing, type HourlyStaffing, type KpiSummary,
   OPERATING_HOURS, HOURLY_WAGE_HALL, HOURLY_WAGE_KITCHEN,
@@ -962,161 +963,18 @@ export default function ShiftCreation() {
 
         {/* ========== ステップ2: 人員計画 ========== */}
         {currentStep === 2 && (
-          <div className="space-y-4">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <Users className="h-5 w-5 text-cyan-600" />
-                <h2 className="text-lg font-semibold text-gray-800">Step 2: 人員計画</h2>
-              </div>
-              <p className="text-sm text-gray-500">
-                <span className="text-cyan-600 font-medium">AIが来客予測から「何時に何人必要か」を自動算出</span>しました。過剰・不足がある箇所はハイライトされています。調整後、スタッフに希望シフトの提出を依頼します。
-              </p>
-            </div>
-
-            {/* 問題サマリーバナー */}
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0" />
-                  <div className="flex items-center gap-3 text-sm">
-                    {problems.understaffed > 0 && (
-                      <span className="flex items-center gap-1">
-                        <span className="font-medium text-red-700">人員不足</span>
-                        <Badge variant="secondary" className="bg-red-100 text-red-700">{problems.understaffed}箇所</Badge>
-                      </span>
-                    )}
-                    {problems.overstaffed > 0 && (
-                      <span className="flex items-center gap-1">
-                        <span className="font-medium text-amber-700">人員過剰</span>
-                        <Badge variant="secondary" className="bg-amber-100 text-amber-700">{problems.overstaffed}箇所</Badge>
-                      </span>
-                    )}
-                    {problems.understaffed > 0 && (
-                      <span className="flex items-center gap-1">
-                        <span className="font-medium text-purple-700">ヘルプ必要</span>
-                        <Badge variant="secondary" className="bg-purple-100 text-purple-700">
-                          <HandHelping className="h-3 w-3 mr-0.5" />
-                          {Math.max(1, Math.floor(problems.understaffed / 3))}枠
-                        </Badge>
-                      </span>
-                    )}
-                    {problems.understaffed === 0 && problems.overstaffed === 0 && (
-                      <span className="flex items-center gap-1 text-green-700">
-                        <CheckCircle2 className="h-4 w-4" />
-                        <span className="font-medium">すべて推奨値と一致</span>
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setShowProblemsOnly(!showProblemsOnly)} className={cn("gap-1.5", showProblemsOnly && "bg-amber-100")}>
-                    {showProblemsOnly ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    {showProblemsOnly ? "すべて表示" : "差異のみ"}
-                  </Button>
-                  {!showAIProposal && (
-                    <Button variant="outline" size="sm" onClick={() => setShowAIProposal(true)} className="gap-1.5">
-                      <Sparkles className="h-4 w-4" />
-                      AI推奨を一括適用
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* ライブKPIストリップ */}
-            <div className="border rounded-lg p-3 bg-white">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                <div>
-                  <p className="text-xs text-gray-500">総工数</p>
-                  <p className="text-lg font-bold text-gray-900 tabular-nums">{kpis.totalHours}h</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">人件費</p>
-                  <p className="text-lg font-bold text-gray-900 tabular-nums">¥{kpis.laborCost.toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">人件費率</p>
-                  <p className={cn("text-lg font-bold tabular-nums", kpis.laborCostRatio <= 25 ? "text-green-700" : kpis.laborCostRatio <= 28 ? "text-amber-700" : "text-red-700")}>
-                    {kpis.laborCostRatio.toFixed(1)}%
-                  </p>
-                  <p className="text-[10px] text-gray-400">目標 25%</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">予測客数</p>
-                  <p className="text-lg font-bold text-gray-900 tabular-nums">{kpis.totalCustomers.toLocaleString()}人</p>
-                </div>
-              </div>
-            </div>
-
-            {/* AI提案表示 */}
-            {showAIProposal && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-blue-600" />
-                    <h3 className="font-semibold text-blue-900">AI提案シフト案</h3>
-                    <Badge variant="secondary">推奨値ベース</Badge>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setShowAIProposal(false)}>キャンセル</Button>
-                    <Button size="sm" onClick={applyAIProposal} className="bg-blue-600 hover:bg-blue-700">提案を適用</Button>
-                  </div>
-                </div>
-                <p className="text-sm text-blue-700">
-                  売上予測から算出した推奨人員数に基づいた最適なシフト案です。適用すると現在のシフトが上書きされます。
-                </p>
-              </div>
-            )}
-
-            {/* 期間セレクター（コンパクト版） */}
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handlePrevPeriod}><ChevronLeft className="h-4 w-4" /></Button>
-              <span className="text-sm font-medium px-3 py-1.5 bg-gray-100 rounded">{periodLabel}</span>
-              <div className="flex rounded-lg border border-gray-200 p-0.5 bg-gray-50">
-                <button type="button" onClick={() => { if (currentStep >= 2 && !window.confirm("期間を変更すると編集内容がリセットされます。よろしいですか？")) return; setPeriodHalf("first") }}
-                  className={cn("px-3 py-1.5 text-sm font-medium rounded-md", periodHalf === "first" ? "bg-white shadow text-gray-900" : "text-gray-600")}>前半</button>
-                <button type="button" onClick={() => { if (currentStep >= 2 && !window.confirm("期間を変更すると編集内容がリセットされます。よろしいですか？")) return; setPeriodHalf("second") }}
-                  className={cn("px-3 py-1.5 text-sm font-medium rounded-md", periodHalf === "second" ? "bg-white shadow text-gray-900" : "text-gray-600")}>後半</button>
-              </div>
-              <Button variant="outline" size="sm" onClick={handleNextPeriod}><ChevronRight className="h-4 w-4" /></Button>
-            </div>
-
-            {/* シフトテーブル（ホール／キッチン縦並び） */}
-            {([
-              { key: "hall" as const, title: "ホール", hours: kpis.hallTotal, bg: "bg-slate-50" },
-              { key: "kitchen" as const, title: "キッチン", hours: kpis.kitchenTotal, bg: "bg-blue-50/40" },
-            ]).map((s) => renderShiftTable(s.key, s.title, s.hours, s.bg))}
-
-            {/* 提出依頼CTA */}
-            <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-lg p-6">
-              <div className="flex items-start gap-4">
-                <div className="bg-indigo-100 rounded-full p-3">
-                  <Send className="h-6 w-6 text-indigo-600" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-base font-semibold text-gray-900">スタッフにシフト提出依頼を送信</h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    人員計画が確定したら、スタッフにシフト希望の提出を依頼します。正社員は休暇希望、パート・アルバイトは出勤可能日を回答します。
-                  </p>
-                  <div className="flex items-center gap-3 mt-4">
-                    <Button onClick={handleSendSubmissionRequest} className="gap-2 bg-indigo-600 hover:bg-indigo-700">
-                      <Send className="h-4 w-4" />
-                      提出依頼を送信
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* ナビゲーション */}
-            <div className="flex items-center justify-between pt-4">
-              <Button variant="ghost" onClick={() => goToStep(1)} className="gap-1.5">
-                <ChevronLeft className="h-4 w-4" />
-                需要予測に戻る
-              </Button>
-            </div>
-          </div>
+          <StaffingPlanStep
+            periodData={periodData}
+            setPeriodData={setPeriodData}
+            aiProposalData={aiProposalData}
+            periodLabel={periodLabel}
+            periodHalf={periodHalf}
+            onPrevPeriod={handlePrevPeriod}
+            onNextPeriod={handleNextPeriod}
+            onSetPeriodHalf={setPeriodHalf}
+            onSendSubmissionRequest={handleSendSubmissionRequest}
+            onGoBack={() => goToStep(1)}
+          />
         )}
 
         {/* ========== ステップ3: 提出確認・AI最適化 ========== */}

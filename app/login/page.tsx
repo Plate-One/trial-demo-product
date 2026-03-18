@@ -8,8 +8,7 @@ import { Label } from "@/components/ui/label"
 import { useRouter } from "next/navigation"
 import { Info } from "lucide-react"
 
-const DEMO_EMAIL = process.env.NEXT_PUBLIC_DEMO_EMAIL
-const DEMO_PASSWORD = process.env.NEXT_PUBLIC_DEMO_PASSWORD
+const HAS_DEMO = !!process.env.NEXT_PUBLIC_DEMO_EMAIL
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -35,48 +34,49 @@ export default function LoginPage() {
       return
     }
 
-    router.push("/")
-    router.refresh()
+    window.location.href = "/"
   }
 
   const handleDemoLogin = async () => {
-    if (!DEMO_EMAIL || !DEMO_PASSWORD) return
     setError("")
     setLoading(true)
-    setEmail(DEMO_EMAIL)
+    setEmail("demo@plateone.jp")
     setPassword("••••••••")
 
     try {
-      // まずデモアカウント＋シードデータをセットアップ
+      // デモセットアップ＋サーバー側ログイン → セッション返却
       const setupRes = await fetch("/api/auth/demo-login", { method: "POST" })
+      const data = await setupRes.json().catch(() => ({}))
+
       if (!setupRes.ok) {
-        const data = await setupRes.json().catch(() => ({}))
         setError(data.error || "デモセットアップに失敗しました")
         setLoading(false)
         return
       }
 
-      // セットアップ完了後にログイン
-      const { error } = await supabase.auth.signInWithPassword({
-        email: DEMO_EMAIL,
-        password: DEMO_PASSWORD,
-      })
+      // サーバーから返されたセッションをクライアントにセット
+      if (data.session) {
+        const { error } = await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        })
 
-      if (error) {
-        setError("デモアカウントへのログインに失敗しました")
-        setLoading(false)
-        return
+        if (error) {
+          setError("セッションの設定に失敗しました")
+          setLoading(false)
+          return
+        }
       }
 
-      router.push("/")
-      router.refresh()
+      // フルリロードでmiddlewareにCookieを確実に反映
+      window.location.href = "/"
     } catch {
       setError("通信エラーが発生しました")
       setLoading(false)
     }
   }
 
-  const hasDemoAccount = !!DEMO_EMAIL && !!DEMO_PASSWORD
+  const hasDemoAccount = HAS_DEMO
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">

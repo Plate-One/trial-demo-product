@@ -145,14 +145,6 @@ function AppShell({ children }: { children: React.ReactNode }) {
 
   const selectedStore = stores.find((s) => s.id === selectedStoreId) ?? null
 
-  if (authLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white mx-auto" />
-      </div>
-    )
-  }
-
   return (
     <StoreContext.Provider value={{ stores, selectedStore, setSelectedStoreId, loading: storesLoading }}>
       <div className="flex h-screen">
