@@ -117,15 +117,15 @@ export default function MyPage() {
       {/* Header */}
       <header className="flex justify-between items-center px-5 py-3 border-b border-gray-100 sticky top-0 z-10 bg-white">
         <div className="flex items-center gap-2.5">
-          <span className="font-bold text-[15px]">{store?.name ?? "読み込み中..."}</span>
+          <span className="font-bold text-base">{store?.name ?? "読み込み中..."}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <div className="text-right">
-            <div className="text-[11px] font-semibold text-gray-700 leading-tight">{profile.name}</div>
-            <div className="text-[9px] text-gray-400 leading-tight">{profile.role}</div>
+            <div className="text-xs font-semibold text-gray-700 leading-tight">{profile.name}</div>
+            <div className="text-[10px] text-gray-400 leading-tight">{profile.role}</div>
           </div>
-          <div className="h-7 w-7 rounded-full bg-gray-100 flex items-center justify-center">
-            <UserCircle className="h-4 w-4 text-gray-400" />
+          <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
+            <UserCircle className="h-5 w-5 text-gray-400" />
           </div>
         </div>
       </header>
@@ -158,7 +158,7 @@ export default function MyPage() {
             }`}
           >
             <t.icon className="h-5 w-5" />
-            <span className={`text-[10px] ${activeTab === t.id ? "font-bold" : "font-medium"}`}>{t.label}</span>
+            <span className={`text-[11px] ${activeTab === t.id ? "font-bold" : "font-medium"}`}>{t.label}</span>
           </button>
         ))}
       </nav>
@@ -266,33 +266,33 @@ function HomeTab({
     const hours = calcHours(selectedShift.start_time, selectedShift.end_time)
     return (
       <div className="px-5 py-4">
-        <button onClick={() => setSelectedShift(null)} className="text-[13px] text-purple-600 font-medium mb-3">
+        <button onClick={() => setSelectedShift(null)} className="text-sm text-purple-600 font-medium mb-3">
           ← 戻る
         </button>
-        <div className="text-xs text-gray-400">
+        <div className="text-sm text-gray-400">
           {format(shiftDate, "M月d日(E)", { locale: ja })}
         </div>
-        <div className="text-[26px] font-bold my-1">
+        <div className="text-[28px] font-bold my-1">
           {selectedShift.start_time.slice(0, 5)} → {selectedShift.end_time.slice(0, 5)}
         </div>
-        <div className="text-xs text-gray-500 mb-4">
+        <div className="text-sm text-gray-500 mb-4">
           {selectedShift.role}　{hours.toFixed(1)}h
           <StatusBadge status={selectedShift.status} />
         </div>
 
         {coworkers.length > 0 && (
           <>
-            <div className="text-xs font-semibold text-gray-400 tracking-wide pt-2 pb-2">
+            <div className="text-sm font-semibold text-gray-400 tracking-wide pt-2 pb-2">
               同日スタッフ（{coworkers.length}人）
             </div>
             {coworkers.map((c, i) => (
-              <div key={i} className="flex items-center gap-2 py-2 border-b border-gray-50">
+              <div key={i} className="flex items-center gap-2.5 py-2.5 border-b border-gray-50">
                 <div
-                  className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                  className="w-2 h-2 rounded-full flex-shrink-0"
                   style={{ backgroundColor: ROLE_COLORS[c.staff?.role ?? ""] ?? "#999" }}
                 />
-                <span className="text-[13px] flex-1">{c.staff?.name ?? "—"}</span>
-                <span className="text-[11px] text-gray-400">
+                <span className="text-sm flex-1">{c.staff?.name ?? "—"}</span>
+                <span className="text-xs text-gray-400">
                   {c.start_time.slice(0, 5)}–{c.end_time.slice(0, 5)}
                 </span>
               </div>
@@ -309,20 +309,20 @@ function HomeTab({
       {/* Today Card */}
       <div className="bg-gray-50 rounded-xl p-5 mb-3">
         <div className="flex justify-between mb-2">
-          <span className="text-xs text-gray-400">
+          <span className="text-sm text-gray-400">
             {now.toLocaleDateString("ja-JP", { month: "long", day: "numeric", weekday: "short" })}
           </span>
-          <span className="text-xs text-gray-300">{timeStr}</span>
+          <span className="text-sm text-gray-300">{timeStr}</span>
         </div>
         {todayShift ? (
           <>
-            <div className="text-[28px] font-bold tracking-tight">
+            <div className="text-3xl font-bold tracking-tight">
               {todayShift.start_time.slice(0, 5)} → {todayShift.end_time.slice(0, 5)}
             </div>
-            <div className="text-xs text-gray-500 mb-3.5">{todayShift.role}</div>
+            <div className="text-sm text-gray-500 mb-4">{todayShift.role}</div>
             <button
               onClick={() => { setClocked(!clocked); setClockedTime(timeStr) }}
-              className={`w-full py-3 rounded-lg text-sm font-semibold transition-colors ${
+              className={`w-full py-3.5 rounded-lg text-base font-semibold transition-colors ${
                 clocked
                   ? "bg-white border border-gray-200 text-gray-900"
                   : "bg-gray-900 text-white"
@@ -331,36 +331,36 @@ function HomeTab({
               {clocked ? "退勤する" : "出勤する"}
             </button>
             {clocked && clockedTime && (
-              <div className="text-center text-[11px] text-gray-400 mt-1.5">
+              <div className="text-center text-xs text-gray-400 mt-2">
                 {clockedTime} 出勤済み
               </div>
             )}
           </>
         ) : (
-          <div className="text-base text-gray-300 font-medium py-2">お休み</div>
+          <div className="text-lg text-gray-300 font-medium py-2">お休み</div>
         )}
       </div>
 
       {/* Stats */}
       <div className="flex items-center py-3 mb-1">
         <div className="flex-1 text-center">
-          <span className="text-base font-bold">{weekStats.workDays}</span>
-          <span className="text-[10px] text-gray-400 ml-0.5">日</span>
+          <span className="text-lg font-bold">{weekStats.workDays}</span>
+          <span className="text-xs text-gray-400 ml-1">日</span>
         </div>
         <div className="w-px h-5 bg-gray-200" />
         <div className="flex-1 text-center">
-          <span className="text-base font-bold">{weekStats.totalHours.toFixed(1)}</span>
-          <span className="text-[10px] text-gray-400 ml-0.5">時間</span>
+          <span className="text-lg font-bold">{weekStats.totalHours.toFixed(1)}</span>
+          <span className="text-xs text-gray-400 ml-1">時間</span>
         </div>
         <div className="w-px h-5 bg-gray-200" />
         <div className="flex-1 text-center">
-          <span className="text-base font-bold">¥{weekStats.estimated.toLocaleString()}</span>
-          <span className="text-[10px] text-gray-400 ml-0.5">見込み</span>
+          <span className="text-lg font-bold">¥{weekStats.estimated.toLocaleString()}</span>
+          <span className="text-xs text-gray-400 ml-1">見込み</span>
         </div>
       </div>
 
       {/* Week List */}
-      <div className="text-xs font-semibold text-gray-400 tracking-wide py-3 pb-2">今週のシフト</div>
+      <div className="text-sm font-semibold text-gray-400 tracking-wide py-3 pb-2">今週のシフト</div>
       {weekDays.map((day, i) => {
         const dateStr = format(day, "yyyy-MM-dd")
         const shift = shiftByDate.get(dateStr)
@@ -371,29 +371,29 @@ function HomeTab({
           <div
             key={i}
             onClick={() => shift && setSelectedShift(shift)}
-            className={`flex items-center gap-3 py-2.5 border-b border-gray-50 ${
+            className={`flex items-center gap-3 py-3 border-b border-gray-50 ${
               isOff ? "opacity-40" : "cursor-pointer"
             } ${isToday ? "border-b-purple-100" : ""}`}
           >
             {/* Day cell */}
-            <div className={`w-10 h-11 rounded-lg flex flex-col items-center justify-center flex-shrink-0 text-center leading-tight ${
+            <div className={`w-11 h-12 rounded-lg flex flex-col items-center justify-center flex-shrink-0 text-center leading-tight ${
               isToday ? "bg-gray-900 text-white" : "bg-gray-100"
             }`}>
-              <span className="text-[10px]">{format(day, "E", { locale: ja })}</span>
-              <span className="text-base font-bold">{day.getDate()}</span>
+              <span className="text-[11px]">{format(day, "E", { locale: ja })}</span>
+              <span className="text-lg font-bold">{day.getDate()}</span>
             </div>
 
             {isOff ? (
-              <span className="text-[13px] text-gray-400 font-medium">OFF</span>
+              <span className="text-sm text-gray-400 font-medium">OFF</span>
             ) : (
               <div className="flex-1">
-                <div className="text-sm font-semibold">
+                <div className="text-base font-semibold">
                   {shift.start_time.slice(0, 5)} – {shift.end_time.slice(0, 5)}
-                  <span className="text-[11px] text-gray-400 font-normal ml-1.5">
+                  <span className="text-xs text-gray-400 font-normal ml-2">
                     {calcHours(shift.start_time, shift.end_time).toFixed(1)}h
                   </span>
                 </div>
-                <div className="text-[11px] font-medium mt-px" style={{ color: ROLE_COLORS[shift.role] ?? "#999" }}>
+                <div className="text-xs font-medium mt-0.5" style={{ color: ROLE_COLORS[shift.role] ?? "#999" }}>
                   {shift.role}
                 </div>
               </div>
@@ -495,15 +495,15 @@ function TeamTab({ profile }: { profile: { id: string; store_id: string; role: s
 
   return (
     <div className="px-5 py-4">
-      <div className="text-[17px] font-bold mb-3">全体シフト</div>
+      <div className="text-lg font-bold mb-3">全体シフト</div>
 
       {/* View toggle + Role filter */}
-      <div className="flex gap-1 mb-3 flex-wrap">
+      <div className="flex gap-1.5 mb-3 flex-wrap">
         {(["day", "week"] as const).map(v => (
           <button
             key={v}
             onClick={() => setViewMode(v)}
-            className={`px-2.5 py-1 border rounded-full text-[10px] font-medium transition-colors ${
+            className={`px-3 py-1.5 border rounded-full text-xs font-medium transition-colors ${
               viewMode === v
                 ? "bg-gray-900 text-white border-gray-900"
                 : "bg-white text-gray-500 border-gray-200"
@@ -517,7 +517,7 @@ function TeamTab({ profile }: { profile: { id: string; store_id: string; role: s
           <button
             key={f}
             onClick={() => setRoleFilter(f)}
-            className={`px-2.5 py-1 border rounded-full text-[10px] font-medium transition-colors ${
+            className={`px-3 py-1.5 border rounded-full text-xs font-medium transition-colors ${
               roleFilter === f
                 ? "text-white border-transparent"
                 : "bg-white text-gray-500 border-gray-200"
@@ -544,9 +544,9 @@ function TeamTab({ profile }: { profile: { id: string; store_id: string; role: s
                   : "bg-gray-50"
               } ${isToday && selectedDay !== i ? "font-bold" : ""}`}
             >
-              <span className="text-[10px] opacity-50">{format(d, "E", { locale: ja })}</span>
-              <span className={`text-[15px] ${selectedDay === i ? "font-bold" : "font-medium"}`}>{d.getDate()}</span>
-              <span className="text-[9px] opacity-40">{dayCount}</span>
+              <span className="text-[11px] opacity-50">{format(d, "E", { locale: ja })}</span>
+              <span className={`text-base ${selectedDay === i ? "font-bold" : "font-medium"}`}>{d.getDate()}</span>
+              <span className="text-[10px] opacity-40">{dayCount}</span>
             </div>
           )
         })}
@@ -555,7 +555,7 @@ function TeamTab({ profile }: { profile: { id: string; store_id: string; role: s
       {/* Day View */}
       {viewMode === "day" && (
         <div>
-          <div className="text-xs text-gray-400 mb-2">
+          <div className="text-sm text-gray-400 mb-2">
             {format(weekDays[selectedDay], "M月d日(E)", { locale: ja })} — {dayShifts.length}人出勤
           </div>
           {dayShifts.map((sh, i) => {
@@ -564,29 +564,29 @@ function TeamTab({ profile }: { profile: { id: string; store_id: string; role: s
               <div
                 key={i}
                 onClick={() => setDetailShift(detailShift === sh ? null : sh)}
-                className={`flex items-center gap-2 py-2.5 px-2 border-b border-gray-50 rounded-md cursor-pointer ${
+                className={`flex items-center gap-2.5 py-3 px-2.5 border-b border-gray-50 rounded-md cursor-pointer ${
                   isMe ? "bg-purple-50/50" : ""
                 }`}
               >
                 <div
-                  className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                  className="w-2 h-2 rounded-full flex-shrink-0"
                   style={{ backgroundColor: ROLE_COLORS[sh.staff?.role ?? ""] ?? "#999" }}
                 />
                 <div className="flex-1 min-w-0">
-                  <div className={`text-[13px] ${isMe ? "font-bold" : "font-medium"}`}>
+                  <div className={`text-sm ${isMe ? "font-bold" : "font-medium"}`}>
                     {sh.staff?.name ?? "—"}
-                    {isMe && <span className="text-[9px] text-purple-600 ml-1">自分</span>}
+                    {isMe && <span className="text-[10px] text-purple-600 ml-1">自分</span>}
                   </div>
-                  <div className="text-[11px] text-gray-400">{sh.staff?.role}</div>
+                  <div className="text-xs text-gray-400">{sh.staff?.role}</div>
                 </div>
-                <div className="text-[13px] font-semibold text-gray-600 whitespace-nowrap">
+                <div className="text-sm font-semibold text-gray-600 whitespace-nowrap">
                   {sh.start_time.slice(0, 5)}–{sh.end_time.slice(0, 5)}
                 </div>
               </div>
             )
           })}
           {dayShifts.length === 0 && (
-            <div className="text-center py-12 text-sm text-gray-300">この日のシフトはありません</div>
+            <div className="text-center py-12 text-base text-gray-300">この日のシフトはありません</div>
           )}
         </div>
       )}
@@ -596,23 +596,23 @@ function TeamTab({ profile }: { profile: { id: string; store_id: string; role: s
         <div className="relative">
           {/* Frozen left column */}
           <div className="absolute left-0 top-0 w-[90px] z-[3] bg-white">
-            <div className="h-8 flex items-center pl-1 border-b border-gray-200">
-              <span className="text-[9px] text-gray-300">名前</span>
+            <div className="h-9 flex items-center pl-1.5 border-b border-gray-200">
+              <span className="text-[10px] text-gray-300">名前</span>
             </div>
             {filteredStaff.map(st => {
               const isMe = st.id === profile.id
               return (
                 <div
                   key={st.id}
-                  className={`h-9 flex items-center gap-1 pl-1 border-b border-gray-50 overflow-hidden ${
+                  className={`h-10 flex items-center gap-1.5 pl-1.5 border-b border-gray-50 overflow-hidden ${
                     isMe ? "bg-purple-50/50" : ""
                   }`}
                 >
                   <div
-                    className="w-[5px] h-[5px] rounded-full flex-shrink-0"
+                    className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                     style={{ backgroundColor: ROLE_COLORS[st.role] ?? "#999" }}
                   />
-                  <span className={`text-[10px] truncate ${
+                  <span className={`text-[11px] truncate ${
                     isMe ? "font-bold text-purple-700" : "text-gray-700"
                   }`}>
                     {st.name}
@@ -624,15 +624,15 @@ function TeamTab({ profile }: { profile: { id: string; store_id: string; role: s
 
           {/* Scrollable area */}
           <div className="ml-[90px] overflow-x-auto">
-            <div style={{ minWidth: `${weekDays.length * 60}px` }}>
+            <div style={{ minWidth: `${weekDays.length * 64}px` }}>
               {/* Header */}
-              <div className="flex h-8 border-b border-gray-200 items-center">
+              <div className="flex h-9 border-b border-gray-200 items-center">
                 {weekDays.map((d, i) => {
                   const isToday = dateFnsIsToday(d)
                   return (
                     <div
                       key={i}
-                      className={`w-[60px] flex-shrink-0 text-center text-[11px] ${
+                      className={`w-[64px] flex-shrink-0 text-center text-xs ${
                         isToday ? "text-gray-900 font-bold" : "text-gray-400"
                       }`}
                     >
@@ -648,7 +648,7 @@ function TeamTab({ profile }: { profile: { id: string; store_id: string; role: s
                 return (
                   <div
                     key={st.id}
-                    className={`flex h-9 border-b border-gray-50 ${isMe ? "bg-purple-50/50" : ""}`}
+                    className={`flex h-10 border-b border-gray-50 ${isMe ? "bg-purple-50/50" : ""}`}
                   >
                     {weekDays.map((d, di) => {
                       const dateStr = format(d, "yyyy-MM-dd")
@@ -658,7 +658,7 @@ function TeamTab({ profile }: { profile: { id: string; store_id: string; role: s
                       return (
                         <div
                           key={di}
-                          className={`w-[60px] flex-shrink-0 flex items-center justify-center ${
+                          className={`w-[64px] flex-shrink-0 flex items-center justify-center ${
                             isToday ? (isMe ? "bg-purple-50/30" : "bg-gray-50/50") : ""
                           }`}
                         >
@@ -671,17 +671,17 @@ function TeamTab({ profile }: { profile: { id: string; store_id: string; role: s
                               onClick={() => setDetailShift(sh)}
                             >
                               <div
-                                className="text-[9px] font-bold"
+                                className="text-[10px] font-bold"
                                 style={{ color: ROLE_COLORS[st.role] ?? "#666" }}
                               >
                                 {sh.start_time.slice(0, 5)}
                               </div>
-                              <div className="text-[8px] text-gray-400">
+                              <div className="text-[9px] text-gray-400">
                                 {sh.end_time.slice(0, 5)}
                               </div>
                             </div>
                           ) : (
-                            <span className="text-[10px] text-gray-200">–</span>
+                            <span className="text-[11px] text-gray-200">–</span>
                           )}
                         </div>
                       )
@@ -694,24 +694,24 @@ function TeamTab({ profile }: { profile: { id: string; store_id: string; role: s
 
           {/* Detail popup */}
           {detailShift && (
-            <div className="bg-white border border-gray-200 rounded-xl p-3 mt-2.5 shadow-sm">
+            <div className="bg-white border border-gray-200 rounded-xl p-3.5 mt-2.5 shadow-sm">
               <div className="flex justify-between items-center">
                 <div>
-                  <div className="text-sm font-semibold">
+                  <div className="text-base font-semibold">
                     {detailShift.staff?.name ?? "—"}
-                    <span className="text-[11px] text-gray-400 font-normal ml-1.5">{detailShift.staff?.role}</span>
+                    <span className="text-xs text-gray-400 font-normal ml-2">{detailShift.staff?.role}</span>
                   </div>
-                  <div className="text-[13px] mt-0.5">
+                  <div className="text-sm mt-0.5">
                     {format(new Date(detailShift.date + "T00:00"), "M月d日(E)", { locale: ja })}{" "}
                     {detailShift.start_time.slice(0, 5)} → {detailShift.end_time.slice(0, 5)}
-                    <span className="text-gray-400 ml-1.5">
+                    <span className="text-gray-400 ml-2">
                       {calcHours(detailShift.start_time, detailShift.end_time).toFixed(1)}h
                     </span>
                   </div>
                 </div>
                 <button
                   onClick={() => setDetailShift(null)}
-                  className="text-base text-gray-300 p-1 hover:text-gray-500"
+                  className="text-lg text-gray-300 p-1 hover:text-gray-500"
                 >
                   ✕
                 </button>
@@ -776,24 +776,24 @@ function NewsTab({ profile }: { profile: { id: string; store_id: string } }) {
 
   return (
     <div className="px-5 py-4">
-      <div className="text-xs font-semibold text-gray-400 tracking-wide pb-2">お知らせ</div>
+      <div className="text-sm font-semibold text-gray-400 tracking-wide pb-2">お知らせ</div>
       {news.map(n => (
         <div
           key={n.id}
-          className="py-3 border-b border-gray-50 cursor-pointer"
+          className="py-3.5 border-b border-gray-50 cursor-pointer"
           onClick={() => setExpandedId(expandedId === n.id ? null : n.id)}
         >
-          <div className="flex items-center gap-1.5 mb-0.5">
+          <div className="flex items-center gap-2 mb-1">
             {n.pin && (
-              <span className="text-[9px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded flex-shrink-0">
+              <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded flex-shrink-0">
                 重要
               </span>
             )}
-            <span className="text-[11px] text-gray-400">{n.date}</span>
+            <span className="text-xs text-gray-400">{n.date}</span>
           </div>
-          <div className="text-[13px] font-semibold">{n.title}</div>
+          <div className="text-sm font-semibold">{n.title}</div>
           {expandedId === n.id && (
-            <div className="text-xs text-gray-500 mt-2 leading-relaxed">{n.body}</div>
+            <div className="text-sm text-gray-500 mt-2 leading-relaxed">{n.body}</div>
           )}
         </div>
       ))}
@@ -856,51 +856,51 @@ function ProfileTab({
     <div className="px-5 py-4">
       {/* Profile header */}
       <div className="text-center py-6 pb-5">
-        <div className="text-lg font-bold">{profile.name}</div>
-        <div className="text-xs text-gray-400 mt-1">
+        <div className="text-xl font-bold">{profile.name}</div>
+        <div className="text-sm text-gray-400 mt-1">
           {profile.role}　{profile.position}　時給 ¥{hourlyRate.toLocaleString()}
         </div>
       </div>
 
       {/* Monthly stats */}
-      <div className="text-xs font-semibold text-gray-400 tracking-wide pb-2">今月の実績</div>
-      <div className="grid grid-cols-3 gap-1.5 mb-4">
+      <div className="text-sm font-semibold text-gray-400 tracking-wide pb-2">今月の実績</div>
+      <div className="grid grid-cols-3 gap-2 mb-5">
         {[
           { value: `${stats.days}日`, label: "出勤" },
           { value: `${stats.hours.toFixed(1)}h`, label: "実働" },
           { value: `¥${stats.estimated.toLocaleString()}`, label: "月給見込" },
         ].map((r, i) => (
-          <div key={i} className="bg-gray-50 rounded-lg p-3.5">
-            <div className="text-lg font-bold">{r.value}</div>
-            <div className="text-[10px] text-gray-400 mt-0.5">{r.label}</div>
+          <div key={i} className="bg-gray-50 rounded-lg p-4">
+            <div className="text-xl font-bold">{r.value}</div>
+            <div className="text-xs text-gray-400 mt-1">{r.label}</div>
           </div>
         ))}
       </div>
 
       {/* Recent shifts */}
-      <div className="text-xs font-semibold text-gray-400 tracking-wide pb-2">直近のシフト</div>
+      <div className="text-sm font-semibold text-gray-400 tracking-wide pb-2">直近のシフト</div>
       {recentShifts.length > 0 ? (
         recentShifts.map((s, i) => {
           const d = new Date(s.date + "T00:00")
           return (
-            <div key={i} className="flex justify-between items-center py-2.5 border-b border-gray-50">
-              <span className="text-[13px] font-medium">
+            <div key={i} className="flex justify-between items-center py-3 border-b border-gray-50">
+              <span className="text-sm font-medium">
                 {format(d, "M/d(E)", { locale: ja })}
               </span>
-              <span className="text-xs text-gray-500">
+              <span className="text-sm text-gray-500">
                 {s.start_time.slice(0, 5)} → {s.end_time.slice(0, 5)}
               </span>
             </div>
           )
         })
       ) : (
-        <div className="text-center py-8 text-sm text-gray-300">今月のシフトはありません</div>
+        <div className="text-center py-8 text-base text-gray-300">今月のシフトはありません</div>
       )}
 
       {/* Logout */}
       <button
         onClick={signOut}
-        className="w-full mt-8 py-3 border border-gray-200 rounded-lg text-sm text-gray-500 font-medium"
+        className="w-full mt-8 py-3.5 border border-gray-200 rounded-lg text-base text-gray-500 font-medium"
       >
         ログアウト
       </button>
@@ -917,7 +917,7 @@ function StatusBadge({ status }: { status: string }) {
   }[status] ?? { label: status, cls: "bg-gray-100 text-gray-600" }
 
   return (
-    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ml-2 ${config.cls}`}>
+    <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ml-2 ${config.cls}`}>
       {config.label}
     </span>
   )
