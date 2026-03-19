@@ -595,24 +595,24 @@ function TeamTab({ profile }: { profile: { id: string; store_id: string; role: s
       {viewMode === "week" && (
         <div className="relative">
           {/* Frozen left column */}
-          <div className="absolute left-0 top-0 w-[90px] z-[3] bg-white">
-            <div className="h-9 flex items-center pl-1.5 border-b border-gray-200">
-              <span className="text-[10px] text-gray-300">名前</span>
+          <div className="absolute left-0 top-0 w-[80px] z-[3] bg-white">
+            <div className="h-10 flex items-center pl-2 border-b border-gray-200">
+              <span className="text-xs text-gray-300">名前</span>
             </div>
             {filteredStaff.map(st => {
               const isMe = st.id === profile.id
               return (
                 <div
                   key={st.id}
-                  className={`h-10 flex items-center gap-1.5 pl-1.5 border-b border-gray-50 overflow-hidden ${
+                  className={`h-[52px] flex items-center gap-1.5 pl-2 border-b border-gray-50 overflow-hidden ${
                     isMe ? "bg-purple-50/50" : ""
                   }`}
                 >
                   <div
-                    className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                    className="w-2 h-2 rounded-full flex-shrink-0"
                     style={{ backgroundColor: ROLE_COLORS[st.role] ?? "#999" }}
                   />
-                  <span className={`text-[11px] truncate ${
+                  <span className={`text-xs truncate ${
                     isMe ? "font-bold text-purple-700" : "text-gray-700"
                   }`}>
                     {st.name}
@@ -623,20 +623,21 @@ function TeamTab({ profile }: { profile: { id: string; store_id: string; role: s
           </div>
 
           {/* Scrollable area */}
-          <div className="ml-[90px] overflow-x-auto">
-            <div style={{ minWidth: `${weekDays.length * 64}px` }}>
+          <div className="ml-[80px] overflow-x-auto">
+            <div style={{ minWidth: `${weekDays.length * 48}px` }}>
               {/* Header */}
-              <div className="flex h-9 border-b border-gray-200 items-center">
+              <div className="flex h-10 border-b border-gray-200 items-center">
                 {weekDays.map((d, i) => {
                   const isToday = dateFnsIsToday(d)
                   return (
                     <div
                       key={i}
-                      className={`w-[64px] flex-shrink-0 text-center text-xs ${
+                      className={`flex-1 min-w-[48px] text-center text-xs ${
                         isToday ? "text-gray-900 font-bold" : "text-gray-400"
                       }`}
                     >
-                      {format(d, "E", { locale: ja })} {d.getDate()}
+                      <div>{format(d, "E", { locale: ja })}</div>
+                      <div className="text-sm font-semibold">{d.getDate()}</div>
                     </div>
                   )
                 })}
@@ -648,7 +649,7 @@ function TeamTab({ profile }: { profile: { id: string; store_id: string; role: s
                 return (
                   <div
                     key={st.id}
-                    className={`flex h-10 border-b border-gray-50 ${isMe ? "bg-purple-50/50" : ""}`}
+                    className={`flex h-[52px] border-b border-gray-50 ${isMe ? "bg-purple-50/50" : ""}`}
                   >
                     {weekDays.map((d, di) => {
                       const dateStr = format(d, "yyyy-MM-dd")
@@ -658,30 +659,30 @@ function TeamTab({ profile }: { profile: { id: string; store_id: string; role: s
                       return (
                         <div
                           key={di}
-                          className={`w-[64px] flex-shrink-0 flex items-center justify-center ${
+                          className={`flex-1 min-w-[48px] flex items-center justify-center px-0.5 ${
                             isToday ? (isMe ? "bg-purple-50/30" : "bg-gray-50/50") : ""
                           }`}
                         >
                           {sh ? (
                             <div
-                              className="py-1 px-1.5 rounded-md text-center leading-tight w-[92%] cursor-pointer"
+                              className="py-1.5 px-1 rounded-lg text-center leading-snug w-full cursor-pointer"
                               style={{
                                 backgroundColor: (ROLE_COLORS[st.role] ?? "#999") + (isMe ? "25" : "15"),
                               }}
                               onClick={() => setDetailShift(sh)}
                             >
                               <div
-                                className="text-[10px] font-bold"
+                                className="text-xs font-bold"
                                 style={{ color: ROLE_COLORS[st.role] ?? "#666" }}
                               >
                                 {sh.start_time.slice(0, 5)}
                               </div>
-                              <div className="text-[9px] text-gray-400">
+                              <div className="text-[11px] text-gray-400">
                                 {sh.end_time.slice(0, 5)}
                               </div>
                             </div>
                           ) : (
-                            <span className="text-[11px] text-gray-200">–</span>
+                            <span className="text-xs text-gray-200">–</span>
                           )}
                         </div>
                       )
