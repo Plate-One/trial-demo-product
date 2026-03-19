@@ -552,29 +552,48 @@ function TeamTab({ profile }: { profile: { id: string; store_id: string; role: s
           <div className="text-sm text-gray-400 mb-2">
             {format(weekDays[selectedDay], "M月d日(E)", { locale: ja })} — {dayShifts.length}人出勤
           </div>
-          {dayShifts.map((sh, i) => {
-            const isMe = sh.staff_id === profile.id
-            return (
-              <div key={i} onClick={() => setDetailShift(detailShift === sh ? null : sh)}
-                className={`flex items-center gap-2.5 py-3 px-2.5 border-b border-gray-50 rounded-md cursor-pointer ${tapLight} ${
-                  isMe ? "bg-purple-50/50" : ""
-                }`}
-              >
-                <div className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: ROLE_COLORS[sh.staff?.role ?? ""] ?? "#999" }} />
-                <div className="flex-1 min-w-0">
-                  <div className={`text-sm ${isMe ? "font-bold" : "font-medium"}`}>
-                    {sh.staff?.name ?? "—"}
-                    {isMe && <span className="text-[10px] text-purple-600 ml-1">自分</span>}
+          {(() => {
+            const hallShifts = dayShifts.filter(s => s.staff?.role === "ホール")
+            const kitchenShifts = dayShifts.filter(s => s.staff?.role === "キッチン")
+            const otherShifts = dayShifts.filter(s => s.staff?.role !== "ホール" && s.staff?.role !== "キッチン")
+            const sections = [
+              { label: "ホール", shifts: hallShifts, color: ROLE_COLORS["ホール"] },
+              { label: "キッチン", shifts: kitchenShifts, color: ROLE_COLORS["キッチン"] },
+              ...(otherShifts.length > 0 ? [{ label: "その他", shifts: otherShifts, color: "#888" }] : []),
+            ]
+            return sections.map(sec => {
+              if (sec.shifts.length === 0) return null
+              return (
+                <div key={sec.label} className="mb-3">
+                  <div className="flex items-center gap-2 mb-1 mt-2">
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: sec.color }} />
+                    <span className="text-xs font-bold" style={{ color: sec.color }}>{sec.label}</span>
+                    <span className="text-[10px] text-gray-400">{sec.shifts.length}人</span>
                   </div>
-                  <div className="text-xs text-gray-400">{sh.staff?.role}</div>
+                  {sec.shifts.map((sh, i) => {
+                    const isMe = sh.staff_id === profile.id
+                    return (
+                      <div key={i} onClick={() => setDetailShift(detailShift === sh ? null : sh)}
+                        className={`flex items-center gap-2.5 py-2.5 px-2.5 border-b border-gray-50 rounded-md cursor-pointer ${tapLight} ${
+                          isMe ? "bg-purple-50/50" : ""
+                        }`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className={`text-sm ${isMe ? "font-bold" : "font-medium"}`}>
+                            {sh.staff?.name ?? "—"}
+                            {isMe && <span className="text-[10px] text-purple-600 ml-1">自分</span>}
+                          </div>
+                        </div>
+                        <div className="text-sm font-semibold text-gray-600 whitespace-nowrap">
+                          {sh.start_time.slice(0, 5)}–{sh.end_time.slice(0, 5)}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
-                <div className="text-sm font-semibold text-gray-600 whitespace-nowrap">
-                  {sh.start_time.slice(0, 5)}–{sh.end_time.slice(0, 5)}
-                </div>
-              </div>
-            )
-          })}
+              )
+            })
+          })()}
           {dayShifts.length === 0 && (
             <div className="text-center py-12">
               <CalendarDays className="h-10 w-10 text-gray-200 mx-auto mb-2" />
@@ -587,66 +606,104 @@ function TeamTab({ profile }: { profile: { id: string; store_id: string; role: s
       {/* Week View */}
       {viewMode === "week" && (
         <div className="relative">
-          <div className="absolute left-0 top-0 w-[80px] z-[3] bg-white">
-            <div className="h-10 flex items-center pl-2 border-b border-gray-200">
-              <span className="text-xs text-gray-300">名前</span>
-            </div>
-            {filteredStaff.map(st => {
-              const isMe = st.id === profile.id
-              return (
-                <div key={st.id} className={`h-[52px] flex items-center gap-1.5 pl-2 border-b border-gray-50 overflow-hidden ${isMe ? "bg-purple-50/50" : ""}`}>
-                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: ROLE_COLORS[st.role] ?? "#999" }} />
-                  <span className={`text-xs truncate ${isMe ? "font-bold text-purple-700" : "text-gray-700"}`}>{st.name}</span>
-                </div>
-              )
-            })}
-          </div>
-          <div className="ml-[80px] overflow-x-auto">
-            <div style={{ minWidth: `${weekDays.length * 48}px` }}>
-              <div className="flex h-10 border-b border-gray-200 items-center">
-                {weekDays.map((d, i) => {
-                  const isToday = dateFnsIsToday(d)
-                  return (
-                    <div key={i} className={`flex-1 min-w-[48px] text-center text-xs ${isToday ? "text-gray-900 font-bold" : "text-gray-400"}`}>
-                      <div>{format(d, "E", { locale: ja })}</div>
-                      <div className="text-sm font-semibold">{d.getDate()}</div>
-                    </div>
-                  )
-                })}
-              </div>
-              {filteredStaff.map(st => {
-                const isMe = st.id === profile.id
-                return (
-                  <div key={st.id} className={`flex h-[52px] border-b border-gray-50 ${isMe ? "bg-purple-50/50" : ""}`}>
-                    {weekDays.map((d, di) => {
-                      const dateStr = format(d, "yyyy-MM-dd")
-                      const isToday = dateFnsIsToday(d)
-                      const sh = (shiftMap.get(`${st.id}_${dateStr}`) ?? [])[0]
-                      return (
-                        <div key={di} className={`flex-1 min-w-[48px] flex items-center justify-center px-0.5 ${
-                          isToday ? (isMe ? "bg-purple-50/30" : "bg-gray-50/50") : ""
-                        }`}>
-                          {sh ? (
-                            <div className={`py-1.5 px-1 rounded-lg text-center leading-snug w-full cursor-pointer ${tap}`}
-                              style={{ backgroundColor: (ROLE_COLORS[st.role] ?? "#999") + (isMe ? "25" : "15") }}
-                              onClick={() => setDetailShift(sh)}
-                            >
-                              <div className="text-xs font-bold" style={{ color: ROLE_COLORS[st.role] ?? "#666" }}>
-                                {sh.start_time.slice(0, 5)}
-                              </div>
-                              <div className="text-[11px] text-gray-400">{sh.end_time.slice(0, 5)}</div>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-gray-200">–</span>
-                          )}
-                        </div>
-                      )
-                    })}
+          {(() => {
+            // Group staff by role (ホール, キッチン, others)
+            const hallStaff = filteredStaff.filter(s => s.role === "ホール")
+            const kitchenStaff = filteredStaff.filter(s => s.role === "キッチン")
+            const otherStaff = filteredStaff.filter(s => s.role !== "ホール" && s.role !== "キッチン")
+            const sections = [
+              { label: "ホール", staff: hallStaff, color: ROLE_COLORS["ホール"] },
+              { label: "キッチン", staff: kitchenStaff, color: ROLE_COLORS["キッチン"] },
+              ...(otherStaff.length > 0 ? [{ label: "その他", staff: otherStaff, color: "#888" }] : []),
+            ].filter(s => s.staff.length > 0)
+            const allGroupedStaff = sections.flatMap(s => s.staff)
+            // Calculate section label row positions
+            const sectionRows: { label: string; color: string; index: number }[] = []
+            let idx = 0
+            sections.forEach(sec => { sectionRows.push({ label: sec.label, color: sec.color!, index: idx }); idx += sec.staff.length })
+
+            return (
+              <>
+                <div className="absolute left-0 top-0 w-[80px] z-[3] bg-white">
+                  <div className="h-10 flex items-center pl-2 border-b border-gray-200">
+                    <span className="text-xs text-gray-300">名前</span>
                   </div>
-                )
-              })}
-            </div>
-          </div>
+                  {sections.map(sec => (
+                    <div key={sec.label}>
+                      {/* Section header */}
+                      <div className="h-7 flex items-center gap-1.5 pl-2 border-b border-gray-100 bg-gray-50">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sec.color }} />
+                        <span className="text-[10px] font-bold" style={{ color: sec.color }}>{sec.label}</span>
+                        <span className="text-[9px] text-gray-400">{sec.staff.length}</span>
+                      </div>
+                      {sec.staff.map(st => {
+                        const isMe = st.id === profile.id
+                        return (
+                          <div key={st.id} className={`h-[52px] flex items-center gap-1.5 pl-2 border-b border-gray-50 overflow-hidden ${isMe ? "bg-purple-50/50" : ""}`}>
+                            <span className={`text-xs truncate ${isMe ? "font-bold text-purple-700" : "text-gray-700"}`}>{st.name}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ))}
+                </div>
+                <div className="ml-[80px] overflow-x-auto">
+                  <div style={{ minWidth: `${weekDays.length * 48}px` }}>
+                    <div className="flex h-10 border-b border-gray-200 items-center">
+                      {weekDays.map((d, i) => {
+                        const isToday = dateFnsIsToday(d)
+                        return (
+                          <div key={i} className={`flex-1 min-w-[48px] text-center text-xs ${isToday ? "text-gray-900 font-bold" : "text-gray-400"}`}>
+                            <div>{format(d, "E", { locale: ja })}</div>
+                            <div className="text-sm font-semibold">{d.getDate()}</div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    {sections.map(sec => (
+                      <div key={sec.label}>
+                        {/* Section header row */}
+                        <div className="flex h-7 border-b border-gray-100 bg-gray-50">
+                          {weekDays.map((_, di) => <div key={di} className="flex-1 min-w-[48px]" />)}
+                        </div>
+                        {sec.staff.map(st => {
+                          const isMe = st.id === profile.id
+                          return (
+                            <div key={st.id} className={`flex h-[52px] border-b border-gray-50 ${isMe ? "bg-purple-50/50" : ""}`}>
+                              {weekDays.map((d, di) => {
+                                const dateStr = format(d, "yyyy-MM-dd")
+                                const isToday = dateFnsIsToday(d)
+                                const sh = (shiftMap.get(`${st.id}_${dateStr}`) ?? [])[0]
+                                return (
+                                  <div key={di} className={`flex-1 min-w-[48px] flex items-center justify-center px-0.5 ${
+                                    isToday ? (isMe ? "bg-purple-50/30" : "bg-gray-50/50") : ""
+                                  }`}>
+                                    {sh ? (
+                                      <div className={`py-1.5 px-1 rounded-lg text-center leading-snug w-full cursor-pointer ${tap}`}
+                                        style={{ backgroundColor: (sec.color ?? "#999") + (isMe ? "25" : "15") }}
+                                        onClick={() => setDetailShift(sh)}
+                                      >
+                                        <div className="text-xs font-bold" style={{ color: sec.color ?? "#666" }}>
+                                          {sh.start_time.slice(0, 5)}
+                                        </div>
+                                        <div className="text-[11px] text-gray-400">{sh.end_time.slice(0, 5)}</div>
+                                      </div>
+                                    ) : (
+                                      <span className="text-xs text-gray-200">–</span>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )
+          })()}
           {detailShift && (
             <div className="bg-white border border-gray-200 rounded-xl p-3.5 mt-2.5 shadow-sm">
               <div className="flex justify-between items-center">
