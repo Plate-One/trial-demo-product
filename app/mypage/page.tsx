@@ -5,7 +5,7 @@ import { format, addDays, startOfWeek, isToday as dateFnsIsToday } from "date-fn
 import { ja } from "date-fns/locale"
 import { useAuth } from "@/lib/hooks/use-auth"
 import { createClient } from "@/lib/supabase/client"
-import { Loader2 } from "lucide-react"
+import { Loader2, CalendarDays, Users, Bell, UserCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 // ========== Helpers ==========
@@ -115,9 +115,19 @@ export default function MyPage() {
   return (
     <div className="max-w-[430px] mx-auto min-h-screen flex flex-col bg-white font-sans text-gray-900">
       {/* Header */}
-      <header className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100 sticky top-0 z-10 bg-white">
-        <span className="font-bold text-[15px]">{store?.name ?? "読み込み中..."}</span>
-        <span className="text-xs text-gray-400">{timeStr}</span>
+      <header className="flex justify-between items-center px-5 py-3 border-b border-gray-100 sticky top-0 z-10 bg-white">
+        <div className="flex items-center gap-2.5">
+          <span className="font-bold text-[15px]">{store?.name ?? "読み込み中..."}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="text-right">
+            <div className="text-[11px] font-semibold text-gray-700 leading-tight">{profile.name}</div>
+            <div className="text-[9px] text-gray-400 leading-tight">{profile.role}</div>
+          </div>
+          <div className="h-7 w-7 rounded-full bg-gray-100 flex items-center justify-center">
+            <UserCircle className="h-4 w-4 text-gray-400" />
+          </div>
+        </div>
       </header>
 
       {/* Body */}
@@ -135,19 +145,20 @@ export default function MyPage() {
       {/* Bottom Nav */}
       <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] flex bg-white border-t border-gray-100 z-10">
         {([
-          { id: "home" as Tab, label: "シフト" },
-          { id: "team" as Tab, label: "全体" },
-          { id: "news" as Tab, label: "通知" },
-          { id: "profile" as Tab, label: "マイページ" },
+          { id: "home" as Tab, label: "シフト", icon: CalendarDays },
+          { id: "team" as Tab, label: "全体", icon: Users },
+          { id: "news" as Tab, label: "通知", icon: Bell },
+          { id: "profile" as Tab, label: "マイページ", icon: UserCircle },
         ]).map(t => (
           <button
             key={t.id}
             onClick={() => setActiveTab(t.id)}
-            className={`flex-1 py-2.5 pb-2 text-[11px] font-medium transition-colors ${
-              activeTab === t.id ? "text-gray-900 font-bold" : "text-gray-400"
+            className={`flex-1 flex flex-col items-center gap-0.5 py-2 pt-2.5 transition-colors ${
+              activeTab === t.id ? "text-gray-900" : "text-gray-400"
             }`}
           >
-            {t.label}
+            <t.icon className="h-5 w-5" />
+            <span className={`text-[10px] ${activeTab === t.id ? "font-bold" : "font-medium"}`}>{t.label}</span>
           </button>
         ))}
       </nav>
@@ -653,17 +664,19 @@ function TeamTab({ profile }: { profile: { id: string; store_id: string; role: s
                         >
                           {sh ? (
                             <div
-                              className="py-0.5 px-1 rounded text-center leading-tight w-[90%] border-l-2 cursor-pointer"
+                              className="py-1 px-1.5 rounded-md text-center leading-tight w-[92%] cursor-pointer"
                               style={{
-                                backgroundColor: (ROLE_COLORS[st.role] ?? "#999") + (isMe ? "18" : "10"),
-                                borderLeftColor: ROLE_COLORS[st.role] ?? "#999",
+                                backgroundColor: (ROLE_COLORS[st.role] ?? "#999") + (isMe ? "25" : "15"),
                               }}
                               onClick={() => setDetailShift(sh)}
                             >
-                              <div className={`text-[9px] font-semibold ${isMe ? "text-gray-800" : "text-gray-500"}`}>
+                              <div
+                                className="text-[9px] font-bold"
+                                style={{ color: ROLE_COLORS[st.role] ?? "#666" }}
+                              >
                                 {sh.start_time.slice(0, 5)}
                               </div>
-                              <div className={`text-[9px] font-semibold ${isMe ? "text-gray-800" : "text-gray-500"}`}>
+                              <div className="text-[8px] text-gray-400">
                                 {sh.end_time.slice(0, 5)}
                               </div>
                             </div>
