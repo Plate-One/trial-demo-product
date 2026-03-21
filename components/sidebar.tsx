@@ -50,9 +50,9 @@ export function Sidebar() {
       href: "/settings",
     },
     {
-      title: "スタッフ用マイページ",
+      title: "従業員アプリ",
       icon: Smartphone,
-      href: "/mypage",
+      href: "/employee",
     },
   ]
 
